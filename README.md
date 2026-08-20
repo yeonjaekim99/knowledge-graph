@@ -7,3 +7,9 @@
 ## Status
 
 초기 개발 단계입니다.
+
+## Documentation
+
+- [초기 설계안](docs/init-design.md)
+- [Accepted ADR 목록](docs/adr/README.md)
+- [ADR 전체 리뷰](docs/adr/review.md)
