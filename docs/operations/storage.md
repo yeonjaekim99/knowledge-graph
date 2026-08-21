@@ -1,8 +1,9 @@
 # SQLite 저장 경로와 startup 운영 계약
 
-- 소유 작업: `STO-001`, `STO-002`, `STO-003`
+- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`
 - 규범 근거: ADR-001, ADR-005
-- 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle과 migration gate
+- 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate와
+  v1 physical schema
 
 ## 필수 설정
 
@@ -72,9 +73,15 @@ bundled migration version은 양의 정수 1부터 빈틈없이 증가한다. ru
 `BEGIN … END` body는 transaction control로 보지 않는다. 실패한 migration의 DDL과 history는
 함께 rollback된다.
 
-STO-003은 runner와 운영 metadata만 제공한다. 최초 production v1 migration source와
-journal·projection·FTS schema는 STO-004가 추가하며, MCP-001은 migration 성공 이후에만 tool을
-노출하도록 startup을 조립한다.
+STO-003 runner는 같은 transaction에서 `schema_migrations`를 먼저 bootstrap한다. STO-004의
+`001-v1-schema.sql`은 journal, projection, redirect, projection metadata와 contentless trigram
+FTS를 만든다. build는 SQL을 byte-for-byte로 `dist`에 복사하며 bundled loader는 배포 asset을
+읽어 STO-003 runner에 전달한다. 최종 v1 schema와 책임 분리는
+[구현 결정](../implementation/sto-004-v1-sqlite-schema.md)에 고정한다.
+
+FTS를 복구할 때는 contentless table에 `delete-all`을 적용하고 journal의 statement만 seq
+순으로 다시 넣은 뒤 `optimize`한다. FTS column에서 원문을 읽지 않으며, 철회·TTL 등 현재
+상태 판정은 후속 recall query가 projection과 join해 수행한다.
 
 ## 권한 정책
 
@@ -93,11 +100,14 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- `STO-004`: journal·projection·contentless FTS 영구 schema
 - `STO-005`: user/project scope deployment config
+- `STO-006`: actor·branch·session metadata provider
+- `STO-007`: append-only journal repository와 statement/FTS commit 경로
+- Phase 03: projection reducer와 replay
 
-현재 startup은 `schema_migrations`만 운영 metadata로 남긴다. journal·projection·FTS 영구
-schema와 실제 journal append/projector는 아직 구현하지 않았다.
+v1 physical schema와 bundled runner entry는 존재하지만 실제 MCP process startup 조립은
+`MCP-001`이 소유한다. schema가 있다는 사실만으로 tool을 노출하거나 projection table을
+사용자 요청에서 직접 수정하지 않는다.
 
 ## 검증
 
@@ -105,6 +115,7 @@ schema와 실제 journal append/projector는 아직 구현하지 않았다.
 pnpm test:sto-001
 pnpm test:sto-002
 pnpm test:sto-003
+pnpm test:sto-004
 pnpm verify:local
 python3 docs/roadmap/validate.py
 ```
@@ -116,3 +127,7 @@ reader/event-loop 진행 및 timeout 뒤 queue 복구를 검증한다.
 
 migration test는 exact-byte checksum, version/name drift, future version, rollback, 정상 재개방과
 열린 migration transaction에서 hard exit한 뒤의 재개방을 검증한다.
+
+schema test는 exact source/dist byte, 최종 table·index·trigger·FK catalog, contentless FTS와
+한국어 3글자/2글자 경계, rebuild, 실제 partial unique/XOR/CHECK/FK 실패와
+`PRAGMA foreign_key_check`를 검증한다.
