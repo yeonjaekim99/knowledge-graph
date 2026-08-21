@@ -18,7 +18,7 @@
 | FND-001 | production 기술 스택 결정 | `DONE` | `log0629` | RDY-007 | [결정·검증](../implementation/fnd-001-production-stack.md), [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6) |
 | FND-002 | 제품 모듈과 의존 방향 설계 | `DONE` | `log0629` | FND-001 | [결정·검증](../implementation/fnd-002-module-boundaries.md), [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7) |
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
-| FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
+| FND-004 | public/domain schema 단일 출처 결정 | `IN_PROGRESS` | `log0629` | FND-001, FND-002 | branch `fnd-004-schema-source` |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
 | FND-006 | CI와 repository 품질 gate 구축 | `TODO` | `unassigned` | FND-001, FND-005 | — |
 | FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~006 | — |
@@ -98,8 +98,9 @@
 
 ### FND-004 — public/domain schema 단일 출처 결정
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `fnd-004-schema-source`
 - 근거: ADR-013~016
 - 선행 작업: FND-001, FND-002
 - 결과물: 타입과 JSON Schema 생성·검증 정책
