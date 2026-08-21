@@ -1,9 +1,9 @@
 # SQLite 저장 경로와 startup 운영 계약
 
-- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`
+- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`, `STO-008`
 - 규범 근거: ADR-001, ADR-005
 - 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate,
-  v1 physical schema와 append-only journal storage primitive
+  v1 physical schema, append-only journal storage primitive와 process/WAL recovery gate
 
 ## 필수 설정
 
@@ -101,6 +101,19 @@ repository는 append만 제공하고 journal update/delete, projection write와 
 `appendAndProject` application port나 MCP handler에 직접 연결해서는 안 된다. 상세 collision,
 receipt와 오류 계약은 [구현 결정](../implementation/sto-007-append-only-journal.md)에 고정한다.
 
+## process recovery와 동시 client 계약
+
+STO-008은 실제 file DB를 journal INSERT 전, journal과 trigger FTS INSERT 후·commit 전,
+commit 후에 hard-exit하고 production startup·migration·repository로 다시 연다. 재개방 결과는
+이전 상태 또는 commit된 새 상태뿐이어야 하며 journal seq/event ID, FTS rowid, migration
+version/name/checksum/applied_at과 FK가 일치해야 한다. 복구 뒤 새 append도 정상 동작해야 한다.
+
+지원하는 8-client 의미는 한 server process 안의 4 logical writer request와 4 WAL reader다.
+logical writer는 같은 managed factory의 FIFO writer 하나를 공유하고 서로 다른 trusted scope를
+사용한다. 네 reader는 독립 worker connection이다. 다중 writer process는 여전히 지원하지
+않는다. fixture와 fault matrix는
+[구현 결정](../implementation/sto-008-storage-recovery-concurrency.md)에 고정한다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -118,8 +131,8 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- `STO-008`: hard-exit 재개방과 concurrent WAL reader의 통합 검증
-- Phase 03: projection reducer와 replay
+- Phase 03: projection reducer, journal+projection crash parity와 replay
+- Phase 08: 실제 MCP 8-client load, kill/restart와 처리량·지연 판정
 
 user/project 설정, local/remote identity binding과 fail-closed 규칙은 별도
 [scope 운영 계약](scope.md)에 고정한다.
@@ -138,6 +151,7 @@ pnpm test:sto-002
 pnpm test:sto-003
 pnpm test:sto-004
 pnpm test:sto-007
+pnpm test:sto-008
 pnpm verify:local
 python3 docs/roadmap/validate.py
 ```
@@ -157,3 +171,8 @@ schema test는 exact source/dist byte, 최종 table·index·trigger·FK catalog,
 journal test는 exact body/scope/metadata/epoch, seq 순서, statement/FTS parity, whole-batch
 collision retry, trigger 장애 rollback, invalid input과 collision exhaustion을 실제 file DB에서
 검증한다.
+
+recovery/concurrency test는 IPC barrier hard exit 세 지점, migration checksum·FK·seq/ID·FTS
+재개방과 후속 append, writer lock 중 네 WAL reader의 old snapshot, 4 writer+4 reader의 scope별
+단조 snapshot과 최종 무결성을 검증한다. S20 target은 구현됐지만 projection fault point가 남은
+S24 target은 `planned`다.
