@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { dirname, extname, relative, resolve, sep } from "node:path";
+import { dirname, extname, isAbsolute, relative, resolve, sep } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 
 import {
@@ -19,7 +19,10 @@ function toPosix(path) {
 
 function isInside(parent, child) {
   const path = relative(parent, child);
-  return path === "" || (!path.startsWith("..") && !path.startsWith(sep));
+  return (
+    path === "" ||
+    (path !== ".." && !path.startsWith(`..${sep}`) && !isAbsolute(path))
+  );
 }
 
 function collectTypeScriptFiles(directory) {
