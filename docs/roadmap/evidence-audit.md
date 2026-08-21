@@ -27,13 +27,14 @@
 | `E-SPIKE` | [PR #2](https://github.com/yeonjaekim99/knowledge-graph/pull/2), [spike report](../spikes/adr-behavior-report.md) | S01~S24, 25 tests, 288 prefix, 8 crash case | MCP transport·증분 projector·10만 규모는 제외 |
 | `E-ROADMAP` | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) | stable task, 의존성, 추적성, validator | 제품 CI와 구현 증거는 아님 |
 | `E-AGENT` | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) | 공통 agent 작업 계약과 Claude import | 규칙 준수 여부는 각 작업에서 계속 리뷰 |
+| `E-STACK` | [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6), [production 기술 스택](../implementation/fnd-001-production-stack.md) | Node/pnpm/TypeScript/MCP SDK/SQLite driver pin과 실제 MCP·SQLite·native 배포 probe | 제품 모듈 경계·schema source·CI와 지원 target별 release 검증은 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
 
 ## Phase 01 Foundation
 
-- [x] `FND-001` | baseline: `E-ADR`이 MCP 계약 요구를 확정했고 `E-SQL`과 S01/S20이 Python/SQLite feasibility를 확인했다. | production: runtime·package manager·SQLite driver·MCP SDK를 선택하고 선택 조합의 API·배포를 검증한다.
+- [x] `FND-001` | baseline: `E-ADR`이 MCP 계약 요구를 확정했고 `E-SQL`과 S01/S20이 Python/SQLite feasibility를 확인했다. | production: `E-STACK`에서 runtime·package manager·SQLite driver·MCP SDK 선택과 실제 API·배포 probe를 완료했다.
 - [x] `FND-002` | baseline: `E-ADR`과 `E-SPIKE`가 journal/projection 분리와 pure deterministic oracle의 성립을 확인했다. | production: 실제 package/module 경계와 dependency/import guard를 만든다.
 - [x] `FND-003` | baseline: 고정 clock·ID·scope를 사용한 S02/S09/S14~S16/S23이 결정성 요구를 확인했다. | production: 동일 계약의 runtime provider interface와 production/test adapter를 만든다.
 - [x] `FND-004` | baseline: ADR-013~016이 public/domain schema 규범과 union/XOR를 확정했다. | production: 선택한 stack의 단일 schema source, runtime validation과 drift 검사를 결정한다.
@@ -124,11 +125,11 @@
 
 ## 감사 결론
 
-- 제품 작업 완료 수는 계속 0/67이다. production artifact가 없으므로 어느 작업도 `DONE`으로
-  올리지 않았다.
+- 제품 작업 완료 수는 현재 1/67이다. `FND-001`만 production artifact와 검증·PR 증거를
+  갖춰 `DONE`으로 올렸고 나머지 작업은 각 production gate를 유지한다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- 가장 먼저 열 수 있는 제품 작업은 `FND-001`이며, SQLite behavior 전체를 다시 만드는
-  작업이 아니라 선택한 production driver/MCP SDK 조합의 compatibility와 배포 결정이다.
+- 다음에 열 수 있는 제품 작업은 `FND-002`이며, `E-STACK`을 재사용해 실제 제품 모듈과
+  의존 방향 및 동기 SQLite driver의 실행 경계를 설계한다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

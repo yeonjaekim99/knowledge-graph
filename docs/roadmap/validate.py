@@ -221,7 +221,13 @@ def main() -> int:
                 "evidence audit task mismatch "
                 f"{sorted(set(evidence_ids) ^ set(product_ids))}"
             )
-        if "제품 작업 완료 수는 계속 0/67이다" not in evidence_text:
+        audited_product_done = sum(
+            task_statuses[task_id] == "DONE" for task_id in product_ids
+        )
+        completion_boundary = (
+            f"제품 작업 완료 수는 현재 {audited_product_done}/{len(product_ids)}이다"
+        )
+        if completion_boundary not in evidence_text:
             errors.append("evidence audit must preserve the product completion boundary")
 
     for path, text, _, _ in parsed:
