@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/8
+- 진행률: 2/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | STO-001 | DB 경로·SQLite capability startup gate | `DONE` | `log0629` | FND-001, FND-003 | [운영 계약](../operations/storage.md), [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13) |
-| STO-002 | connection factory와 writer 직렬화 | `TODO` | `unassigned` | STO-001 | — |
+| STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
 | STO-003 | migration runner와 checksum 검증 | `TODO` | `unassigned` | STO-001 | — |
 | STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
 | STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
@@ -57,18 +57,33 @@
 
 ### STO-002 — connection factory와 writer 직렬화
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-002-sqlite-connection-queue`
 - 근거: ADR-001, ADR-005
 - 선행 작업: STO-001
 - 결과물: connection factory, process write queue와 transaction helper
 
 완료 체크:
 
-- [ ] 최초 writer만 WAL을 설정하고 이후 연결은 `wal` 반환값을 검증한다.
-- [ ] 모든 연결에 foreign_keys, busy_timeout, cache와 temp_store 정책을 적용한다.
-- [ ] `BEGIN IMMEDIATE` write를 process 내부 queue로 직렬화한다.
-- [ ] 5초 lock 실패를 retryable typed error로 변환한다.
+- [x] 최초 writer만 WAL을 설정하고 이후 연결은 `wal` 반환값을 검증한다.
+- [x] 모든 연결에 foreign_keys, busy_timeout, cache와 temp_store 정책을 적용한다.
+- [x] `BEGIN IMMEDIATE` write를 process 내부 queue로 직렬화한다.
+- [x] 5초 lock 실패를 retryable typed error로 변환한다.
+
+증거:
+
+- 구현: [`connection-factory.ts`](../../src/adapters/sqlite/connection-factory.ts),
+  [`connection-worker.ts`](../../src/adapters/sqlite/connection-worker.ts),
+  [connection/queue 구현 결정](../implementation/sto-002-sqlite-connections.md)
+- PR: [#14](https://github.com/yeonjaekim99/knowledge-graph/pull/14)
+- TDD: `pnpm test:sto-002` 최초 missing production export로 0 test / 1 file failure 후
+  실제 file-backed 정상·경계·실패 5/5 통과
+- 검증: `pnpm verify:local` 59/59, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` 전체 gate
+- 범위 경계: S20의 connection/lock slice만 production으로 이전했다. migration/schema,
+  journal/projector transaction과 8-client/process recovery는 STO-003/004/007/008 및
+  REL-004가 소유하므로 S20 manifest는 `planned`를 유지한다.
 
 ### STO-003 — migration runner와 checksum 검증
 
