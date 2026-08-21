@@ -90,5 +90,5 @@ active 표나 dependency에 다시 넣었을 때 validator가 거부하는지를
 
 ## 증거
 
-- PR: merge 전 연결
+- PR: [#10](https://github.com/yeonjaekim99/knowledge-graph/pull/10)
 - 결정 출처: 2026-08-21 maintainer 요청
