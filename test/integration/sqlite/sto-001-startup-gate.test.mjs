@@ -112,6 +112,7 @@ test("missing and unsafe database path forms fail closed without echoing values"
     ["file:recall.sqlite3?mode=memory", "DATABASE_PATH_UNSUPPORTED"],
     ["relative/recall.sqlite3", "DATABASE_PATH_NOT_ABSOLUTE"],
     ["//network-host/private-share/secret.sqlite3", "NETWORK_FILESYSTEM_UNSUPPORTED"],
+    ["\\\\network-host\\private-share\\secret.sqlite3", "NETWORK_FILESYSTEM_UNSUPPORTED"],
     ["/tmp/private\0secret.sqlite3", "DATABASE_PATH_UNSUPPORTED"],
   ];
 
@@ -153,27 +154,52 @@ test(
       () => runSqliteStartupGate({ databasePath: symlinkDatabase.databasePath }),
       startupError("DATABASE_FILE_UNSUPPORTED"),
     );
+
+    const directoryTarget = createStateDirectory();
+    mkdirSync(directoryTarget.databasePath, { mode: 0o700 });
+    assert.throws(
+      () => runSqliteStartupGate({ databasePath: directoryTarget.databasePath }),
+      startupError("DATABASE_FILE_UNSUPPORTED"),
+    );
+
+    const missingState = createStateDirectory();
+    assert.throws(
+      () =>
+        runSqliteStartupGate({
+          databasePath: join(
+            missingState.stateDirectory,
+            "missing",
+            "recall.sqlite3",
+          ),
+        }),
+      startupError("STATE_DIRECTORY_UNAVAILABLE"),
+    );
   },
 );
 
 test("known network filesystems stop startup before capability probing", () => {
-  const { databasePath } = createStateDirectory();
-  let capabilityProbeCalls = 0;
-  const gate = createSqliteStartupGate({
-    inspectFilesystem() {
-      return Object.freeze({ type: 0x6969n, mountType: "nfs" });
-    },
-    probeCapabilities() {
-      capabilityProbeCalls += 1;
-      throw new Error("must not run");
-    },
-  });
+  for (const evidence of [
+    Object.freeze({ type: 0x6969n, mountType: null }),
+    Object.freeze({ type: 0xef53n, mountType: "cifs" }),
+  ]) {
+    const { databasePath } = createStateDirectory();
+    let capabilityProbeCalls = 0;
+    const gate = createSqliteStartupGate({
+      inspectFilesystem() {
+        return evidence;
+      },
+      probeCapabilities() {
+        capabilityProbeCalls += 1;
+        throw new Error("must not run");
+      },
+    });
 
-  assert.throws(
-    () => gate.verify({ databasePath }),
-    startupError("NETWORK_FILESYSTEM_UNSUPPORTED"),
-  );
-  assert.equal(capabilityProbeCalls, 0);
+    assert.throws(
+      () => gate.verify({ databasePath }),
+      startupError("NETWORK_FILESYSTEM_UNSUPPORTED"),
+    );
+    assert.equal(capabilityProbeCalls, 0);
+  }
 });
 
 test("every required SQLite capability is a fail-closed startup gate", () => {
