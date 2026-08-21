@@ -45,6 +45,21 @@ export type {
 export { runBundledSqliteMigrations } from "./bundled-migrations.js";
 
 export {
+  JOURNAL_ID_COLLISION_ATTEMPT_LIMIT,
+  JournalAppendError,
+  createSqliteJournalRepository,
+} from "./journal-repository.js";
+export type {
+  AppendOnlyJournalRepository,
+  JournalAppendErrorCode,
+  JournalAppendEventReceipt,
+  JournalAppendIntent,
+  JournalAppendReceipt,
+  JournalEventKind,
+  SqliteJournalRepositoryDependencies,
+} from "./journal-repository.js";
+
+export {
   RECALL_DB_PATH_ENV,
   SQLITE_STORAGE_PERMISSIONS,
   SqliteStartupError,
