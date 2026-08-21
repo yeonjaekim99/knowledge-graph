@@ -35,6 +35,7 @@
 | `E-BOOTSTRAP` | [PR #12](https://github.com/yeonjaekim99/knowledge-graph/pull/12), [기여 가이드](../../CONTRIBUTING.md), [README 빠른 시작](../../README.md#빠른-시작) | exact runtime과 frozen install, 로컬 TDD·검증·PR 흐름, 안전한 scratch DB 경계와 clean source 재현 | production DB path/startup은 STO-001, scope config는 STO-005, 지원 target packaging은 REL-009가 구현 |
 | `E-SQLITE-STARTUP` | [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13), [storage 운영 계약](../operations/storage.md), [integration test](../../test/integration/sqlite/sto-001-startup-gate.test.mjs) | 실제 file DB의 절대 경로·local filesystem·권한 gate와 FTS5/trigram/JSON/unixepoch fail-closed readiness | WAL/queue, migration, 영구 schema, scope와 MCP tool 조립은 후속 작업 |
 | `E-SQLITE-CONNECTION` | [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14), [connection/queue 구현 결정](../implementation/sto-002-sqlite-connections.md), [integration test](../../test/integration/sqlite/sto-002-connection-factory.test.mjs) | worker-backed writer/readers, WAL·PRAGMA 검증, FIFO `BEGIN IMMEDIATE`, 실제 5초 busy·reader/event-loop 진행과 safe typed error | migration/schema, journal/projector transaction과 8-client/process recovery는 후속 작업 |
+| `E-SQLITE-MIGRATION` | [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15), [migration runner 구현 결정](../implementation/sto-003-sqlite-migrations.md), [integration test](../../test/integration/sqlite/sto-003-migration-runner.test.mjs), [process test](../../test/e2e/process/sto-003-migration-crash-reopen.test.mjs) | exact-byte checksum, version/name history, 단일 writer transaction, 정상·hard-exit reopen과 safe typed error | 최초 v1 schema와 startup wiring, journal/projector 전체 crash·동시성은 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -53,7 +54,7 @@
 
 - [x] `STO-001` | baseline: S01과 `E-SQL`이 FTS5 trigram·JSON·`unixepoch()` capability를 확인했다. | production: `E-SQLITE-STARTUP`에서 선택한 driver와 실제 DB 경로의 startup fail-closed·권한 정책을 완료했다.
 - [x] `STO-002` | baseline: S20이 직렬 writer와 동시 WAL reader의 성립을 확인했다. | production: `E-SQLITE-CONNECTION`에서 connection factory·worker write queue·PRAGMA·5초 busy error를 실제 file DB로 완료했다.
-- [x] `STO-003` | baseline: S24와 spike reopen 결함 수정이 version/name/checksum 검증 필요성을 확인했다. | production: immutable migration runner와 정상·crash reopen test를 만든다.
+- [x] `STO-003` | baseline: S24와 spike reopen 결함 수정이 version/name/checksum 검증 필요성을 확인했다. | production: `E-SQLITE-MIGRATION`에서 immutable runner, exact-byte checksum과 정상·hard-exit reopen을 완료했다.
 - [x] `STO-004` | baseline: `E-SQL`과 S01이 규범 DDL, contentless FTS, 제약과 rebuild를 실행했다. | production: 선택한 driver용 versioned migration과 실패 fixture를 구현한다.
 - [x] `STO-005` | baseline: S09가 두 scope 격리와 cross-scope ID 차단을 확인했고 `E-RUNTIME`이 tool 인자 없는 scope port와 출력 검증을 제공한다. | production: 인증 principal·immutable project config 기반 concrete resolver, 명시적 local fallback과 identity 부재 fail-closed startup을 구현한다.
 - [x] `STO-006` | baseline: ADR-003/011/016이 actor·branch·session 출처와 마스킹 경계를 확정했고 `E-RUNTIME`이 metadata port와 출력 검증을 제공한다. | production: client 정리, symbolic/detached/non-Git branch, session HMAC, nullable 실패 격리와 secret gate 연동을 구현한다.
@@ -132,15 +133,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 8/66이다. `FND-001`~`FND-005`, `FND-007`과 `STO-001`~`002`가
+- active 제품 작업 완료 수는 현재 9/66이다. `FND-001`~`FND-005`, `FND-007`과 `STO-001`~`003`이
   production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각 production
   gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6으로 종료됐고 Phase 02는 2/8이다. `STO-001`의 startup readiness를
-  선행 조건으로 쓰는 `STO-003`과 독립적인 trusted scope seam의 `STO-005`가 다음
-  planning에서 시작할 수 있다. `STO-007`은 STO-003~006이 끝날 때까지 기다린다.
+- Phase 01은 6/6으로 종료됐고 Phase 02는 3/8이다. migration runner를 선행 조건으로 쓰는
+  `STO-004`와 독립적인 trusted scope seam의 `STO-005`가 다음 planning에서 시작할 수 있다.
+  `STO-007`은 STO-004~006이 끝날 때까지 기다린다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

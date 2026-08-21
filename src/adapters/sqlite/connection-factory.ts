@@ -3,10 +3,13 @@ import { Worker } from "node:worker_threads";
 import {
   SQLITE_CONNECTION_POLICY,
   SqliteConnectionError,
+  SqliteMigrationError,
   connectionErrorFromCode,
   type SqliteBinding,
   type SqliteCommandResult,
   type SqliteConnectionPolicy,
+  type SqliteMigrationExecutionResult,
+  type SqlitePreparedMigration,
   type SqliteReadQuery,
   type SqliteReadResult,
   type SqliteTransactionCommand,
@@ -17,7 +20,7 @@ import type { SqliteStartupReadiness } from "./startup-gate.js";
 
 interface PendingWorkerRequest {
   readonly resolve: (value: unknown) => void;
-  readonly reject: (error: SqliteConnectionError) => void;
+  readonly reject: (error: SqliteConnectionError | SqliteMigrationError) => void;
 }
 
 type WorkerClientState = "opening" | "open" | "closing" | "closed" | "failed";
@@ -104,7 +107,7 @@ class SqliteWorkerClient {
   readonly #pending: Map<number, PendingWorkerRequest> = new Map();
   readonly #ready: Promise<void>;
   #resolveReady!: () => void;
-  #rejectReady!: (error: SqliteConnectionError) => void;
+  #rejectReady!: (error: SqliteConnectionError | SqliteMigrationError) => void;
   #nextRequestId: number = 1;
   #state: WorkerClientState = "opening";
   #configuration: SqliteConnectionPolicy | null = null;
@@ -152,6 +155,14 @@ class SqliteWorkerClient {
     >;
   }
 
+  public migrate(
+    migrations: readonly SqlitePreparedMigration[],
+  ): Promise<SqliteMigrationExecutionResult> {
+    return this.#request({ type: "migrate", migrations }) as Promise<
+      SqliteMigrationExecutionResult
+    >;
+  }
+
   public query(query: SqliteReadQuery): Promise<SqliteReadResult> {
     return this.#request({ type: "query", query }) as Promise<SqliteReadResult>;
   }
@@ -182,6 +193,10 @@ class SqliteWorkerClient {
       | {
           readonly type: "transaction";
           readonly commands: readonly SqliteTransactionCommand[];
+        }
+      | {
+          readonly type: "migrate";
+          readonly migrations: readonly SqlitePreparedMigration[];
         }
       | { readonly type: "query"; readonly query: SqliteReadQuery }
       | { readonly type: "close" },
@@ -237,7 +252,7 @@ class SqliteWorkerClient {
     }
   }
 
-  #rejectPending(error: SqliteConnectionError): void {
+  #rejectPending(error: SqliteConnectionError | SqliteMigrationError): void {
     for (const pending of this.#pending.values()) {
       pending.reject(error);
     }
@@ -357,6 +372,33 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
     return operation;
   }
 
+  public enqueueMigrations(
+    migrations: readonly SqlitePreparedMigration[],
+  ): Promise<SqliteMigrationExecutionResult> {
+    if (!this.#accepting) {
+      return Promise.reject(
+        new SqliteConnectionError("CONNECTION_FACTORY_CLOSED"),
+      );
+    }
+    const snapshot = Object.freeze(
+      migrations.map((migration) =>
+        Object.freeze({
+          version: migration.version,
+          name: migration.name,
+          checksum: migration.checksum,
+          sql: migration.sql,
+          appliedAtSeconds: migration.appliedAtSeconds,
+        }),
+      ),
+    );
+    const operation = this.#writeTail.then(() => this.#writer.migrate(snapshot));
+    this.#writeTail = operation.then(
+      () => undefined,
+      () => undefined,
+    );
+    return operation;
+  }
+
   public async openReader(): Promise<SqliteReaderConnection> {
     if (!this.#accepting) {
       throw new SqliteConnectionError("CONNECTION_FACTORY_CLOSED");
@@ -414,6 +456,18 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
     })();
     return this.#closePromise;
   }
+}
+
+export function enqueueSqliteMigrationOperation(
+  factory: SqliteConnectionFactory,
+  migrations: readonly SqlitePreparedMigration[],
+): Promise<SqliteMigrationExecutionResult> {
+  if (!(factory instanceof SqliteConnectionFactoryImplementation)) {
+    return Promise.reject(
+      new SqliteMigrationError("MIGRATION_RUNNER_UNAVAILABLE"),
+    );
+  }
+  return factory.enqueueMigrations(migrations);
 }
 
 async function openWorker(

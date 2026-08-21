@@ -15,6 +15,7 @@ export {
   SQLITE_CONNECTION_POLICY,
   SqliteBusyError,
   SqliteConnectionError,
+  SqliteMigrationError,
 } from "./connection-protocol.js";
 export type {
   SqliteAllCommand,
@@ -23,6 +24,7 @@ export type {
   SqliteCommandResult,
   SqliteConnectionErrorCode,
   SqliteConnectionPolicy,
+  SqliteMigrationErrorCode,
   SqliteExecCommand,
   SqliteExecResult,
   SqliteGetCommand,
@@ -33,6 +35,13 @@ export type {
   SqliteRunResult,
   SqliteTransactionCommand,
 } from "./connection-protocol.js";
+
+export { runSqliteMigrations } from "./migration.js";
+export type {
+  SqliteMigration,
+  SqliteMigrationOptions,
+  SqliteMigrationResult,
+} from "./migration.js";
 
 export {
   RECALL_DB_PATH_ENV,

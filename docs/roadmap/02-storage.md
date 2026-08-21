@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
 - 상태: `IN_PROGRESS`
-- 진행률: 2/8
+- 진행률: 3/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | STO-001 | DB 경로·SQLite capability startup gate | `DONE` | `log0629` | FND-001, FND-003 | [운영 계약](../operations/storage.md), [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13) |
 | STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
-| STO-003 | migration runner와 checksum 검증 | `TODO` | `unassigned` | STO-001 | — |
+| STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
 | STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
 | STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
 | STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
@@ -87,18 +87,35 @@
 
 ### STO-003 — migration runner와 checksum 검증
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-003-sqlite-migration-runner`
+- PR: [#15](https://github.com/yeonjaekim99/knowledge-graph/pull/15)
 - 근거: ADR-001과 spike reopen finding
 - 선행 작업: STO-001
 - 결과물: immutable versioned migration runner
 
 완료 체크:
 
-- [ ] migration을 1부터 순서대로 transaction 적용하고 lowercase SHA-256을 저장한다.
-- [ ] 이미 적용된 version의 name/checksum 불일치와 미래 version에서 시작을 거부한다.
-- [ ] 정상 reopen과 process crash reopen이 idempotent하다.
-- [ ] 적용된 migration 수정 대신 새 version만 허용하는 검사가 있다.
+- [x] migration을 1부터 순서대로 transaction 적용하고 lowercase SHA-256을 저장한다.
+- [x] 이미 적용된 version의 name/checksum 불일치와 미래 version에서 시작을 거부한다.
+- [x] 정상 reopen과 process crash reopen이 idempotent하다.
+- [x] 적용된 migration 수정 대신 새 version만 허용하는 검사가 있다.
+
+증거:
+
+- 구현: [`migration.ts`](../../src/adapters/sqlite/migration.ts),
+  [`connection-worker.ts`](../../src/adapters/sqlite/connection-worker.ts),
+  [migration runner 구현 결정](../implementation/sto-003-sqlite-migrations.md),
+  [storage 운영 계약](../operations/storage.md)
+- PR: [#15](https://github.com/yeonjaekim99/knowledge-graph/pull/15)
+- TDD: `pnpm test:sto-003` 최초 missing production export로 0 test / 2 file failure 후,
+  실제 file-backed integration·hard-exit 정상·경계·실패 6/6 통과
+- 검증: `pnpm verify:local` 65/65, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` 전체 gate
+- 범위 경계: exact-byte migration/history와 reopen 조각만 production으로 이전했다. 최초 v1
+  schema와 실제 startup wiring은 STO-004/MCP-001, journal/projector 전체 crash·concurrency는
+  STO-007/008 이후가 소유하므로 S24 scenario manifest는 `planned`를 유지한다.
 
 ### STO-004 — v1 journal·projection·FTS schema
 
