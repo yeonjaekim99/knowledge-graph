@@ -1,0 +1,255 @@
+{
+  "schema_version": 1,
+  "source": {
+    "path": "spikes/adr-behavior/scenario-matrix.json",
+    "sha256": "bf6ceae0ac6d4236fce94379f91165295e057eef095314998bbc4b5da87ba4ea"
+  },
+  "canonical_projection": {
+    "format": "recall-projection-v1",
+    "include_tables": [
+      "statements",
+      "entities",
+      "surface_forms",
+      "claims",
+      "claim_support",
+      "id_redirects"
+    ],
+    "exclude_tables": [
+      "projection_meta",
+      "schema_migrations",
+      "journal_fts"
+    ]
+  },
+  "scenarios": [
+    {
+      "id": "S01",
+      "source_test": "test_001_sqlite_capabilities_normalization_and_fts_rebuild",
+      "adrs": ["ADR-005", "ADR-006"],
+      "layer": "integration-sqlite",
+      "target": "test/integration/sqlite/s01-capabilities-normalization-fts.test.mjs",
+      "owner_tasks": ["STO-001", "STO-004", "PRJ-002", "STO-008", "PRJ-010"],
+      "status": "planned"
+    },
+    {
+      "id": "S02",
+      "source_test": "test_002_append_rollback_and_replay_are_deterministic",
+      "adrs": ["ADR-001", "ADR-007", "ADR-017"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s02-atomic-replay.test.mjs",
+      "owner_tasks": ["STO-007", "PRJ-001", "PRJ-009", "PRJ-010", "REL-007"],
+      "status": "planned"
+    },
+    {
+      "id": "S03",
+      "source_test": "test_003_reinforcement_duplicate_draft_and_stable_ids",
+      "adrs": ["ADR-002", "ADR-009", "ADR-013"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s03-reinforcement-stable-ids.test.mjs",
+      "owner_tasks": ["PRJ-003", "PRJ-006", "REC-005", "REC-008", "PRJ-010"],
+      "status": "planned"
+    },
+    {
+      "id": "S04",
+      "source_test": "test_004_describes_claim_and_event_retractions_have_different_history",
+      "adrs": ["ADR-007", "ADR-009", "ADR-015"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s04-describes-retraction-history.test.mjs",
+      "owner_tasks": ["PRJ-006", "REV-003", "REV-007", "PRJ-010"],
+      "status": "planned"
+    },
+    {
+      "id": "S05",
+      "source_test": "test_005_claim_and_statement_retraction_scopes_differ",
+      "adrs": ["ADR-007", "ADR-015"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s05-retraction-scopes.test.mjs",
+      "owner_tasks": ["REV-003", "REV-007"],
+      "status": "planned"
+    },
+    {
+      "id": "S06",
+      "source_test": "test_006_correct_is_two_consecutive_atomic_events",
+      "adrs": ["ADR-001", "ADR-015"],
+      "layer": "integration-sqlite",
+      "target": "test/integration/sqlite/s06-correct-atomic-events.test.mjs",
+      "owner_tasks": ["REV-004", "REV-007", "REL-004"],
+      "status": "planned"
+    },
+    {
+      "id": "S07",
+      "source_test": "test_007_merge_deduplicates_claim_support_and_event_retraction_undoes_it",
+      "adrs": ["ADR-002", "ADR-007", "ADR-008", "ADR-009", "ADR-015"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s07-merge-dedup-undo.test.mjs",
+      "owner_tasks": ["PRJ-007", "REV-005", "REV-007", "PRJ-010"],
+      "status": "planned"
+    },
+    {
+      "id": "S08",
+      "source_test": "test_008_alias_confirmation_and_retraction_restore_origin",
+      "adrs": ["ADR-007", "ADR-008", "ADR-015"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s08-alias-origin-restore.test.mjs",
+      "owner_tasks": ["PRJ-005", "PRJ-007", "REV-006", "REV-007", "PRJ-010"],
+      "status": "planned"
+    },
+    {
+      "id": "S09",
+      "source_test": "test_009_scope_isolation_applies_to_recall_and_ids",
+      "adrs": ["ADR-003", "ADR-010", "ADR-012", "ADR-015"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s09-scope-isolation.test.mjs",
+      "owner_tasks": ["STO-005", "REV-002", "RCL-001", "REV-007", "RCL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S10",
+      "source_test": "test_010_ttl_aggregate_label_fallback_and_contested_expiry",
+      "adrs": ["ADR-004", "ADR-010", "ADR-012", "ADR-014"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s10-ttl-aggregate-contested.test.mjs",
+      "owner_tasks": ["PRJ-008", "RCL-006", "RCL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S11",
+      "source_test": "test_011_raw_fallback_respects_ttl_and_never_resurrects_parsed_claim",
+      "adrs": ["ADR-005", "ADR-010", "ADR-012", "ADR-013", "ADR-014"],
+      "layer": "integration-sqlite",
+      "target": "test/integration/sqlite/s11-raw-fallback-ttl.test.mjs",
+      "owner_tasks": ["REC-007", "RCL-003", "RCL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S12",
+      "source_test": "test_012_graph_recall_collects_literals_and_traverses_both_directions",
+      "adrs": ["ADR-010", "ADR-012", "ADR-014"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s12-bidirectional-traversal.test.mjs",
+      "owner_tasks": ["RCL-005", "RCL-006", "RCL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S13",
+      "source_test": "test_013_hub_fanout_is_bounded_and_visible",
+      "adrs": ["ADR-012", "ADR-014"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s13-hub-fanout.test.mjs",
+      "owner_tasks": ["RCL-005", "RCL-007", "RCL-008", "REL-003"],
+      "status": "planned"
+    },
+    {
+      "id": "S14",
+      "source_test": "test_014_reinterpret_inherits_metadata_and_respects_prior_claim_retraction",
+      "adrs": ["ADR-007", "ADR-010", "ADR-013", "ADR-017"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s14-reinterpret-metadata-cutoff.test.mjs",
+      "owner_tasks": ["PRJ-004", "REC-007", "REL-008", "PRJ-010"],
+      "status": "planned"
+    },
+    {
+      "id": "S15",
+      "source_test": "test_015_backdated_reinterpret_cannot_override_later_describes_and_can_be_undone",
+      "adrs": ["ADR-007", "ADR-009", "ADR-015", "ADR-017"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s15-reinterpret-order-undo.test.mjs",
+      "owner_tasks": ["PRJ-004", "PRJ-006", "REV-003", "PRJ-010", "REL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S16",
+      "source_test": "test_016_reinterpret_approval_is_payload_bound_expiring_and_stale",
+      "adrs": ["ADR-011", "ADR-013", "ADR-017"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s16-reinterpret-approval.test.mjs",
+      "owner_tasks": ["FND-003", "REC-007", "REL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S17",
+      "source_test": "test_017_merge_with_competing_describes_uses_latest_structural_activation",
+      "adrs": ["ADR-008", "ADR-009"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s17-merge-describes-order.test.mjs",
+      "owner_tasks": ["PRJ-007", "REV-005", "PRJ-010", "REV-007"],
+      "status": "planned"
+    },
+    {
+      "id": "S18",
+      "source_test": "test_018_secret_masking_partial_draft_rejection_and_fail_closed_revise",
+      "adrs": ["ADR-011", "ADR-013", "ADR-015"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s18-secret-partial-fail-closed.test.mjs",
+      "owner_tasks": ["REC-002", "REC-003", "REC-005", "REV-001", "REC-008", "REV-007", "REL-005"],
+      "status": "planned"
+    },
+    {
+      "id": "S19",
+      "source_test": "test_019_overview_is_deterministic_and_read_only",
+      "adrs": ["ADR-010", "ADR-012", "ADR-014"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s19-overview-read-only.test.mjs",
+      "owner_tasks": ["RCL-004", "RCL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S20",
+      "source_test": "test_020_wal_supports_serialized_writes_and_concurrent_readers",
+      "adrs": ["ADR-001", "ADR-005", "ADR-008"],
+      "layer": "e2e-process",
+      "target": "test/e2e/process/s20-wal-concurrent-clients.test.mjs",
+      "owner_tasks": ["STO-002", "STO-008", "REL-004"],
+      "status": "planned"
+    },
+    {
+      "id": "S21",
+      "source_test": "test_022_confirmed_alias_resolves_later_statement_to_the_same_entity",
+      "adrs": ["ADR-002", "ADR-007", "ADR-008"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s21-confirmed-alias-resolution.test.mjs",
+      "owner_tasks": ["PRJ-005", "REC-004", "REV-006", "PRJ-010", "REV-007"],
+      "status": "planned"
+    },
+    {
+      "id": "S22",
+      "source_test": "test_023_surface_without_valid_claim_falls_back_to_fts_and_overview_raw",
+      "adrs": ["ADR-005", "ADR-010", "ADR-012", "ADR-014"],
+      "layer": "integration-sqlite",
+      "target": "test/integration/sqlite/s22-surface-fts-raw-fallback.test.mjs",
+      "owner_tasks": ["RCL-003", "RCL-004", "RCL-008"],
+      "status": "planned"
+    },
+    {
+      "id": "S23",
+      "source_test": "test_024_seeded_state_machine_and_metamorphic_invariants",
+      "adrs": ["ADR-001", "ADR-002", "ADR-003", "ADR-005", "ADR-007", "ADR-008", "ADR-009", "ADR-010", "ADR-015", "ADR-017"],
+      "layer": "integration-projection",
+      "target": "test/integration/projection/s23-seeded-state-machine.test.mjs",
+      "owner_tasks": ["PRJ-009", "PRJ-010", "REL-007"],
+      "status": "planned"
+    },
+    {
+      "id": "S24",
+      "source_test": "test_025_process_crash_reopen_is_atomic_and_recoverable",
+      "adrs": ["ADR-001", "ADR-002", "ADR-005", "ADR-007", "ADR-015", "ADR-017"],
+      "layer": "e2e-process",
+      "target": "test/e2e/process/s24-crash-reopen.test.mjs",
+      "owner_tasks": ["STO-007", "PRJ-009", "STO-008", "PRJ-010", "REL-004"],
+      "status": "planned"
+    }
+  ],
+  "non_scenario_gates": [
+    {
+      "id": "MCP-CONTRACT",
+      "layer": "contract-mcp",
+      "owner_tasks": ["MCP-002", "MCP-003", "MCP-004", "MCP-005", "MCP-006", "MCP-007", "MCP-008"],
+      "reason": "ADR-016 transport behavior was intentionally outside the Python spike."
+    },
+    {
+      "id": "PERFORMANCE",
+      "layer": "performance",
+      "owner_tasks": ["RCL-009", "REL-001", "REL-002", "REL-003", "REL-004"],
+      "reason": "Spike runtime is not production performance evidence."
+    }
+  ]
+}
