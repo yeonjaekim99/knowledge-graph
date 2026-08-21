@@ -367,6 +367,18 @@ test("invalid provider output fails closed at the application boundary", async (
       error instanceof RuntimeBoundaryError && error.code === "invalid_scope",
   );
 
+  const invalidRules = createRuntimeProvider(
+    validDependencies({
+      rules: { currentRulesVersion: () => undefined },
+    }),
+  );
+  await assert.rejects(
+    invalidRules.capture(),
+    (error) =>
+      error instanceof RuntimeBoundaryError &&
+      error.code === "invalid_rules_version",
+  );
+
   const invalidMetadata = createRuntimeProvider(
     validDependencies({
       metadata: {
@@ -380,6 +392,17 @@ test("invalid provider output fails closed at the application boundary", async (
   );
   await assert.rejects(
     invalidMetadata.capture(),
+    (error) =>
+      error instanceof RuntimeBoundaryError && error.code === "invalid_metadata",
+  );
+
+  const missingMetadata = createRuntimeProvider(
+    validDependencies({
+      metadata: { resolveMetadata: async () => undefined },
+    }),
+  );
+  await assert.rejects(
+    missingMetadata.capture(),
     (error) =>
       error instanceof RuntimeBoundaryError && error.code === "invalid_metadata",
   );
@@ -426,7 +449,16 @@ test("random providers with wrong byte counts and invalid ULID clocks are reject
   );
   assert.throws(
     () => createApprovalTokenProvider(shortRandom).nextApprovalToken(),
-    /expected 32/,
+    /expected 32 bytes/,
+  );
+  assert.throws(
+    () =>
+      createApprovalTokenProvider({
+        randomBytes() {
+          return null;
+        },
+      }).nextApprovalToken(),
+    RuntimeConfigurationError,
   );
   assert.throws(
     () =>
@@ -456,7 +488,11 @@ test("domain architecture rejects ambient clock, random, network, process, and g
 
   const allowed = validateArchitecture({
     projectRoot: createDomainGuardFixture(
-      'export const note = "Date.now, fetch, and Math.random are not executed";\n',
+      [
+        "// Date.now, fetch, and Math.random are not executed here.",
+        'export const note = "Date.now, fetch, and Math.random are not executed";',
+        "",
+      ].join("\n"),
     ),
   });
   assert.deepEqual(allowed.errors, []);

@@ -49,9 +49,13 @@ function requireExactRandomBytes(
   length: number,
 ): Uint8Array {
   const bytes = random.randomBytes(length);
-  if (bytes.byteLength !== length) {
+  if (!(bytes instanceof Uint8Array) || bytes.byteLength !== length) {
+    const actual =
+      bytes instanceof Uint8Array
+        ? `${bytes.byteLength} bytes`
+        : "a non-Uint8Array value";
     throw new RuntimeConfigurationError(
-      `random provider returned ${bytes.byteLength} bytes; expected ${length}`,
+      `random provider returned ${actual}; expected ${length} bytes`,
     );
   }
   return Uint8Array.from(bytes);

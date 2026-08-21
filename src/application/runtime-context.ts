@@ -43,6 +43,7 @@ function assertClock(milliseconds: number): void {
 
 function assertRulesVersion(value: string): void {
   if (
+    typeof value !== "string" ||
     value.length === 0 ||
     value.length > 128 ||
     value.trim() !== value ||
@@ -57,6 +58,11 @@ function assertRulesVersion(value: string): void {
 
 function assertScope(scope: RuntimeScope): void {
   if (
+    typeof scope !== "object" ||
+    scope === null ||
+    typeof scope.userId !== "string" ||
+    typeof scope.projectId !== "string" ||
+    typeof scope.scopeKey !== "string" ||
     !SCOPE_ID_PATTERN.test(scope.userId) ||
     !SCOPE_ID_PATTERN.test(scope.projectId) ||
     scope.scopeKey !== `u:${scope.userId}/p:${scope.projectId}`
@@ -76,6 +82,7 @@ function assertNullableMetadataText(
     return;
   }
   if (
+    typeof value !== "string" ||
     value.length === 0 ||
     CONTROL_CHARACTER_PATTERN.test(value) ||
     (name === "actor" && Array.from(value).length > 128)
@@ -88,11 +95,18 @@ function assertNullableMetadataText(
 }
 
 function assertMetadata(metadata: JournalMetadata): void {
+  if (typeof metadata !== "object" || metadata === null) {
+    throw new RuntimeBoundaryError(
+      "invalid_metadata",
+      "metadata provider must return the normalized runtime contract",
+    );
+  }
   assertNullableMetadataText("actor", metadata.actor);
   assertNullableMetadataText("branch", metadata.branch);
   if (
     metadata.session !== null &&
-    !SESSION_KEY_PATTERN.test(metadata.session)
+    (typeof metadata.session !== "string" ||
+      !SESSION_KEY_PATTERN.test(metadata.session))
   ) {
     throw new RuntimeBoundaryError(
       "invalid_metadata",
@@ -139,7 +153,7 @@ async function captureSnapshot(
 }
 
 function checkedEventId(value: EventId): EventId {
-  if (!EVENT_ID_PATTERN.test(value)) {
+  if (typeof value !== "string" || !EVENT_ID_PATTERN.test(value)) {
     throw new RuntimeBoundaryError(
       "invalid_event_id",
       "event ID provider returned a non-canonical ev_ ULID",
@@ -151,7 +165,7 @@ function checkedEventId(value: EventId): EventId {
 function checkedApprovalToken(
   value: ReinterpretApprovalToken,
 ): ReinterpretApprovalToken {
-  if (!APPROVAL_TOKEN_PATTERN.test(value)) {
+  if (typeof value !== "string" || !APPROVAL_TOKEN_PATTERN.test(value)) {
     throw new RuntimeBoundaryError(
       "invalid_approval_token",
       "approval token provider returned a non-canonical 256-bit token",
