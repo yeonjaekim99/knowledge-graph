@@ -2,6 +2,11 @@ import { lstatSync } from "node:fs";
 import { createRequire } from "node:module";
 import { parentPort, workerData } from "node:worker_threads";
 
+import type {
+  ProjectionReplayJournalEvent,
+  ProjectionSnapshot,
+} from "../../domain/projection-replay.js";
+
 import {
   SQLITE_CONNECTION_POLICY,
   type SqliteAllResult,
@@ -11,6 +16,9 @@ import {
   type SqliteGetResult,
   type SqliteMigrationExecutionResult,
   type SqlitePreparedMigration,
+  type SqliteProjectionMetaSnapshot,
+  type SqliteProjectionReplayBeginResult,
+  type SqliteProjectionReplayCommitResult,
   type SqliteReadQuery,
   type SqliteReadResult,
   type SqliteRunResult,
@@ -60,6 +68,16 @@ class WorkerConnectionFailure extends Error {
   }
 }
 
+interface ActiveProjectionReplay {
+  readonly replayId: number;
+  readonly scopeKey: string;
+  readonly events: readonly ProjectionReplayJournalEvent[];
+}
+
+interface WorkerProjectionReplayState {
+  active: ActiveProjectionReplay | null;
+}
+
 const require = createRequire(import.meta.url);
 const TRANSACTION_CONTROL_KEYWORDS: ReadonlySet<string> = new Set([
   "BEGIN",
@@ -69,6 +87,8 @@ const TRANSACTION_CONTROL_KEYWORDS: ReadonlySet<string> = new Set([
   "SAVEPOINT",
   "RELEASE",
 ]);
+const REPLAY_SCOPE_PATTERN = /^u:[A-Za-z0-9._-]{1,64}\/p:[A-Za-z0-9._-]{1,64}$/u;
+const REPLAY_RULES_CONTROL_PATTERN = /[\u0000-\u001f\u007f-\u009f]/u;
 const SCHEMA_MIGRATIONS_DDL = `
 CREATE TABLE schema_migrations (
   version    INTEGER PRIMARY KEY,
@@ -299,6 +319,376 @@ function executeTransaction(
   }
 }
 
+function projectionJournalEvents(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+): readonly ProjectionReplayJournalEvent[] {
+  const rawRows = database
+    .prepare(
+      [
+        "SELECT seq, id, scope_key, kind, body, actor, branch, session, created_at",
+        "FROM journal WHERE scope_key = ? ORDER BY seq",
+      ].join(" "),
+    )
+    .all(scopeKey);
+  const events = rawRows.map((rawRow) => {
+    if (rawRow === null || typeof rawRow !== "object" || Array.isArray(rawRow)) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    const row = rawRow as Readonly<Record<string, unknown>>;
+    if (
+      !Number.isSafeInteger(row["seq"]) ||
+      Number(row["seq"]) <= 0 ||
+      typeof row["id"] !== "string" ||
+      row["scope_key"] !== scopeKey ||
+      (row["kind"] !== "statement" &&
+        row["kind"] !== "retraction" &&
+        row["kind"] !== "merge" &&
+        row["kind"] !== "alias") ||
+      typeof row["body"] !== "string" ||
+      (row["actor"] !== null && typeof row["actor"] !== "string") ||
+      (row["branch"] !== null && typeof row["branch"] !== "string") ||
+      (row["session"] !== null && typeof row["session"] !== "string") ||
+      !Number.isSafeInteger(row["created_at"]) ||
+      Number(row["created_at"]) < 0
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    return Object.freeze({
+      seq: Number(row["seq"]),
+      eventId: row["id"],
+      scopeKey,
+      kind: row["kind"],
+      bodyJson: row["body"],
+      actor: row["actor"],
+      branch: row["branch"],
+      session: row["session"],
+      createdAt: Number(row["created_at"]),
+    }) as ProjectionReplayJournalEvent;
+  });
+  return Object.freeze(events);
+}
+
+function projectionMeta(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+): SqliteProjectionMetaSnapshot | null {
+  const rawRow = database
+    .prepare(
+      "SELECT last_seq, rules_version, rebuilt_at FROM projection_meta WHERE scope_key = ?",
+    )
+    .get(scopeKey);
+  if (rawRow === undefined) {
+    return null;
+  }
+  if (rawRow === null || typeof rawRow !== "object" || Array.isArray(rawRow)) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const row = rawRow as Readonly<Record<string, unknown>>;
+  if (
+    !Number.isSafeInteger(row["last_seq"]) ||
+    Number(row["last_seq"]) < 0 ||
+    typeof row["rules_version"] !== "string" ||
+    !Number.isSafeInteger(row["rebuilt_at"]) ||
+    Number(row["rebuilt_at"]) < 0
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  return Object.freeze({
+    lastSeq: Number(row["last_seq"]),
+    rulesVersion: row["rules_version"],
+    rebuiltAt: Number(row["rebuilt_at"]),
+  });
+}
+
+function beginProjectionReplay(
+  database: SqliteDatabaseConnection,
+  databasePath: string,
+  replayState: WorkerProjectionReplayState,
+  replayId: number,
+  scopeKey: string,
+): SqliteProjectionReplayBeginResult {
+  if (
+    replayState.active !== null ||
+    !Number.isSafeInteger(replayId) ||
+    replayId <= 0 ||
+    typeof scopeKey !== "string" ||
+    !REPLAY_SCOPE_PATTERN.test(scopeKey)
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  let transactionStarted = false;
+  try {
+    database.exec("BEGIN IMMEDIATE");
+    transactionStarted = true;
+    database.pragma("defer_foreign_keys = ON");
+    assertSafeSidecars(databasePath);
+    const events = projectionJournalEvents(database, scopeKey);
+    const meta = projectionMeta(database, scopeKey);
+    replayState.active = Object.freeze({ replayId, scopeKey, events });
+    return Object.freeze({ replayId, events, meta });
+  } catch (error) {
+    if (transactionStarted && database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The original failure owns the public result.
+      }
+    }
+    replayState.active = null;
+    throw error;
+  }
+}
+
+function deleteScopeProjection(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+): void {
+  database
+    .prepare(
+      [
+        "DELETE FROM id_redirects WHERE",
+        "new_id IN (SELECT id FROM entities WHERE scope_key = ? UNION SELECT id FROM claims WHERE scope_key = ?)",
+        "OR old_id IN (SELECT id FROM entities WHERE scope_key = ? UNION SELECT id FROM claims WHERE scope_key = ?)",
+      ].join(" "),
+    )
+    .run(scopeKey, scopeKey, scopeKey, scopeKey);
+  database
+    .prepare(
+      [
+        "DELETE FROM claim_support WHERE",
+        "claim_id IN (SELECT id FROM claims WHERE scope_key = ?)",
+        "OR event_id IN (SELECT event_id FROM statements WHERE scope_key = ?)",
+      ].join(" "),
+    )
+    .run(scopeKey, scopeKey);
+  database.prepare("DELETE FROM claims WHERE scope_key = ?").run(scopeKey);
+  database
+    .prepare("DELETE FROM surface_forms WHERE scope_key = ?")
+    .run(scopeKey);
+  database.prepare("DELETE FROM entities WHERE scope_key = ?").run(scopeKey);
+  database.prepare("DELETE FROM statements WHERE scope_key = ?").run(scopeKey);
+}
+
+function insertProjectionSnapshot(
+  database: SqliteDatabaseConnection,
+  snapshot: ProjectionSnapshot,
+): void {
+  const insertStatement = database.prepare(
+    "INSERT INTO statements(event_id, scope_key, state, order_seq, created_at, provenance, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  for (const row of snapshot.statements) {
+    insertStatement.run(
+      row.eventId,
+      row.scopeKey,
+      row.state,
+      row.orderSeq,
+      row.createdAt,
+      row.provenance,
+      row.expiresAt,
+    );
+  }
+
+  const insertEntity = database.prepare(
+    "INSERT INTO entities(id, scope_key, name, normal_name, kind, merged_into, origin_seq) VALUES (?, ?, ?, ?, ?, ?, ?)",
+  );
+  for (const row of snapshot.entities) {
+    insertEntity.run(
+      row.id,
+      row.scopeKey,
+      row.name,
+      row.normalName,
+      row.kind,
+      row.mergedInto,
+      row.originSeq,
+    );
+  }
+
+  const insertSurface = database.prepare(
+    "INSERT INTO surface_forms(scope_key, surface_norm, entity_id, origin) VALUES (?, ?, ?, ?)",
+  );
+  for (const row of snapshot.surfaceForms) {
+    insertSurface.run(row.scopeKey, row.surfaceNorm, row.entityId, row.origin);
+  }
+
+  const insertClaim = database.prepare(
+    "INSERT INTO claims(id, scope_key, subject_id, relation, object_id, object_value, state, origin_seq, first_seen_at, last_seen_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+  );
+  for (const row of snapshot.claims) {
+    insertClaim.run(
+      row.id,
+      row.scopeKey,
+      row.subjectId,
+      row.relation,
+      row.objectId,
+      row.objectValue,
+      row.state,
+      row.originSeq,
+      row.firstSeenAt,
+      row.lastSeenAt,
+    );
+  }
+
+  const insertSupport = database.prepare(
+    "INSERT INTO claim_support(claim_id, event_id, draft_index, live, expires_at) VALUES (?, ?, ?, ?, ?)",
+  );
+  for (const row of snapshot.claimSupport) {
+    insertSupport.run(
+      row.claimId,
+      row.eventId,
+      row.draftIndex,
+      row.live,
+      row.expiresAt,
+    );
+  }
+
+  const insertRedirect = database.prepare(
+    "INSERT INTO id_redirects(old_id, new_id, kind, reason) VALUES (?, ?, ?, ?)",
+  );
+  for (const row of snapshot.idRedirects) {
+    insertRedirect.run(row.oldId, row.newId, row.kind, row.reason);
+  }
+}
+
+function hasRow(database: SqliteDatabaseConnection, sql: string): boolean {
+  return database.prepare(sql).get() !== undefined;
+}
+
+function validateProjectionInvariants(database: SqliteDatabaseConnection): void {
+  if (
+    database.prepare("PRAGMA foreign_key_check").all().length > 0 ||
+    hasRow(
+      database,
+      "SELECT 1 FROM statements s JOIN journal j ON j.id=s.event_id WHERE s.scope_key<>j.scope_key OR j.kind<>'statement' LIMIT 1",
+    ) ||
+    hasRow(
+      database,
+      "SELECT 1 FROM surface_forms sf JOIN entities e ON e.id=sf.entity_id WHERE sf.scope_key<>e.scope_key LIMIT 1",
+    ) ||
+    hasRow(
+      database,
+      "SELECT 1 FROM entities e JOIN entities m ON m.id=e.merged_into WHERE e.scope_key<>m.scope_key LIMIT 1",
+    ) ||
+    hasRow(
+      database,
+      "SELECT 1 FROM claims c JOIN entities s ON s.id=c.subject_id LEFT JOIN entities o ON o.id=c.object_id WHERE c.scope_key<>s.scope_key OR (o.id IS NOT NULL AND c.scope_key<>o.scope_key) LIMIT 1",
+    ) ||
+    hasRow(
+      database,
+      "SELECT 1 FROM claim_support cs JOIN claims c ON c.id=cs.claim_id JOIN statements s ON s.event_id=cs.event_id WHERE c.scope_key<>s.scope_key LIMIT 1",
+    ) ||
+    hasRow(
+      database,
+      [
+        "WITH target(id, scope_key, kind) AS (",
+        "SELECT id, scope_key, 'entity' FROM entities UNION ALL SELECT id, scope_key, 'claim' FROM claims",
+        ") SELECT 1 FROM id_redirects r LEFT JOIN target t ON t.id=r.new_id",
+        "WHERE t.id IS NULL OR t.kind<>r.kind LIMIT 1",
+      ].join(" "),
+    )
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+}
+
+function commitProjectionReplay(
+  database: SqliteDatabaseConnection,
+  databasePath: string,
+  replayState: WorkerProjectionReplayState,
+  replayId: number,
+  rulesVersion: string,
+  rebuiltAt: number,
+  snapshot: ProjectionSnapshot,
+): SqliteProjectionReplayCommitResult {
+  const active = replayState.active;
+  if (
+    active === null ||
+    active.replayId !== replayId ||
+    !database.inTransaction ||
+    typeof rulesVersion !== "string" ||
+    rulesVersion.length === 0 ||
+    rulesVersion.length > 128 ||
+    rulesVersion.trim() !== rulesVersion ||
+    REPLAY_RULES_CONTROL_PATTERN.test(rulesVersion) ||
+    !Number.isSafeInteger(rebuiltAt) ||
+    rebuiltAt < 0 ||
+    snapshot === null ||
+    typeof snapshot !== "object"
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  try {
+    deleteScopeProjection(database, active.scopeKey);
+    insertProjectionSnapshot(database, snapshot);
+    validateProjectionInvariants(database);
+    const lastSeq = active.events.at(-1)?.seq ?? 0;
+    const currentLastSeq = Number(
+      (
+        database
+          .prepare(
+            "SELECT COALESCE(MAX(seq), 0) AS last_seq FROM journal WHERE scope_key = ?",
+          )
+          .get(active.scopeKey) as Readonly<Record<string, unknown>>
+      )["last_seq"],
+    );
+    if (currentLastSeq !== lastSeq) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    database
+      .prepare(
+        [
+          "INSERT INTO projection_meta(scope_key, last_seq, rules_version, rebuilt_at) VALUES (?, ?, ?, ?)",
+          "ON CONFLICT(scope_key) DO UPDATE SET last_seq=excluded.last_seq, rules_version=excluded.rules_version, rebuilt_at=excluded.rebuilt_at",
+        ].join(" "),
+      )
+      .run(active.scopeKey, lastSeq, rulesVersion, rebuiltAt);
+    assertSafeSidecars(databasePath);
+    database.exec("COMMIT");
+    replayState.active = null;
+    return Object.freeze({
+      lastSeq,
+      eventCount: active.events.length,
+      projectionRowCount:
+        snapshot.statements.length +
+        snapshot.entities.length +
+        snapshot.surfaceForms.length +
+        snapshot.claims.length +
+        snapshot.claimSupport.length +
+        snapshot.idRedirects.length,
+    });
+  } catch (error) {
+    if (database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The original failure owns the public result.
+      }
+    }
+    replayState.active = null;
+    throw error;
+  }
+}
+
+function rollbackProjectionReplay(
+  database: SqliteDatabaseConnection,
+  replayState: WorkerProjectionReplayState,
+  replayId: number,
+): null {
+  if (
+    replayState.active === null ||
+    replayState.active.replayId !== replayId ||
+    !database.inTransaction
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  try {
+    database.exec("ROLLBACK");
+    return null;
+  } finally {
+    replayState.active = null;
+  }
+}
+
 interface AppliedMigrationRow {
   readonly version: number;
   readonly name: string;
@@ -484,9 +874,14 @@ function handleRequest(
   database: SqliteDatabaseConnection,
   data: SqliteWorkerData,
   request: SqliteWorkerRequest,
+  replayState: WorkerProjectionReplayState,
 ): void {
   if (request.type === "close") {
     try {
+      if (replayState.active !== null && database.inTransaction) {
+        database.exec("ROLLBACK");
+        replayState.active = null;
+      }
       database.close();
       post({ type: "success", requestId: request.requestId, result: null });
     } catch (error) {
@@ -498,6 +893,99 @@ function handleRequest(
     } finally {
       parentPort?.close();
     }
+    return;
+  }
+
+  if (request.type === "projection-replay-begin") {
+    if (data.role !== "writer" || replayState.active !== null) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = beginProjectionReplay(
+        database,
+        data.databasePath,
+        replayState,
+        request.requestId,
+        request.scopeKey,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "projection-replay-commit") {
+    if (data.role !== "writer") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = commitProjectionReplay(
+        database,
+        data.databasePath,
+        replayState,
+        request.replayId,
+        request.rulesVersion,
+        request.rebuiltAt,
+        request.snapshot,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "projection-replay-rollback") {
+    if (data.role !== "writer") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = rollbackProjectionReplay(
+        database,
+        replayState,
+        request.replayId,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (replayState.active !== null) {
+    post({
+      type: "failure",
+      requestId: request.requestId,
+      code: "SQLITE_TRANSACTION_FAILED",
+    });
     return;
   }
 
@@ -567,6 +1055,7 @@ function handleRequest(
 
 function startWorker(): void {
   let database: SqliteDatabaseConnection | null = null;
+  const replayState: WorkerProjectionReplayState = { active: null };
   try {
     const data = readWorkerData(workerData as unknown);
     assertSafeSidecars(data.databasePath);
@@ -580,7 +1069,12 @@ function startWorker(): void {
     assertSafeSidecars(data.databasePath);
     post({ type: "ready", configuration });
     parentPort?.on("message", (request: SqliteWorkerRequest) => {
-      handleRequest(database as SqliteDatabaseConnection, data, request);
+      handleRequest(
+        database as SqliteDatabaseConnection,
+        data,
+        request,
+        replayState,
+      );
     });
   } catch (error) {
     if (database !== null) {

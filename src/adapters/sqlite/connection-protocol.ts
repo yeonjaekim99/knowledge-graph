@@ -1,3 +1,8 @@
+import type {
+  ProjectionReplayJournalEvent,
+  ProjectionSnapshot,
+} from "../../domain/projection-replay.js";
+
 export interface SqliteConnectionPolicy {
   readonly journalMode: "wal";
   readonly synchronous: 1;
@@ -210,6 +215,45 @@ export interface SqliteWorkerQueryRequest {
   readonly query: SqliteReadQuery;
 }
 
+export interface SqliteProjectionMetaSnapshot {
+  readonly lastSeq: number;
+  readonly rulesVersion: string;
+  readonly rebuiltAt: number;
+}
+
+export interface SqliteProjectionReplayBeginResult {
+  readonly replayId: number;
+  readonly events: readonly ProjectionReplayJournalEvent[];
+  readonly meta: SqliteProjectionMetaSnapshot | null;
+}
+
+export interface SqliteProjectionReplayCommitResult {
+  readonly lastSeq: number;
+  readonly eventCount: number;
+  readonly projectionRowCount: number;
+}
+
+export interface SqliteWorkerProjectionReplayBeginRequest {
+  readonly type: "projection-replay-begin";
+  readonly requestId: number;
+  readonly scopeKey: string;
+}
+
+export interface SqliteWorkerProjectionReplayCommitRequest {
+  readonly type: "projection-replay-commit";
+  readonly requestId: number;
+  readonly replayId: number;
+  readonly rulesVersion: string;
+  readonly rebuiltAt: number;
+  readonly snapshot: ProjectionSnapshot;
+}
+
+export interface SqliteWorkerProjectionReplayRollbackRequest {
+  readonly type: "projection-replay-rollback";
+  readonly requestId: number;
+  readonly replayId: number;
+}
+
 export interface SqliteWorkerCloseRequest {
   readonly type: "close";
   readonly requestId: number;
@@ -219,6 +263,9 @@ export type SqliteWorkerRequest =
   | SqliteWorkerTransactionRequest
   | SqliteWorkerMigrationRequest
   | SqliteWorkerQueryRequest
+  | SqliteWorkerProjectionReplayBeginRequest
+  | SqliteWorkerProjectionReplayCommitRequest
+  | SqliteWorkerProjectionReplayRollbackRequest
   | SqliteWorkerCloseRequest;
 
 export interface SqliteWorkerReadyResponse {
