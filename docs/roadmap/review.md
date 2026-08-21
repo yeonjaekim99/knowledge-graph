@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-21
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#12 누적 게시·로컬 검증과 2026-08-21 scope 재검토
-- 결과: **Phase 01 6/6 종료 · FND-006 범위 제외 정합화 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#13 누적 게시·로컬 검증과 2026-08-21 scope 재검토
+- 결과: **Phase 01 종료 · Phase 02 1/8 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 6/66, Phase 01 `DONE`, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 7/66, Phase 01 `DONE`, Phase 02 1/8, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -48,6 +48,9 @@
 10. FND-007은 exact runtime·frozen install부터 roadmap/TDD/PR 인계까지 한 기여 문서로
     연결했다. test와 실험 DB는 OS 임시 경로 또는 ignore된 `/.recall/`에 격리하고,
     network filesystem·다중 writer process 및 production 경로 구현은 후속 작업과 분리했다.
+11. STO-001은 실제 file DB 경로에서 local filesystem·권한을 먼저 검사하고 readonly TEMP
+    query로 FTS5·trigram·JSON·`unixepoch()` readiness를 발급한다. S01 전체를 완료로
+    오인하지 않도록 영구 FTS/rebuild·normalize와 WAL/connection 경계는 후속 owner에 남겼다.
 
 ## 의도적으로 남은 상태
 
@@ -60,9 +63,9 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6으로 종료됐으며 Phase 02의 `STO-001`과 `STO-005`가 다음 planning
-  후보이다. 둘은 각각 DB startup과 scope config를 소유하므로 별도 owner/branch에서 병렬
-  진행할 수 있다.
+- Phase 01은 6/6으로 종료됐고 Phase 02는 1/8이다. `STO-001` 완료로 `STO-002`와
+  `STO-003`이 열렸으며 독립적인 `STO-005`까지 세 작업을 별도 owner/branch에서 진행할 수
+  있다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -73,11 +76,11 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| FND-007 로컬 gate | PASS — production probe, architecture/type/build와 Node test 45/45 |
-| 깨끗한 source archive | PASS — 문서 절차대로 frozen lockfile 설치와 전체 local gate 재현 |
+| STO-001 로컬 gate | PASS — 실제 file DB startup 9/9, architecture/type/build와 Node test 54/54 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치, STO-001/전체 local gate 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — contributor 문서·계약 test·local ignore만 변경, product source와 자동 CI 추가 없음 |
+| 변경 범위 | PASS — SQLite startup adapter·integration test·storage 운영 문서만 추가, WAL/migration/schema/scope/MCP·자동 CI 추가 없음 |
 
 ## 게시 전 재현 검사
 
