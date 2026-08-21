@@ -29,14 +29,15 @@
 | `E-AGENT` | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) | 공통 agent 작업 계약과 Claude import | 규칙 준수 여부는 각 작업에서 계속 리뷰 |
 | `E-STACK` | [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6), [production 기술 스택](../implementation/fnd-001-production-stack.md) | Node/pnpm/TypeScript/MCP SDK/SQLite driver pin과 실제 MCP·SQLite·native 배포 probe | 제품 모듈 경계·schema source·전체 로컬 test 계층과 지원 target별 release 검증은 후속 작업 |
 | `E-ARCH` | [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7), [제품 모듈과 의존 방향](../implementation/fnd-002-module-boundaries.md) | 실제 TypeScript layer, atomic write port, package export 제한, import guard와 pure reducer fixture | runtime provider·규범 schema·실제 SQLite/projector 구현과 전체 test 계층은 후속 작업 |
-| `E-RUNTIME` | [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8), [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md) | request-scoped runtime port, Node clock/CSPRNG·canonical ULID/token, 고정 evaluation time, deterministic provider와 domain ambient-runtime guard | concrete scope resolver·Git/HMAC metadata, journal 연결·충돌 retry, public schema와 전체 로컬 test 계층은 후속 작업 |
+| `E-RUNTIME` | [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8), [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md) | request-scoped runtime port, Node clock/CSPRNG·canonical ULID/token, 고정 evaluation time, deterministic provider와 domain ambient-runtime guard | trusted scope adapter는 `E-TRUSTED-SCOPE`, Git/HMAC metadata·journal 연결·충돌 retry와 public schema는 후속 작업 |
 | `E-SCHEMA` | [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9), [public/domain schema 단일 출처](../implementation/fnd-004-schema-source.md) | Draft 2020-12 규범 source, type 추론, MCP runtime validator, 닫힌 object/oneOf/XOR/min-max fixture와 canonical serialization | 실제 세 tool schema·application 의미 검증·catalog/structuredContent wiring과 전체 로컬 drift 검증은 후속 작업 |
 | `E-TEST` | [PR #11](https://github.com/yeonjaekim99/knowledge-graph/pull/11), [로컬 TDD 테스트 전략](../implementation/fnd-005-test-strategy.md), [테스트 계층](../../test/README.md) | 7개 계층, 고정 실행 문맥, S01~S24 production 이전 manifest와 증분/full replay canonical parity harness | 실제 SQLite/projector/MCP/process 동작과 10만 규모 test는 각 후속 owner 작업이 구현 |
-| `E-BOOTSTRAP` | [PR #12](https://github.com/yeonjaekim99/knowledge-graph/pull/12), [기여 가이드](../../CONTRIBUTING.md), [README 빠른 시작](../../README.md#빠른-시작) | exact runtime과 frozen install, 로컬 TDD·검증·PR 흐름, 안전한 scratch DB 경계와 clean source 재현 | production DB path/startup은 STO-001, scope config는 STO-005, 지원 target packaging은 REL-009가 구현 |
+| `E-BOOTSTRAP` | [PR #12](https://github.com/yeonjaekim99/knowledge-graph/pull/12), [기여 가이드](../../CONTRIBUTING.md), [README 빠른 시작](../../README.md#빠른-시작) | exact runtime과 frozen install, 로컬 TDD·검증·PR 흐름, 안전한 scratch DB 경계와 clean source 재현 | DB startup과 scope config는 별도 production evidence가 소유하고 지원 target packaging은 REL-009가 구현 |
 | `E-SQLITE-STARTUP` | [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13), [storage 운영 계약](../operations/storage.md), [integration test](../../test/integration/sqlite/sto-001-startup-gate.test.mjs) | 실제 file DB의 절대 경로·local filesystem·권한 gate와 FTS5/trigram/JSON/unixepoch fail-closed readiness | WAL/queue, migration, 영구 schema, scope와 MCP tool 조립은 후속 작업 |
 | `E-SQLITE-CONNECTION` | [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14), [connection/queue 구현 결정](../implementation/sto-002-sqlite-connections.md), [integration test](../../test/integration/sqlite/sto-002-connection-factory.test.mjs) | worker-backed writer/readers, WAL·PRAGMA 검증, FIFO `BEGIN IMMEDIATE`, 실제 5초 busy·reader/event-loop 진행과 safe typed error | migration/schema, journal/projector transaction과 8-client/process recovery는 후속 작업 |
 | `E-SQLITE-MIGRATION` | [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15), [migration runner 구현 결정](../implementation/sto-003-sqlite-migrations.md), [integration test](../../test/integration/sqlite/sto-003-migration-runner.test.mjs), [process test](../../test/e2e/process/sto-003-migration-crash-reopen.test.mjs) | exact-byte checksum, version/name history, 단일 writer transaction, 정상·hard-exit reopen과 safe typed error | 최초 v1 schema와 startup wiring, journal/projector 전체 crash·동시성은 후속 작업 |
-| `E-SQLITE-SCHEMA` | [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16), [v1 schema 구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [migration SQL](../../src/adapters/sqlite/migrations/001-v1-schema.sql), [integration test](../../test/integration/sqlite/sto-004-v1-schema.test.mjs) | exact-byte bundled v1 DDL, contentless trigram FTS·rebuild, 한국어 경계, partial unique/XOR/CHECK/FK 실패와 `foreign_key_check` | scope/metadata, append·recovery, projector/recall query와 MCP startup 조립은 후속 작업 |
+| `E-SQLITE-SCHEMA` | [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16), [v1 schema 구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [migration SQL](../../src/adapters/sqlite/migrations/001-v1-schema.sql), [integration test](../../test/integration/sqlite/sto-004-v1-schema.test.mjs) | exact-byte bundled v1 DDL, contentless trigram FTS·rebuild, 한국어 경계, partial unique/XOR/CHECK/FK 실패와 `foreign_key_check` | metadata, append·recovery, projector/recall query와 MCP startup 조립은 후속 작업 |
+| `E-TRUSTED-SCOPE` | [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17), [scope 구현 결정](../implementation/sto-005-scope-resolver.md), [scope 운영 계약](../operations/scope.md), [foundation test](../../test/foundation/sto-005-scope-provider.test.mjs) | immutable project, explicit local user, authenticated remote principal, exact key·ASCII boundary와 fail-closed/no-fallback provider | actual authentication/tool lifecycle, metadata, journal/query scope predicate와 concurrent request isolation은 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -57,7 +58,7 @@
 - [x] `STO-002` | baseline: S20이 직렬 writer와 동시 WAL reader의 성립을 확인했다. | production: `E-SQLITE-CONNECTION`에서 connection factory·worker write queue·PRAGMA·5초 busy error를 실제 file DB로 완료했다.
 - [x] `STO-003` | baseline: S24와 spike reopen 결함 수정이 version/name/checksum 검증 필요성을 확인했다. | production: `E-SQLITE-MIGRATION`에서 immutable runner, exact-byte checksum과 정상·hard-exit reopen을 완료했다.
 - [x] `STO-004` | baseline: `E-SQL`과 S01이 규범 DDL, contentless FTS, 제약과 rebuild를 실행했다. | production: `E-SQLITE-SCHEMA`에서 selected driver용 bundled migration, exact-byte 배포와 실제 실패 fixture를 완료했다.
-- [x] `STO-005` | baseline: S09가 두 scope 격리와 cross-scope ID 차단을 확인했고 `E-RUNTIME`이 tool 인자 없는 scope port와 출력 검증을 제공한다. | production: 인증 principal·immutable project config 기반 concrete resolver, 명시적 local fallback과 identity 부재 fail-closed startup을 구현한다.
+- [x] `STO-005` | baseline: S09가 두 scope 격리와 cross-scope ID 차단을 확인했고 `E-RUNTIME`이 tool 인자 없는 scope port와 출력 검증을 제공한다. | production: `E-TRUSTED-SCOPE`에서 인증 principal·immutable project config 기반 concrete resolver, explicit local identity와 identity 부재 fail-closed를 완료했다.
 - [x] `STO-006` | baseline: ADR-003/011/016이 actor·branch·session 출처와 마스킹 경계를 확정했고 `E-RUNTIME`이 metadata port와 출력 검증을 제공한다. | production: client 정리, symbolic/detached/non-Git branch, session HMAC, nullable 실패 격리와 secret gate 연동을 구현한다.
 - [x] `STO-007` | baseline: S02/S24가 append rollback·seq/ID 연속성과 FTS 원자성을 확인했고 `E-RUNTIME`이 canonical ULID generator를 제공한다. | production: UNIQUE 충돌 retry와 append-only journal repository를 실제 transaction으로 구현한다.
 - [x] `STO-008` | baseline: S20/S24가 소규모 동시성·process crash·재개방 oracle을 제공한다. | production: file-backed storage recovery와 Phase 08에서 재사용할 8-client fixture를 만든다.
@@ -134,15 +135,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 10/66이다. `FND-001`~`FND-005`, `FND-007`과 `STO-001`~`004`가
+- active 제품 작업 완료 수는 현재 11/66이다. `FND-001`~`FND-005`, `FND-007`과 `STO-001`~`005`가
   production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각 production
   gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6으로 종료됐고 Phase 02는 4/8이다. trusted scope seam의 `STO-005`가 다음
-  planning에서 시작할 수 있고 완료되면 `STO-006`이 열린다. `STO-007`은 STO-005~006이
-  끝날 때까지 기다린다.
+- Phase 01은 6/6으로 종료됐고 Phase 02는 5/8이다. trusted scope seam의 `STO-005`가
+  완료되어 `STO-006`이 다음 planning에서 시작할 수 있다. `STO-007`은 STO-006이 끝날
+  때까지 기다린다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.
