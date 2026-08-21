@@ -1,9 +1,9 @@
 # SQLite 저장 경로와 startup 운영 계약
 
-- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`
+- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`
 - 규범 근거: ADR-001, ADR-005
-- 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate와
-  v1 physical schema
+- 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate,
+  v1 physical schema와 append-only journal storage primitive
 
 ## 필수 설정
 
@@ -83,6 +83,24 @@ FTS를 복구할 때는 contentless table에 `delete-all`을 적용하고 journa
 순으로 다시 넣은 뒤 `optimize`한다. FTS column에서 원문을 읽지 않으며, 철회·TTL 등 현재
 상태 판정은 후속 recall query가 projection과 join해 수행한다.
 
+## journal append 운영 계약
+
+STO-007 repository는 event ID, scope, 시각과 audit metadata를 요청 payload에서 받지 않는다.
+request-scoped runtime snapshot을 한 번 capture하고 이미 sanitation·의미 검증을 통과한
+`kind`/`bodyJson` envelope만 받는다. body text를 다시 stringify하지 않으므로 JSON 공백·key
+순서와 parsed 배열 순서가 그대로 저장된다.
+
+batch는 managed writer의 단일 `BEGIN IMMEDIATE` transaction과 단일 INSERT statement로
+처리한다. 후보 ID 중 하나라도 기존 journal과 충돌하면 0건을 삽입하고 batch의 미노출 ID를
+전부 새로 발급한다. 최초 1회와 retry 3회, 총 4회 뒤에도 충돌하면 retryable safe error로
+종료한다. statement의 FTS row는 INSERT trigger가 같은 transaction에서 만들며 어느 행이나
+trigger가 실패하면 journal과 FTS 전체 batch가 rollback된다.
+
+repository는 append만 제공하고 journal update/delete, projection write와 scope selector를
+제공하지 않는다. 아직 projection reducer가 없으므로 이 storage primitive를
+`appendAndProject` application port나 MCP handler에 직접 연결해서는 안 된다. 상세 collision,
+receipt와 오류 계약은 [구현 결정](../implementation/sto-007-append-only-journal.md)에 고정한다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -100,7 +118,7 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- `STO-007`: append-only journal repository와 statement/FTS commit 경로
+- `STO-008`: hard-exit 재개방과 concurrent WAL reader의 통합 검증
 - Phase 03: projection reducer와 replay
 
 user/project 설정, local/remote identity binding과 fail-closed 규칙은 별도
@@ -119,6 +137,7 @@ pnpm test:sto-001
 pnpm test:sto-002
 pnpm test:sto-003
 pnpm test:sto-004
+pnpm test:sto-007
 pnpm verify:local
 python3 docs/roadmap/validate.py
 ```
@@ -134,3 +153,7 @@ migration test는 exact-byte checksum, version/name drift, future version, rollb
 schema test는 exact source/dist byte, 최종 table·index·trigger·FK catalog, contentless FTS와
 한국어 3글자/2글자 경계, rebuild, 실제 partial unique/XOR/CHECK/FK 실패와
 `PRAGMA foreign_key_check`를 검증한다.
+
+journal test는 exact body/scope/metadata/epoch, seq 순서, statement/FTS parity, whole-batch
+collision retry, trigger 장애 rollback, invalid input과 collision exhaustion을 실제 file DB에서
+검증한다.

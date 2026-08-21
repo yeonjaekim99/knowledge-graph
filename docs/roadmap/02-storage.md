@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
 - 상태: `IN_PROGRESS`
-- 진행률: 6/8
+- 진행률: 7/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -21,7 +21,7 @@
 | STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
 | STO-005 | scope resolver와 deployment config | `DONE` | `log0629` | FND-003 | [구현 결정](../implementation/sto-005-scope-resolver.md), [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17) |
 | STO-006 | actor·branch·session metadata provider | `DONE` | `log0629` | STO-005 | [구현 결정](../implementation/sto-006-runtime-metadata.md), [PR #18](https://github.com/yeonjaekim99/knowledge-graph/pull/18) |
-| STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
+| STO-007 | event ID와 append-only journal repository | `DONE` | `log0629` | STO-002, STO-004~006 | [구현 결정](../implementation/sto-007-append-only-journal.md), [PR #19](https://github.com/yeonjaekim99/knowledge-graph/pull/19) |
 | STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
 
 ## 상세 체크리스트
@@ -219,19 +219,38 @@
 
 ### STO-007 — event ID와 append-only journal repository
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-007-append-only-journal`
+- PR: [#19](https://github.com/yeonjaekim99/knowledge-graph/pull/19)
 - 근거: ADR-001, ADR-002, ADR-005
 - 선행 작업: STO-002, STO-004~006
 - 결과물: validated event append API
 
 완료 체크:
 
-- [ ] event ID는 canonical `ev_` ULID이고 순서는 journal seq만 사용한다.
-- [ ] rare ULID collision은 성공 응답 전 같은 transaction 정책으로 안전하게 재시도한다.
-- [ ] production code에 journal UPDATE/DELETE API가 없다.
-- [ ] statement append와 FTS trigger가 같은 transaction에서 commit/rollback된다.
-- [ ] body JSON text와 epoch 초가 byte 안정적으로 보존된다.
+- [x] event ID는 canonical `ev_` ULID이고 순서는 journal seq만 사용한다.
+- [x] rare ULID collision은 성공 응답 전 같은 transaction 정책으로 안전하게 재시도한다.
+- [x] production code에 journal UPDATE/DELETE API가 없다.
+- [x] statement append와 FTS trigger가 같은 transaction에서 commit/rollback된다.
+- [x] body JSON text와 epoch 초가 byte 안정적으로 보존된다.
+
+증거:
+
+- 구현: [append-only repository](../../src/adapters/sqlite/journal-repository.ts),
+  [구현 결정](../implementation/sto-007-append-only-journal.md),
+  [storage 운영 계약](../operations/storage.md)
+- TDD: [실제 SQLite integration test](../../test/integration/sqlite/sto-007-journal-repository.test.mjs)는
+  export 부재 RED를 먼저 확인한 뒤 6/6 GREEN으로 전환했다. exact JSON·scope·metadata·epoch,
+  seq-only order, statement/FTS 원자성, whole-batch UNIQUE retry, rollback 뒤 seq 재사용,
+  invalid envelope와 accessor 미평가, 고정 collision exhaustion과 private append-only surface를 검증했다.
+- 리뷰: preflight가 accessor를 읽지 않는지와 runtime이 내놓은 noncanonical event ID를 저장 전에
+  거부하는지 추가 검증해 입력 평가·신뢰 경계의 누락을 닫았다.
+- 회귀: `pnpm verify:local` 87/87, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` frozen install·전체 gate
+- 범위 경계: 이 repository는 검증·마스킹이 끝난 internal event envelope의 저장 primitive다.
+  projection 의미와 journal+projection 성공 원자성은 Phase 03/REC-006, process crash·WAL reader
+  recovery는 STO-008이 소유하므로 S02/S24 scenario manifest는 `planned`를 유지한다.
 
 ### STO-008 — storage recovery·concurrency integration
 

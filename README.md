@@ -42,3 +42,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [FND-006 CI 작업 범위 제외 결정](docs/implementation/fnd-006-ci-retirement.md)
 - [STO-005 trusted scope resolver](docs/implementation/sto-005-scope-resolver.md)
 - [STO-006 trusted runtime metadata](docs/implementation/sto-006-runtime-metadata.md)
+- [STO-007 append-only journal repository](docs/implementation/sto-007-append-only-journal.md)
