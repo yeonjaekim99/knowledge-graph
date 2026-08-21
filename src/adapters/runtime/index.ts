@@ -26,3 +26,23 @@ export type {
   ScopeDeploymentEnvironment,
   ScopeResolutionErrorCode,
 } from "./scope-provider.js";
+export {
+  RECALL_PROJECT_WORKTREE_ENV,
+  RECALL_SESSION_HMAC_KEY_ENV,
+  MetadataConfigurationError,
+  createRequestMetadataProvider,
+  gitProjectBranchResolver,
+  loadMetadataDeploymentConfig,
+} from "./metadata-provider.js";
+export type {
+  MetadataConfigurationErrorCode,
+  MetadataDeploymentConfig,
+  MetadataDeploymentEnvironment,
+  MetadataTextField,
+  MetadataTextSanitizer,
+  ObservedClientInfo,
+  ProjectBranchResolver,
+  RequestMetadataProviderDependencies,
+  SessionCorrelationProvider,
+  TrustedRequestMetadataContext,
+} from "./metadata-provider.js";

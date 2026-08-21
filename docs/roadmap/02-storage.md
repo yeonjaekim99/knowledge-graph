@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
 - 상태: `IN_PROGRESS`
-- 진행률: 5/8
+- 진행률: 6/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -20,7 +20,7 @@
 | STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
 | STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
 | STO-005 | scope resolver와 deployment config | `DONE` | `log0629` | FND-003 | [구현 결정](../implementation/sto-005-scope-resolver.md), [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17) |
-| STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
+| STO-006 | actor·branch·session metadata provider | `DONE` | `log0629` | STO-005 | [구현 결정](../implementation/sto-006-runtime-metadata.md), [PR #18](https://github.com/yeonjaekim99/knowledge-graph/pull/18) |
 | STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
 | STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
 
@@ -185,18 +185,37 @@
 
 ### STO-006 — actor·branch·session metadata provider
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-006-runtime-metadata`
+- PR: [#18](https://github.com/yeonjaekim99/knowledge-graph/pull/18)
 - 근거: ADR-003, ADR-011, ADR-016
 - 선행 작업: STO-005
 - 결과물: nullable normalized metadata adapter
 
 완료 체크:
 
-- [ ] actor는 관찰한 client info에서만 얻고 제어문자 제거·128자 상한을 적용한다.
-- [ ] branch는 설정된 작업 경로의 symbolic/detached/non-git 상태를 구분한다.
-- [ ] session 원문은 저장하지 않고 key가 있을 때만 HMAC 상관키로 바꾼다.
-- [ ] metadata secret hit는 마스킹/NULL 처리되고 scope나 identity에 참여하지 않는다.
+- [x] actor는 관찰한 client info에서만 얻고 제어문자 제거·128자 상한을 적용한다.
+- [x] branch는 설정된 작업 경로의 symbolic/detached/non-git 상태를 구분한다.
+- [x] session 원문은 저장하지 않고 key가 있을 때만 HMAC 상관키로 바꾼다.
+- [x] metadata secret hit는 마스킹/NULL 처리되고 scope나 identity에 참여하지 않는다.
+
+증거:
+
+- 구현: [`metadata-provider.ts`](../../src/adapters/runtime/metadata-provider.ts),
+  [trusted runtime metadata 결정](../implementation/sto-006-runtime-metadata.md),
+  [runtime metadata 운영 계약](../operations/metadata.md)
+- test: [`sto-006-metadata-provider.test.mjs`](../../test/foundation/sto-006-metadata-provider.test.mjs)
+- PR: [#18](https://github.com/yeonjaekim99/knowledge-graph/pull/18)
+- TDD: `pnpm test:sto-006` 최초 missing production export로 0 test / 1 file failure 후,
+  실제 Git/HMAC/sanitizer 정상·경계·실패 6/6 통과
+- 리뷰 보강: 최초 full gate가 미등록 `integration/runtime` 경로 때문에 기존 75개만 실행한
+  것을 발견해 foundation runtime layer로 이동했고 최종 14 files / 81/81을 확인했다.
+- 검증: `pnpm verify:local` 81/81, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` frozen install·전체 gate
+- 범위 경계: metadata sanitizer integration seam만 구현했다. 실제 signature/entropy detector,
+  journal INSERT 전 masking과 MCP request observation은 REC-002/003, STO-007과 MCP-006이
+  소유하므로 S18 scenario manifest는 `planned`를 유지한다.
 
 ### STO-007 — event ID와 append-only journal repository
 
