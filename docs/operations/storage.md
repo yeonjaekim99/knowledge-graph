@@ -100,12 +100,13 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- `STO-006`: actor·branch·session metadata provider
 - `STO-007`: append-only journal repository와 statement/FTS commit 경로
 - Phase 03: projection reducer와 replay
 
 user/project 설정, local/remote identity binding과 fail-closed 규칙은 별도
 [scope 운영 계약](scope.md)에 고정한다.
+actor, configured Git branch와 session HMAC 규칙은
+[runtime metadata 운영 계약](metadata.md)에 고정한다.
 
 v1 physical schema와 bundled runner entry는 존재하지만 실제 MCP process startup 조립은
 `MCP-001`이 소유한다. schema가 있다는 사실만으로 tool을 노출하거나 projection table을

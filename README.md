@@ -27,6 +27,7 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [기여 가이드](CONTRIBUTING.md)
 - [SQLite 저장 경로와 startup 운영 계약](docs/operations/storage.md)
 - [Scope 배포 설정과 실패 계약](docs/operations/scope.md)
+- [Runtime metadata 배포와 실패 계약](docs/operations/metadata.md)
 - [초기 설계안](docs/init-design.md)
 - [Accepted ADR 목록](docs/adr/README.md)
 - [ADR 전체 리뷰](docs/adr/review.md)
@@ -40,3 +41,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [FND-005 로컬 TDD 테스트 전략](docs/implementation/fnd-005-test-strategy.md)
 - [FND-006 CI 작업 범위 제외 결정](docs/implementation/fnd-006-ci-retirement.md)
 - [STO-005 trusted scope resolver](docs/implementation/sto-005-scope-resolver.md)
+- [STO-006 trusted runtime metadata](docs/implementation/sto-006-runtime-metadata.md)
