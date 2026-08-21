@@ -1,7 +1,7 @@
 # Phase 00 — 구현 준비
 
-- 상태: `IN_PROGRESS`
-- 진행률: 6/7
+- 상태: `DONE`
+- 진행률: 7/7
 - 선행 phase: 없음
 - 종료 조건: RDY-001~007이 모두 `DONE`
 
@@ -18,7 +18,7 @@
 | RDY-004 | 적대적·crash spike | `DONE` | `log0629` | ADR-001, 002, 005, 007, 015, 017 | [spike report](../spikes/adr-behavior-report.md) |
 | RDY-005 | 공동 구현 로드맵 게시 | `DONE` | `log0629` | 전체 ADR·spike | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) |
 | RDY-006 | 에이전트 공통 작업 계약 게시 | `DONE` | `log0629` | 전체 ADR·roadmap | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) |
-| RDY-007 | 선행 증거·production gap 정합성 감사 | `IN_PROGRESS` | `log0629` | 전체 ADR·spike·roadmap | `docs/roadmap-evidence-audit` |
+| RDY-007 | 선행 증거·production gap 정합성 감사 | `DONE` | `log0629` | 전체 ADR·spike·roadmap | [PR #5](https://github.com/yeonjaekim99/knowledge-graph/pull/5) |
 
 ## 상세 체크리스트
 
@@ -117,7 +117,7 @@
 
 ### RDY-007 — 선행 증거·production gap 정합성 감사
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - 선행 작업: RDY-001~006
 - 결과물: [Evidence-gap audit](evidence-audit.md), [공통 작업 규칙](../../AGENTS.md)
@@ -129,12 +129,17 @@
 - [x] 각 phase에서 해당 evidence audit로 진입할 수 있고 FND-001 중복 표현을 바로잡았다.
 - [x] `AGENTS.md`가 작업 제안 전 ADR·spike 증거와 production gap 대조를 강제한다.
 - [x] roadmap validator가 67개 audit 행의 누락·중복과 phase 진입 링크를 검증한다.
-- [ ] 정합성 감사 PR이 `main`에 병합됐다.
+- [x] 정합성 감사 PR #5가 `main`에 병합됐다.
+
+증거:
+
+- PR: [#5](https://github.com/yeonjaekim99/knowledge-graph/pull/5)
+- 검증: [Evidence-gap audit](evidence-audit.md), [로드맵 자체 리뷰](review.md), behavior spike 25 tests
 
 ## Phase 종료 체크
 
 - [x] 의미 설계와 spike 검증이 완료됐다.
 - [x] 팀이 `main`에서 동일한 roadmap을 볼 수 있다.
 - [x] Codex와 Claude Code가 같은 공통 작업 계약에서 시작한다.
-- [ ] 팀과 agent가 기존 증거를 반복하지 않고 production 잔여 gate만 작업 범위로 잡는다.
+- [x] 팀과 agent가 기존 증거를 반복하지 않고 production 잔여 gate만 작업 범위로 잡는다.
 - [x] FND-001의 선행 조건과 완료 기준이 roadmap에 명시됐다.
