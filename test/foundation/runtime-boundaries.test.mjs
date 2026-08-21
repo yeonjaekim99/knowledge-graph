@@ -1,6 +1,4 @@
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
-import { createHmac } from "node:crypto";
 import {
   mkdirSync,
   mkdtempSync,
@@ -18,8 +16,6 @@ import {
 import {
   RuntimeConfigurationError,
   createApprovalTokenProvider,
-  createFixedScopeProvider,
-  createJournalMetadataProvider,
   createNodeRuntimeProvider,
   createUlidEventIdProvider,
 } from "../../dist/adapters/runtime/index.js";
@@ -187,16 +183,23 @@ test("deterministic provider injects one fixed request snapshot, IDs, and approv
 });
 
 test("production and deterministic providers expose the same request-scoped contract", async () => {
-  const projectDirectory = temporaryDirectory("recall-runtime-contract-");
-  const production = createNodeRuntimeProvider(
-    {
-      projectId: "recall",
-      projectDirectory,
-      rulesVersion: "rules-v1",
-      localUserId: "local-user",
+  const production = createNodeRuntimeProvider({
+    rulesVersion: "rules-v1",
+    scope: {
+      resolveScope: () => ({
+        userId: "bound-user",
+        projectId: "bound-project",
+        scopeKey: "u:bound-user/p:bound-project",
+      }),
     },
-    {},
-  );
+    metadata: {
+      resolveMetadata: async () => ({
+        actor: null,
+        branch: null,
+        session: null,
+      }),
+    },
+  });
   const deterministic = createDeterministicRuntimeProvider();
 
   assert.deepEqual(Object.keys(production), [
@@ -214,45 +217,36 @@ test("production and deterministic providers expose the same request-scoped cont
     evaluationNow: productionSnapshot.recordedAt,
     rulesVersion: "rules-v1",
     scope: {
-      userId: "local-user",
-      projectId: "recall",
-      scopeKey: "u:local-user/p:recall",
+      userId: "bound-user",
+      projectId: "bound-project",
+      scopeKey: "u:bound-user/p:bound-project",
     },
     metadata: { actor: null, branch: null, session: null },
   });
 });
 
-test("production provider derives scope and metadata only from deployment and trusted host context", async () => {
-  const projectDirectory = temporaryDirectory("recall-runtime-git-");
-  execFileSync("git", ["init", "--quiet"], { cwd: projectDirectory });
-  execFileSync(
-    "git",
-    ["symbolic-ref", "HEAD", "refs/heads/feature/runtime"],
-    { cwd: projectDirectory },
-  );
-
-  const sessionHmacKey = new Uint8Array(32).fill(7);
+test("production provider supplies clock and entropy around bound trusted context", async () => {
   const before = Math.floor(Date.now() / 1_000);
-  const provider = createNodeRuntimeProvider(
-    {
-      projectId: "recall",
-      projectDirectory,
-      rulesVersion: "rules-v1",
-      localUserId: "local-user",
-      sessionHmacKey,
+  const provider = createNodeRuntimeProvider({
+    rulesVersion: "rules-v1",
+    scope: {
+      resolveScope: () => ({
+        userId: "authenticated-user",
+        projectId: "recall",
+        scopeKey: "u:authenticated-user/p:recall",
+      }),
     },
-    {
-      authenticatedUserId: "authenticated-user",
-      clientName: "claude\u0000\n",
-      logicalSessionId: "transport-session-bearer",
+    metadata: {
+      resolveMetadata: async () => ({
+        actor: "claude",
+        branch: "feature/runtime",
+        session: `hmac-sha256:${"a".repeat(64)}`,
+      }),
     },
-  );
+  });
 
   const snapshot = await provider.capture();
   const after = Math.floor(Date.now() / 1_000);
-  const expectedSession = createHmac("sha256", sessionHmacKey)
-    .update("transport-session-bearer", "utf8")
-    .digest("hex");
 
   assert.deepEqual(snapshot.scope, {
     userId: "authenticated-user",
@@ -262,75 +256,12 @@ test("production provider derives scope and metadata only from deployment and tr
   assert.deepEqual(snapshot.metadata, {
     actor: "claude",
     branch: "feature/runtime",
-    session: `hmac-sha256:${expectedSession}`,
+    session: `hmac-sha256:${"a".repeat(64)}`,
   });
   assert.ok(snapshot.recordedAt >= before && snapshot.recordedAt <= after);
   assert.equal(snapshot.evaluationNow, snapshot.recordedAt);
   assert.match(provider.nextEventId(), /^ev_[0-7][0-9A-HJKMNP-TV-Z]{25}$/);
   assert.match(provider.nextApprovalToken(), /^ra_[A-Za-z0-9_-]{43}$/);
-  assert.doesNotMatch(snapshot.metadata.session, /transport-session-bearer/);
-});
-
-test("metadata failures degrade nullable fields without losing the runtime snapshot", async () => {
-  const actor = `${"가".repeat(140)}\u0000`;
-  const metadata = createJournalMetadataProvider({
-    clientName: actor,
-    logicalSessionId: "not-persisted",
-    branch: {
-      async currentBranch() {
-        throw new Error("git unavailable");
-      },
-    },
-  });
-
-  assert.deepEqual(await metadata.resolveMetadata(), {
-    actor: "가".repeat(128),
-    branch: null,
-    session: null,
-  });
-});
-
-test("git metadata reports a detached HEAD with its full object ID", async () => {
-  const projectDirectory = temporaryDirectory("recall-runtime-detached-");
-  execFileSync("git", ["init", "--quiet"], { cwd: projectDirectory });
-  writeFileSync(join(projectDirectory, "tracked.txt"), "runtime fixture\n");
-  execFileSync("git", ["add", "tracked.txt"], { cwd: projectDirectory });
-  execFileSync(
-    "git",
-    [
-      "-c",
-      "user.name=Recall Fixture",
-      "-c",
-      "user.email=fixture@example.invalid",
-      "commit",
-      "--quiet",
-      "-m",
-      "fixture",
-    ],
-    { cwd: projectDirectory },
-  );
-  const objectId = execFileSync("git", ["rev-parse", "HEAD"], {
-    cwd: projectDirectory,
-    encoding: "utf8",
-  }).trim();
-  execFileSync("git", ["checkout", "--quiet", "--detach", objectId], {
-    cwd: projectDirectory,
-  });
-
-  const provider = createNodeRuntimeProvider(
-    {
-      projectId: "recall",
-      projectDirectory,
-      rulesVersion: "rules-v1",
-      localUserId: "local-user",
-    },
-    {},
-  );
-
-  assert.equal(
-    (await provider.capture()).metadata.branch,
-    `detached:${objectId}`,
-  );
 });
 
 test("ULID and approval generators are deterministic under injected clock and random bytes", () => {
@@ -454,31 +385,27 @@ test("invalid provider output fails closed at the application boundary", async (
   );
 });
 
-test("invalid scope configuration and absent user identity fail before tools can run", () => {
-  assert.throws(
-    () => createFixedScopeProvider("user/escape", "project"),
-    RuntimeConfigurationError,
-  );
+test("invalid production rules configuration fails before use-case execution", () => {
   assert.throws(
     () =>
-      createJournalMetadataProvider({
-        logicalSessionId: "session",
-        sessionHmacKey: new Uint8Array(),
-        branch: { currentBranch: async () => null },
-      }),
-    /HMAC key must not be empty/,
-  );
-  assert.throws(
-    () =>
-      createNodeRuntimeProvider(
-        {
-          projectId: "project",
-          projectDirectory: temporaryDirectory("recall-runtime-missing-user-"),
-          rulesVersion: "rules-v1",
+      createNodeRuntimeProvider({
+        rulesVersion: "",
+        scope: {
+          resolveScope: () => ({
+            userId: "user",
+            projectId: "project",
+            scopeKey: "u:user/p:project",
+          }),
         },
-        {},
-      ),
-    /user_id is required/,
+        metadata: {
+          resolveMetadata: async () => ({
+            actor: null,
+            branch: null,
+            session: null,
+          }),
+        },
+      }),
+    RuntimeConfigurationError,
   );
 });
 

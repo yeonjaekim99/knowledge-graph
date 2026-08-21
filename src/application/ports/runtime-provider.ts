@@ -56,10 +56,6 @@ export interface MetadataProvider {
   resolveMetadata(): Promise<JournalMetadata>;
 }
 
-export interface BranchProvider {
-  currentBranch(): Promise<string | null>;
-}
-
 export interface RuntimeProviderDependencies {
   readonly clock: RuntimeClock;
   readonly eventIds: EventIdProvider;
