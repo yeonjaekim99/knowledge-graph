@@ -1,7 +1,7 @@
 # Phase 01 — 개발 기반과 구현 결정
 
 - 상태: `IN_PROGRESS`
-- 진행률: 2/7
+- 진행률: 3/7
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | FND-001 | production 기술 스택 결정 | `DONE` | `log0629` | RDY-007 | [결정·검증](../implementation/fnd-001-production-stack.md), [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6) |
 | FND-002 | 제품 모듈과 의존 방향 설계 | `DONE` | `log0629` | FND-001 | [결정·검증](../implementation/fnd-002-module-boundaries.md), [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7) |
-| FND-003 | 결정적 runtime 경계 추상화 | `IN_PROGRESS` | `log0629` | FND-002 | branch `fnd-003-runtime-boundaries` |
+| FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
 | FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
 | FND-006 | CI와 repository 품질 gate 구축 | `TODO` | `unassigned` | FND-001, FND-005 | — |
@@ -74,19 +74,27 @@
 
 ### FND-003 — 결정적 runtime 경계 추상화
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
-- Branch: `fnd-003-runtime-boundaries`
 - 근거: ADR-001, ADR-002, ADR-003, ADR-010, ADR-017
 - 선행 작업: FND-002
 - 결과물: clock, ULID/CSPRNG, rules version, scope와 metadata provider interface
 
 완료 체크:
 
-- [ ] reducer 안에서 wall clock, network, LLM과 git 조회를 호출하지 않는다.
-- [ ] 테스트가 clock, event ID, approval token과 `evaluation_now`를 주입할 수 있다.
-- [ ] scope와 actor/branch/session 입력 경계가 tool argument와 분리됐다.
-- [ ] production provider와 deterministic test provider 계약이 같다.
+- [x] reducer 안에서 wall clock, network, LLM과 git 조회를 호출하지 않는다.
+- [x] 테스트가 clock, event ID, approval token과 `evaluation_now`를 주입할 수 있다.
+- [x] scope와 actor/branch/session 입력 경계가 tool argument와 분리됐다.
+- [x] production provider와 deterministic test provider 계약이 같다.
+
+증거:
+
+- 결정: [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md)
+- PR: [#8](https://github.com/yeonjaekim99/knowledge-graph/pull/8)
+- 검증: `pnpm verify:fnd-003`, `pnpm verify:fnd-002`, `pnpm verify:fnd-001`,
+  `python3 docs/roadmap/validate.py`, behavior spike 25 tests
+- 범위 경계: concrete scope resolver는 STO-005, actor/Git/session metadata adapter는 STO-006,
+  journal ID 충돌 재시도는 STO-007이 소유한다.
 
 ### FND-004 — public/domain schema 단일 출처 결정
 

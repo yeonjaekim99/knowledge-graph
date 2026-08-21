@@ -29,6 +29,7 @@
 | `E-AGENT` | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) | 공통 agent 작업 계약과 Claude import | 규칙 준수 여부는 각 작업에서 계속 리뷰 |
 | `E-STACK` | [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6), [production 기술 스택](../implementation/fnd-001-production-stack.md) | Node/pnpm/TypeScript/MCP SDK/SQLite driver pin과 실제 MCP·SQLite·native 배포 probe | 제품 모듈 경계·schema source·CI와 지원 target별 release 검증은 후속 작업 |
 | `E-ARCH` | [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7), [제품 모듈과 의존 방향](../implementation/fnd-002-module-boundaries.md) | 실제 TypeScript layer, atomic write port, package export 제한, import guard와 pure reducer fixture | runtime provider·규범 schema·실제 SQLite/projector 구현과 전체 test 계층은 후속 작업 |
+| `E-RUNTIME` | [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8), [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md) | request-scoped runtime port, Node clock/CSPRNG·canonical ULID/token, 고정 evaluation time, deterministic provider와 domain ambient-runtime guard | concrete scope resolver·Git/HMAC metadata, journal 연결·충돌 retry, public schema와 전체 test/CI는 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -37,9 +38,9 @@
 
 - [x] `FND-001` | baseline: `E-ADR`이 MCP 계약 요구를 확정했고 `E-SQL`과 S01/S20이 Python/SQLite feasibility를 확인했다. | production: `E-STACK`에서 runtime·package manager·SQLite driver·MCP SDK 선택과 실제 API·배포 probe를 완료했다.
 - [x] `FND-002` | baseline: `E-ADR`과 `E-SPIKE`가 journal/projection 분리와 pure deterministic oracle의 성립을 확인했다. | production: `E-ARCH`에서 실제 package/module 경계, atomic write port와 dependency/import guard를 완료했다.
-- [x] `FND-003` | baseline: 고정 clock·ID·scope를 사용한 S02/S09/S14~S16/S23과 `E-ARCH`의 pure reducer seam이 결정성 요구를 확인했다. | production: 동일 계약의 runtime provider interface와 production/test adapter를 만든다.
+- [x] `FND-003` | baseline: 고정 clock·ID·scope를 사용한 S02/S09/S14~S16/S23과 `E-ARCH`의 pure reducer seam이 결정성 요구를 확인했다. | production: `E-RUNTIME`에서 동일 계약의 request-scoped provider, Node clock/CSPRNG·canonical ID/token, deterministic provider와 ambient-runtime guard를 완료했다.
 - [x] `FND-004` | baseline: ADR-013~016이 public/domain schema 규범과 union/XOR를 확정했고 `E-ARCH`가 schema를 둘 application/package 경계를 제공한다. | production: 선택한 stack의 단일 schema source, runtime validation과 drift 검사를 결정한다.
-- [x] `FND-005` | baseline: `E-SPIKE`가 S01~S24 reference oracle을, `E-ARCH`가 targeted Node test와 architecture guard를 제공한다. | production: unit/integration/contract/e2e 계층과 black-box parity helper를 구축한다.
+- [x] `FND-005` | baseline: `E-SPIKE`가 S01~S24 reference oracle을, `E-ARCH`와 `E-RUNTIME`이 targeted Node test·deterministic provider·architecture guard를 제공한다. | production: unit/integration/contract/e2e 계층과 black-box parity helper를 구축한다.
 - [x] `FND-006` | baseline: `E-ROADMAP` validator가 문서·의존성·추적성을 로컬에서 검사한다. | production: 선택한 stack의 format/lint/type/test와 기존 validator를 PR 필수 CI로 묶는다.
 - [x] `FND-007` | baseline: `E-ROADMAP`과 `E-AGENT`가 branch·PR·상태·증거 운영 규칙을 제공한다. | production: 깨끗한 checkout용 설치·실행·DB 안전 경로와 기여 문서를 작성한다.
 
@@ -49,14 +50,14 @@
 - [x] `STO-002` | baseline: S20이 직렬 writer와 동시 WAL reader의 성립을 확인했다. | production: connection factory·write queue·PRAGMA·5초 busy error를 구현한다.
 - [x] `STO-003` | baseline: S24와 spike reopen 결함 수정이 version/name/checksum 검증 필요성을 확인했다. | production: immutable migration runner와 정상·crash reopen test를 만든다.
 - [x] `STO-004` | baseline: `E-SQL`과 S01이 규범 DDL, contentless FTS, 제약과 rebuild를 실행했다. | production: 선택한 driver용 versioned migration과 실패 fixture를 구현한다.
-- [x] `STO-005` | baseline: S09가 두 scope 격리와 cross-scope ID 차단을 확인했다. | production: 인증 principal·project config 기반 scope resolver와 fail-closed startup을 구현한다.
-- [x] `STO-006` | baseline: ADR-003/011/016이 actor·branch·session 출처와 마스킹 경계를 확정했다. | production: client/git/HMAC metadata provider와 실패 격리 test를 만든다.
-- [x] `STO-007` | baseline: S02/S24가 append rollback·seq/ID 연속성과 FTS 원자성을 확인했다. | production: canonical ULID와 append-only journal repository를 실제 transaction으로 구현한다.
+- [x] `STO-005` | baseline: S09가 두 scope 격리와 cross-scope ID 차단을 확인했고 `E-RUNTIME`이 tool 인자 없는 scope port와 출력 검증을 제공한다. | production: 인증 principal·immutable project config 기반 concrete resolver, 명시적 local fallback과 identity 부재 fail-closed startup을 구현한다.
+- [x] `STO-006` | baseline: ADR-003/011/016이 actor·branch·session 출처와 마스킹 경계를 확정했고 `E-RUNTIME`이 metadata port와 출력 검증을 제공한다. | production: client 정리, symbolic/detached/non-Git branch, session HMAC, nullable 실패 격리와 secret gate 연동을 구현한다.
+- [x] `STO-007` | baseline: S02/S24가 append rollback·seq/ID 연속성과 FTS 원자성을 확인했고 `E-RUNTIME`이 canonical ULID generator를 제공한다. | production: UNIQUE 충돌 retry와 append-only journal repository를 실제 transaction으로 구현한다.
 - [x] `STO-008` | baseline: S20/S24가 소규모 동시성·process crash·재개방 oracle을 제공한다. | production: file-backed storage recovery와 Phase 08에서 재사용할 8-client fixture를 만든다.
 
 ## Phase 03 Projection
 
-- [x] `PRJ-001` | baseline: S02/S23이 반복 replay와 canonical checksum 결정성을 확인했다. | production: rules version·projection meta·scope replay 계약과 canonical dump를 구현한다.
+- [x] `PRJ-001` | baseline: S02/S23이 반복 replay와 canonical checksum 결정성을 확인했고 `E-RUNTIME`이 rules/clock port를 제공한다. | production: projection meta·scope replay 계약과 canonical dump를 구현하고 runtime 입력을 연결한다.
 - [x] `PRJ-002` | baseline: S01/S03과 ADR-004/006/009가 normalize·relation·literal identity를 확인했다. | production: versioned primitive와 locale/relation fixture를 별도 코드로 구현한다.
 - [x] `PRJ-003` | baseline: S03/S07/S23/S24가 occurrence 위치·redirect·stable ID 불변식을 확인했다. | production: redirect registry, 손상 방어와 rules dry-run을 구현한다.
 - [x] `PRJ-004` | baseline: S14~S16이 effective metadata/order·cascade·approval 경계를 확인했다. | production: 사건 pre-scan과 effective stream reducer를 구현한다.
@@ -75,7 +76,7 @@
 - [x] `REC-004` | baseline: S21과 S08이 confirmed alias 기반 entity 해석을 확인했다. | production: write-time 다의 surface 해석과 actionable ambiguity를 구현한다.
 - [x] `REC-005` | baseline: S03/S18이 duplicate draft·occurrence index·부분 성공 의미를 확인했다. | production: 의미 검증·dedupe·입력/저장 index mapping을 구현한다.
 - [x] `REC-006` | baseline: S02/S06/S24가 append/project와 다중 사건 rollback 원자성을 확인했다. | production: statement append·증분 projection·RecordResult를 한 transaction에 구현한다.
-- [x] `REC-007` | baseline: S11/S14~S16이 raw-only TTL·기본값·승인된 reinterpret 의미를 확인했다. | production: defaulting, request retry 의미와 approval-bound record 경로를 구현한다.
+- [x] `REC-007` | baseline: S11/S14~S16이 raw-only TTL·기본값·승인된 reinterpret 의미를 확인했고 `E-RUNTIME`이 canonical approval-token generator를 제공한다. | production: defaulting, request retry 의미와 scope/target/payload/through-seq에 묶인 approval record 경로를 구현한다.
 - [x] `REC-008` | baseline: 관련 S03/S11/S14/S16/S18과 전체 spike suite가 회귀 oracle을 제공한다. | production: 보안 corpus·agent parsing fixture·application integration suite를 통과한다.
 
 ## Phase 05 Revise
@@ -90,7 +91,7 @@
 
 ## Phase 06 Recall
 
-- [x] `RCL-001` | baseline: S09/S10/S19가 scope/now snapshot aggregate와 read-only 의미를 확인했다. | production: 한 snapshot의 TEMP aggregate와 RecallResult 계약을 구현한다.
+- [x] `RCL-001` | baseline: S09/S10/S19가 scope/now snapshot aggregate와 read-only 의미를 확인했고 `E-RUNTIME`이 요청마다 고정된 `evaluationNow`를 제공한다. | production: 같은 snapshot을 사용하는 TEMP aggregate와 RecallResult 계약을 구현한다.
 - [x] `RCL-002` | baseline: S01/S09/S21이 normalize·surface·alias seed 의미를 확인했다. | production: query term 후보와 surface seed cap·결정적 dedupe를 구현한다.
 - [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: quoted query, 3글자 경계, FTS 21개와 raw-only 반환을 구현한다.
 - [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: overview seed cap·정렬·빈 결과 계약을 구현한다.
@@ -107,7 +108,7 @@
 - [x] `MCP-003` | baseline: ADR-013~016이 input/output schema와 structuredContent 의미를 확정했다. | production: 단일 schema source에서 실제 SDK catalog와 response serializer를 구현한다.
 - [x] `MCP-004` | baseline: ADR-016이 호출/미호출·relation·alias·instruction 경계 문구를 확정했다. | production: versioned description과 필수 문구 lint를 구현한다.
 - [x] `MCP-005` | baseline: S18과 ADR-011/013~016이 안전한 거부·redaction 의미를 확인했다. | production: application error를 MCP error/typed result로 매핑하고 log/trace를 검증한다.
-- [x] `MCP-006` | baseline: S09와 ADR-003/010/016이 scope·metadata·TTL 경계를 확인했다. | production: 실제 request metadata와 authenticated context adapter를 연결한다.
+- [x] `MCP-006` | baseline: S09와 ADR-003/010/016이 scope·metadata·TTL 경계를 확인했고 `E-RUNTIME`이 tool 인자 없는 bound provider 계약을 제공한다. | production: 실제 request metadata와 authenticated context를 STO-005/006 adapter에 연결하고 동시 요청 격리를 검증한다.
 - [x] `MCP-007` | baseline: ADR-016 Validation이 Inspector/client gate를 정의했지만 실행형 MCP 증거는 없다. | production: Inspector와 지원 client의 initialize/list/call/error/shutdown을 검증한다.
 - [x] `MCP-008` | baseline: ADR-013/016/017이 agent 품질 기준을 정했지만 실제 20/30개 fixture는 실행하지 않았다. | production: 지원 agent parsing·호출 판단 release gate를 실행한다.
 
@@ -120,18 +121,17 @@
 - [x] `REL-005` | baseline: S18이 대표 secret mask/rejection을 확인했다. | production: 확장 corpus·DB/WAL/backup/log 권한·offline incident rehearsal을 수행한다.
 - [x] `REL-006` | baseline: ADR-004/006/008/010/012/017이 지표 정의와 trigger를 확정했다. | production: 읽기 전용 maintenance query·metric dictionary·privacy 경계를 구현한다.
 - [x] `REL-007` | baseline: S02/S23/S24가 replay checksum·rollback oracle을 제공한다. | production: dry-run diff·approval gate·rules rollout/rollback runbook을 구현한다.
-- [x] `REL-008` | baseline: S14~S16이 reinterpret metadata/order·approval·undo 의미를 확인했다. | production: candidate report·payload-bound token store·batch 운영과 실패 보상을 구현한다.
+- [x] `REL-008` | baseline: S14~S16이 reinterpret metadata/order·approval·undo 의미를 확인했고 `E-RUNTIME`이 canonical token generator를 제공한다. | production: candidate report·payload-bound process-memory token store·constant-time 비교·만료/소비·batch 운영과 실패 보상을 구현한다.
 - [x] `REL-009` | baseline: S24가 DB reopen 원자성만 확인했고 backup/restore/upgrade는 실행하지 않았다. | production: packaging과 실제 backup·restore·upgrade·incident runbook을 rehearsal한다.
 - [x] `REL-010` | baseline: `E-ADR`, `E-SPIKE`, `E-ROADMAP`이 설계·scenario·작업 추적성의 출발점을 제공한다. | production: 67개 제품 작업과 모든 release gate를 release commit에서 양방향 감사한다.
 
 ## 감사 결론
 
-- 제품 작업 완료 수는 현재 2/67이다. `FND-001`과 `FND-002`가 production artifact와
+- 제품 작업 완료 수는 현재 3/67이다. `FND-001`~`FND-003`이 production artifact와
   검증·PR 증거를 갖춰 `DONE`이며 나머지 작업은 각 production gate를 유지한다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- 다음에 열 수 있는 작업은 `FND-003`, `FND-004`, `FND-005`다. 모두 `E-STACK`과
-  `E-ARCH`를 재사용하며 각자 runtime provider, schema source, test strategy 잔여 gate만
-  닫는다.
+- 다음에 열 수 있는 작업은 `FND-004`와 `FND-005`다. 둘 다 `E-STACK`, `E-ARCH`,
+  `E-RUNTIME`을 재사용하며 각각 schema source와 test strategy 잔여 gate만 닫는다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.
