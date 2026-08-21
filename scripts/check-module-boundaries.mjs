@@ -129,6 +129,38 @@ function moduleReferences(text) {
   return references;
 }
 
+function forbiddenRuntimeReferences(text, layer) {
+  const identifiers = new Set(layer.forbiddenIdentifiers ?? []);
+  const memberAccess = new Set(layer.forbiddenMemberAccess ?? []);
+  if (identifiers.size === 0 && memberAccess.size === 0) {
+    return [];
+  }
+
+  const references = [];
+  const tokens = scanTokens(text);
+  for (let index = 0; index < tokens.length; index += 1) {
+    const token = tokens[index];
+    if (
+      token.kind === SyntaxKind.Identifier &&
+      identifiers.has(token.value)
+    ) {
+      references.push(token.value);
+    }
+
+    if (
+      token.kind === SyntaxKind.Identifier &&
+      tokens[index + 1]?.kind === SyntaxKind.DotToken &&
+      tokens[index + 2]?.kind === SyntaxKind.Identifier
+    ) {
+      const reference = `${token.value}.${tokens[index + 2].value}`;
+      if (memberAccess.has(reference)) {
+        references.push(reference);
+      }
+    }
+  }
+  return [...new Set(references)].sort();
+}
+
 function resolveInternalImport(fromFile, specifier) {
   const unresolved = resolve(dirname(fromFile), specifier);
   const extension = extname(unresolved);
@@ -286,6 +318,15 @@ export function validateArchitecture({
     }
 
     const sourceText = readFileSync(file, "utf8");
+    for (const reference of forbiddenRuntimeReferences(
+      sourceText,
+      sourceLayer,
+    )) {
+      errors.push(
+        `${relativeFile}: ${sourceLayer.name} may not reference runtime global ${reference}`,
+      );
+    }
+
     for (const reference of moduleReferences(sourceText)) {
       const { kind, specifier } = reference;
       if (specifier === undefined) {
@@ -367,6 +408,7 @@ function runCli() {
   console.log(`source_files=${result.filesChecked}`);
   console.log(`layers=${result.layerCount}`);
   console.log("atomic_write_port=appendAndProject_only");
+  console.log("domain_runtime_globals=forbidden");
   console.log("spike_imports=forbidden");
   console.log("architecture_check=PASS");
 }

@@ -2,7 +2,7 @@
 
 > 기준일: 2026-08-21
 > 범위: Recall v1 production 구현
-> 현재 상태: **Phase 01 진행 중 · FND-003~005 착수 가능**
+> 현재 상태: **Phase 01 진행 중 · FND-004~005 착수 가능**
 
 이 디렉터리는 [Accepted ADR](../adr/README.md)을 팀이 실행할 수 있는 작업 순서와
 체크리스트로 바꾼다. ADR은 **왜와 무엇을**, 이 로드맵은 **순서·담당·완료 증거를**
@@ -14,8 +14,8 @@
 | 구분 | 완료 | 전체 | 판정 |
 |---|---:|---:|---|
 | 구현 준비 | 7 | 7 | 완료 |
-| 제품 구현 | 2 | 67 | 진행 중 |
-| 전체 | 9 | 74 | Phase 01 진행 중 |
+| 제품 구현 | 3 | 67 | 진행 중 |
+| 전체 | 10 | 74 | Phase 01 진행 중 |
 
 진행률은 수동 퍼센트가 아니라 `DONE 작업 수 / 전체 작업 수`로만 표시한다. 상세 문서의
 작업 상태와 증거가 원본이며 이 표는 각 PR에서 함께 갱신하는 roll-up이다.
@@ -38,7 +38,7 @@ service가 모두 준비된 뒤 시작한다.
 | Phase | 문서 | 상태 | 완료/전체 | 진입 조건 | 핵심 결과 |
 |---:|---|---|---:|---|---|
 | 00 | [구현 준비](00-readiness.md) | `DONE` | 7/7 | 없음 | ADR·spike·로드맵·작업 계약·증거 gap 합의 |
-| 01 | [개발 기반](01-foundation.md) | `IN_PROGRESS` | 2/7 | Phase 00 `DONE` | 기술 선택, 모듈 경계, CI |
+| 01 | [개발 기반](01-foundation.md) | `IN_PROGRESS` | 3/7 | Phase 00 `DONE` | 기술 선택, 모듈 경계, CI |
 | 02 | [SQLite·저널](02-storage.md) | `TODO` | 0/8 | Phase 01 `DONE` | migration, scope, writer, journal |
 | 03 | [투영·재생](03-projection.md) | `TODO` | 0/10 | Phase 02 `DONE` | 증분/전체 replay parity |
 | 04 | [`memory_record`](04-memory-record.md) | `TODO` | 0/8 | Phase 03 `DONE` | 안전한 기록 수직 경로 |

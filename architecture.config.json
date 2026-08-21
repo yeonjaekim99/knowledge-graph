@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "sourceRoot": "src",
   "publicEntry": "src/index.ts",
   "publicApiFiles": [
@@ -21,11 +21,15 @@
     "src/domain/index.ts",
     "src/domain/reducer.ts",
     "src/application/index.ts",
+    "src/application/runtime-context.ts",
     "src/application/use-case.ts",
     "src/application/write-service.ts",
     "src/application/ports/journal-commit-port.ts",
+    "src/application/ports/runtime-provider.ts",
     "src/adapters/sqlite/index.ts",
     "src/adapters/mcp/index.ts",
+    "src/adapters/runtime/index.ts",
+    "src/adapters/runtime/node-runtime-provider.ts",
     "src/maintenance/index.ts",
     "src/composition/index.ts"
   ],
@@ -39,7 +43,24 @@
       "name": "domain",
       "root": "src/domain",
       "mayImport": ["domain"],
-      "externalPackages": []
+      "externalPackages": [],
+      "forbiddenIdentifiers": [
+        "Date",
+        "Temporal",
+        "fetch",
+        "globalThis",
+        "process",
+        "performance",
+        "crypto",
+        "WebSocket",
+        "EventSource",
+        "navigator",
+        "Bun",
+        "Deno",
+        "setTimeout",
+        "setInterval"
+      ],
+      "forbiddenMemberAccess": ["Math.random"]
     },
     {
       "name": "application",
@@ -60,6 +81,12 @@
       "externalPackages": ["@modelcontextprotocol/server"]
     },
     {
+      "name": "runtime-adapter",
+      "root": "src/adapters/runtime",
+      "mayImport": ["runtime-adapter", "application"],
+      "externalPackages": ["node:"]
+    },
+    {
       "name": "maintenance",
       "root": "src/maintenance",
       "mayImport": ["maintenance", "application"],
@@ -74,6 +101,7 @@
         "domain",
         "sqlite-adapter",
         "mcp-adapter",
+        "runtime-adapter",
         "maintenance"
       ],
       "externalPackages": [
