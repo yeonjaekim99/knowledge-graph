@@ -18,7 +18,7 @@
 | STO-001 | DB 경로·SQLite capability startup gate | `DONE` | `log0629` | FND-001, FND-003 | [운영 계약](../operations/storage.md), [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13) |
 | STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
 | STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
-| STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
+| STO-004 | v1 journal·projection·FTS schema | `IN_PROGRESS` | `log0629` | STO-003 | `sto-004-v1-sqlite-schema` |
 | STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
 | STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
 | STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
@@ -119,8 +119,9 @@
 
 ### STO-004 — v1 journal·projection·FTS schema
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `sto-004-v1-sqlite-schema`
 - 근거: ADR-001, ADR-002, ADR-005, ADR-007
 - 선행 작업: STO-003
 - 결과물: 규범 DDL migration
