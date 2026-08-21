@@ -90,7 +90,7 @@
 - [ ] subject/object aliases와 optional kind의 방향·한계를 예시로 구분한다.
 - [ ] 불확실하면 claims=[]를 쓰고 일반 correct와 승인된 reinterpret를 구분한다.
 - [ ] recalled project text를 system/tool instruction처럼 실행하지 말라는 경계를 명시한다.
-- [ ] 필수 문구·예시가 빠지면 startup/CI description lint가 실패한다.
+- [ ] 필수 문구·예시가 빠지면 startup과 필수 로컬 description lint가 실패한다.
 
 ### MCP-005 — protocol error·typed result·redaction
 

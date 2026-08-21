@@ -14,8 +14,8 @@
 | 구분 | 완료 | 전체 | 판정 |
 |---|---:|---:|---|
 | 구현 준비 | 7 | 7 | 완료 |
-| 제품 구현 | 4 | 67 | 진행 중 |
-| 전체 | 11 | 74 | Phase 01 진행 중 |
+| 제품 구현 | 4 | 66 | 진행 중 |
+| 전체 | 11 | 73 | Phase 01 진행 중 |
 
 진행률은 수동 퍼센트가 아니라 `DONE 작업 수 / 전체 작업 수`로만 표시한다. 상세 문서의
 작업 상태와 증거가 원본이며 이 표는 각 PR에서 함께 갱신하는 roll-up이다.
@@ -38,7 +38,7 @@ service가 모두 준비된 뒤 시작한다.
 | Phase | 문서 | 상태 | 완료/전체 | 진입 조건 | 핵심 결과 |
 |---:|---|---|---:|---|---|
 | 00 | [구현 준비](00-readiness.md) | `DONE` | 7/7 | 없음 | ADR·spike·로드맵·작업 계약·증거 gap 합의 |
-| 01 | [개발 기반](01-foundation.md) | `IN_PROGRESS` | 4/7 | Phase 00 `DONE` | 기술 선택, 모듈 경계, CI |
+| 01 | [개발 기반](01-foundation.md) | `IN_PROGRESS` | 4/6 | Phase 00 `DONE` | 기술 선택, 모듈 경계, 로컬 검증 기반 |
 | 02 | [SQLite·저널](02-storage.md) | `TODO` | 0/8 | Phase 01 `DONE` | migration, scope, writer, journal |
 | 03 | [투영·재생](03-projection.md) | `TODO` | 0/10 | Phase 02 `DONE` | 증분/전체 replay parity |
 | 04 | [`memory_record`](04-memory-record.md) | `TODO` | 0/8 | Phase 03 `DONE` | 안전한 기록 수직 경로 |
@@ -70,11 +70,13 @@ service가 모두 준비된 뒤 시작한다.
    기록한다.
 2. 하나의 작업에는 최종 책임자 한 명만 둔다. 공동 작업자는 PR과 비고에 기록한다.
 3. 같은 PR에서 완료 체크박스, 작업 상태, 증거와 이 문서의 roll-up을 함께 갱신한다.
-4. `DONE` 증거에는 최소 PR 링크와 검증 명령 또는 CI job 링크가 있어야 한다.
+4. `DONE` 증거에는 최소 PR 링크와 재현 가능한 로컬 검증 명령·결과가 있어야 한다.
 5. 체크박스 일부만 끝났으면 상태를 `DONE`으로 바꾸지 않는다.
 6. 후속 작업이 생기면 기존 ID의 의미를 바꾸지 않고 해당 phase의 다음 번호를 발급한다.
 7. 작업 삭제 대신 `CANCELLED`를 새 상태로 만들지 않는다. 필요 없어졌다면 ADR/결정
-   근거와 함께 항목을 남기고 완료 조건에서 제외하는 별도 roadmap PR을 리뷰한다.
+   근거와 함께 [`retired-tasks.json`](retired-tasks.json)에 영구 tombstone을 남기고,
+   active 표·의존성·완료율에서 제외하는 별도 roadmap PR을 리뷰한다. retired ID는 다시
+   active 작업이나 새 의미에 사용하지 않는다.
 
 GitHub Issue와 PR은 실행 기록이고, 이 저장소의 roadmap이 전체 상태의 단일 현황판이다.
 GitHub Project를 쓰더라도 이 문서의 상태를 대체하지 않는다.
@@ -98,16 +100,15 @@ Issue/PR에 두고, roadmap에는 현재 판정과 영속적인 증거만 남긴
 
 ## 로드맵 검증
 
-문서를 갱신한 PR은 다음 구조 검사를 실행한다. Phase 01의 FND-006에서 이 명령을 필수
-CI로 연결한다.
+문서를 갱신한 PR은 다음 구조 검사를 로컬에서 실행하고 결과를 PR에 남긴다.
 
 ```bash
 python3 docs/roadmap/validate.py
 ```
 
-검사는 작업 수와 ID, 현황/상세 상태 일치, owner와 체크박스, 의존성 cycle, 문서 링크,
-ADR 17개·scenario 24개 추적성, 제품 작업 67개의 evidence-gap 감사와 상위 진행률을 함께
-확인한다.
+검사는 active/retired 작업 수와 안정적인 ID, 현황/상세 상태 일치, owner와 체크박스,
+retired dependency와 의존성 cycle, 문서 링크, ADR 17개·scenario 24개 추적성, historical
+제품 ID 67개(66 active + 1 retired)의 evidence-gap 감사와 상위 진행률을 함께 확인한다.
 
 ## 공통 Definition of Done
 
@@ -120,7 +121,7 @@ ADR 17개·scenario 24개 추적성, 제품 작업 67개의 evidence-gap 감사�
 - [ ] scope 누출, 비밀값 echo와 journal/projection 부분 commit이 없다.
 - [ ] 사용자·운영자가 알아야 할 변경을 문서화한다.
 - [ ] reviewer가 완료 체크와 증거를 확인했다.
-- [ ] PR이 `main`에 병합됐고 CI가 통과했다.
+- [ ] PR이 `main`에 병합됐고 작업 문서의 필수 로컬 검증이 통과했다.
 
 ## ADR 변경과 blocker 처리
 
@@ -149,4 +150,6 @@ GitHub handle로 적고 미정이면 `unassigned`를 쓴다.
 - [behavior scenario matrix](../../spikes/adr-behavior/scenario-matrix.json)
 - [ADR·spike 추적성 표](traceability.md)
 - [기존 증거와 production 잔여 gate 감사](evidence-audit.md)
+- [범위에서 제외된 작업 registry](retired-tasks.json)
+- [FND-006 CI 작업 범위 제외 결정](../implementation/fnd-006-ci-retirement.md)
 - [로드맵 자체 리뷰](review.md)

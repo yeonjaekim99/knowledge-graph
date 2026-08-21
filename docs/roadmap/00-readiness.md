@@ -84,7 +84,7 @@
 
 완료 체크:
 
-- [x] phase 의존성과 67개 제품 작업에 안정적인 ID를 부여했다.
+- [x] phase 의존성과 historical 제품 ID 67개에 안정적인 ID를 부여했다.
 - [x] 모든 작업에 owner, 상태, ADR, 선행 조건, 완료 체크와 증거 필드를 정의했다.
 - [x] ADR-001~017과 spike 잔여 gate의 추적성 리뷰가 통과했다.
 - [x] 자체 리뷰와 검증을 거친 roadmap PR #3이 `main`에 병합됐다.
@@ -124,11 +124,12 @@
 
 완료 체크:
 
-- [x] 67개 제품 작업 각각에 기존 baseline과 남은 production gate를 기록했다.
+- [x] historical 제품 ID 67개 각각에 기존 baseline과 남은 production gate를 기록했다.
 - [x] 감사 완료 `[x]`가 제품 task `DONE`이나 진행률을 뜻하지 않음을 명시했다.
 - [x] 각 phase에서 해당 evidence audit로 진입할 수 있고 FND-001 중복 표현을 바로잡았다.
 - [x] `AGENTS.md`가 작업 제안 전 ADR·spike 증거와 production gap 대조를 강제한다.
-- [x] roadmap validator가 67개 audit 행의 누락·중복과 phase 진입 링크를 검증한다.
+- [x] roadmap validator가 historical 제품 ID 67개 audit 행의 누락·중복과 phase 진입 링크를
+      검증한다.
 - [x] 정합성 감사 PR #5가 `main`에 병합됐다.
 
 증거:

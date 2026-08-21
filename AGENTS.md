@@ -17,6 +17,8 @@
 - [evidence-gap audit](docs/roadmap/evidence-audit.md)는 각 제품 작업에서 이미 검증된
   baseline과 production에 남은 gate를 구분한다. `[x]`는 감사 완료이지 제품 구현 완료가
   아니다.
+- [retired task registry](docs/roadmap/retired-tasks.json)는 active 범위에서 제외된 안정적
+  작업 ID의 영구 기록이다. 해당 ID를 다시 사용하거나 선행 작업으로 연결하지 않는다.
 - 현재 작업 상태나 다음 작업 ID를 이 파일에 고정하지 않는다. 항상 roadmap에서 읽는다.
 
 ## 모든 작업을 시작할 때
@@ -82,8 +84,8 @@ python3 docs/roadmap/validate.py
   commit 가능성과 문서-코드 불일치를 확인한다.
 - commit은 한 가지 검토 가능한 의도를 담고, 본문에 이유·핵심 변경·검증을 남긴다.
 - PR에는 작업 ID, 범위, ADR, 검증 결과, roadmap 변경과 남은 위험을 적는다.
-- PR을 올린 뒤 CI와 unresolved review thread를 확인한다. 해결하지 못한 지적은 숨기지
-  말고 blocker 또는 후속 작업으로 기록한다.
+- PR을 올린 뒤 작업 문서의 필수 로컬 검증 결과와 unresolved review thread를 확인한다.
+  해결하지 못한 지적은 숨기지 말고 blocker 또는 후속 작업으로 기록한다.
 - merge까지 요청된 작업은 PR을 review 가능한 상태로 전환하고 merge한 뒤 `main`으로
   이동해 `git pull --ff-only origin main`으로 동기화한다.
 - 다른 agent가 이어받을 때는 작업 ID, 현재 branch/PR, 마지막 정상 검증, 변경 경로와

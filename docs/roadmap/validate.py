@@ -3,6 +3,8 @@
 
 from __future__ import annotations
 
+import datetime as dt
+import json
 import re
 import sys
 from pathlib import Path
@@ -10,7 +12,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 ROADMAP = ROOT / "docs" / "roadmap"
-EXPECTED = {
+EXPECTED_HISTORY = {
     "RDY": 7,
     "FND": 7,
     "STO": 8,
@@ -22,6 +24,7 @@ EXPECTED = {
     "REL": 10,
 }
 VALID_STATUSES = {"TODO", "IN_PROGRESS", "BLOCKED", "DONE"}
+TASK_ID = re.compile(r"^[A-Z]{3}-\d{3}$")
 TASK_HEADING = re.compile(r"^### ([A-Z]{3}-\d{3}) — (.+)$", re.MULTILINE)
 TASK_ROW = re.compile(r"^\| ([A-Z]{3}-\d{3}) \|.*$", re.MULTILINE)
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^]]+\]\(([^)]+)\)")
@@ -33,6 +36,97 @@ EVIDENCE_MARKER = re.compile(
     r"^- \[([ x])\] `([A-Z]{3}-\d{3})`",
     re.MULTILINE,
 )
+RETIRED_TASKS_PATH = ROADMAP / "retired-tasks.json"
+RETIRED_TASK_KEYS = {
+    "id",
+    "title",
+    "retired_on",
+    "decision",
+    "reason",
+    "replacement_tasks",
+}
+
+
+def load_retired_tasks(errors: list[str]) -> dict[str, dict[str, object]]:
+    if not RETIRED_TASKS_PATH.is_file():
+        errors.append("missing retired task registry")
+        return {}
+
+    try:
+        payload = json.loads(RETIRED_TASKS_PATH.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        errors.append(f"invalid retired task registry: {error}")
+        return {}
+
+    if not isinstance(payload, dict) or set(payload) != {"schema_version", "tasks"}:
+        errors.append("retired task registry must contain schema_version and tasks only")
+        return {}
+    if payload["schema_version"] != 1:
+        errors.append("retired task registry schema_version must be 1")
+    if not isinstance(payload["tasks"], list):
+        errors.append("retired task registry tasks must be an array")
+        return {}
+
+    retired: dict[str, dict[str, object]] = {}
+    for index, item in enumerate(payload["tasks"]):
+        label = f"retired task #{index + 1}"
+        if not isinstance(item, dict) or set(item) != RETIRED_TASK_KEYS:
+            errors.append(f"{label}: fields must be {sorted(RETIRED_TASK_KEYS)}")
+            continue
+
+        task_id = item["id"]
+        if not isinstance(task_id, str) or not TASK_ID.fullmatch(task_id):
+            errors.append(f"{label}: invalid task ID {task_id!r}")
+            continue
+        if task_id in retired:
+            errors.append(f"duplicate retired task ID: {task_id}")
+            continue
+
+        for field in ("title", "reason"):
+            if not isinstance(item[field], str) or not item[field].strip():
+                errors.append(f"{task_id}: retired {field} must be non-empty text")
+
+        retired_on = item["retired_on"]
+        try:
+            if not isinstance(retired_on, str):
+                raise ValueError
+            dt.date.fromisoformat(retired_on)
+        except ValueError:
+            errors.append(f"{task_id}: retired_on must be an ISO date")
+
+        decision = item["decision"]
+        if not isinstance(decision, str) or not decision.endswith(".md"):
+            errors.append(f"{task_id}: decision must point to a Markdown file")
+        else:
+            decision_path = (RETIRED_TASKS_PATH.parent / decision).resolve()
+            if not decision_path.is_relative_to(ROOT):
+                errors.append(f"{task_id}: decision escapes repository root")
+            elif not decision_path.is_file():
+                errors.append(f"{task_id}: missing retirement decision {decision}")
+            else:
+                decision_text = decision_path.read_text(encoding="utf-8")
+                if "- 상태: Accepted" not in decision_text:
+                    errors.append(f"{task_id}: retirement decision is not Accepted")
+                if f"- 원래 작업: {task_id}" not in decision_text:
+                    errors.append(f"{task_id}: retirement decision does not bind its ID")
+
+        replacements = item["replacement_tasks"]
+        if (
+            not isinstance(replacements, list)
+            or not replacements
+            or not all(
+                isinstance(replacement, str) and TASK_ID.fullmatch(replacement)
+                for replacement in replacements
+            )
+            or len(replacements) != len(set(replacements))
+        ):
+            errors.append(
+                f"{task_id}: replacement_tasks must be unique task IDs in a non-empty array"
+            )
+
+        retired[task_id] = item
+
+    return retired
 
 
 def expand_task_references(value: str) -> set[str]:
@@ -71,6 +165,8 @@ def task_blocks(text: str) -> dict[str, str]:
 
 def main() -> int:
     errors: list[str] = []
+    retired_tasks = load_retired_tasks(errors)
+    retired_ids = set(retired_tasks)
     phase_files = sorted(ROADMAP.glob("[0-9][0-9]-*.md"))
     all_ids: set[str] = set()
     dependency_graph: dict[str, set[str]] = {}
@@ -102,11 +198,40 @@ def main() -> int:
             all_ids.add(task_id)
         parsed.append((path, text, rows, blocks))
 
-    for prefix, expected_count in EXPECTED.items():
-        actual = sorted(task_id for task_id in all_ids if task_id.startswith(prefix + "-"))
+    active_retired_overlap = all_ids & retired_ids
+    if active_retired_overlap:
+        errors.append(
+            f"retired task IDs reused as active tasks: {sorted(active_retired_overlap)}"
+        )
+
+    historical_ids = all_ids | retired_ids
+    for prefix, expected_count in EXPECTED_HISTORY.items():
+        actual = sorted(
+            task_id
+            for task_id in historical_ids
+            if task_id.startswith(prefix + "-")
+        )
         expected_ids = [f"{prefix}-{number:03d}" for number in range(1, expected_count + 1)]
         if actual != expected_ids:
-            errors.append(f"{prefix}: expected {expected_ids}, found {actual}")
+            errors.append(f"{prefix}: expected historical IDs {expected_ids}, found {actual}")
+
+    phase_text = "\n".join(text for _, text, _, _ in parsed)
+    for task_id, retired_task in retired_tasks.items():
+        marker = f"- `{task_id}` —"
+        if phase_text.count(marker) != 1:
+            errors.append(
+                f"{task_id}: expected exactly one human-readable retirement tombstone"
+            )
+        replacements = retired_task.get("replacement_tasks", [])
+        if isinstance(replacements, list) and all(
+            isinstance(replacement, str) and TASK_ID.fullmatch(replacement)
+            for replacement in replacements
+        ):
+            unknown_replacements = set(replacements) - all_ids
+            if unknown_replacements:
+                errors.append(
+                    f"{task_id}: unknown replacement tasks {sorted(unknown_replacements)}"
+                )
 
     dependency_graph = {task_id: set() for task_id in all_ids}
     for path, text, rows, blocks in parsed:
@@ -177,7 +302,12 @@ def main() -> int:
                 phase_summaries[path.name[:2]] = (phase_status.group(1), done, total)
 
     for task_id, dependencies in dependency_graph.items():
-        unknown = dependencies - all_ids
+        retired_dependencies = dependencies & retired_ids
+        if retired_dependencies:
+            errors.append(
+                f"{task_id}: depends on retired tasks {sorted(retired_dependencies)}"
+            )
+        unknown = dependencies - historical_ids
         if unknown:
             errors.append(f"{task_id}: unknown dependencies {sorted(unknown)}")
 
@@ -208,24 +338,43 @@ def main() -> int:
         evidence_text = evidence_path.read_text(encoding="utf-8")
         evidence_rows = EVIDENCE_ROW.findall(evidence_text)
         evidence_ids = [task_id for task_id, _, _ in evidence_rows]
+        evidence_by_id = {
+            task_id: {"baseline": baseline, "production": production}
+            for task_id, baseline, production in evidence_rows
+        }
         evidence_markers = EVIDENCE_MARKER.findall(evidence_text)
-        product_ids = sorted(
+        active_product_ids = sorted(
             task_id for task_id in all_ids if not task_id.startswith("RDY-")
+        )
+        historical_product_ids = sorted(
+            task_id
+            for task_id in historical_ids
+            if not task_id.startswith("RDY-")
         )
         if len(evidence_markers) != len(evidence_rows):
             errors.append("evidence audit has unchecked or malformed task rows")
         if len(evidence_ids) != len(set(evidence_ids)):
             errors.append("evidence audit has duplicate task rows")
-        if sorted(evidence_ids) != product_ids:
+        if sorted(evidence_ids) != historical_product_ids:
             errors.append(
                 "evidence audit task mismatch "
-                f"{sorted(set(evidence_ids) ^ set(product_ids))}"
+                f"{sorted(set(evidence_ids) ^ set(historical_product_ids))}"
             )
+        for task_id, retired_task in retired_tasks.items():
+            if task_id.startswith("RDY-"):
+                continue
+            production_evidence = evidence_by_id.get(task_id, {}).get("production", "")
+            decision = retired_task.get("decision")
+            if "범위에서 제외" not in production_evidence:
+                errors.append(f"{task_id}: evidence audit lacks retirement rationale")
+            if isinstance(decision, str) and decision not in production_evidence:
+                errors.append(f"{task_id}: evidence audit lacks retirement decision link")
         audited_product_done = sum(
-            task_statuses[task_id] == "DONE" for task_id in product_ids
+            task_statuses[task_id] == "DONE" for task_id in active_product_ids
         )
         completion_boundary = (
-            f"제품 작업 완료 수는 현재 {audited_product_done}/{len(product_ids)}이다"
+            "active 제품 작업 완료 수는 현재 "
+            f"{audited_product_done}/{len(active_product_ids)}이다"
         )
         if completion_boundary not in evidence_text:
             errors.append("evidence audit must preserve the product completion boundary")
@@ -253,6 +402,7 @@ def main() -> int:
             "roadmap link": "[구현 로드맵](docs/roadmap/README.md)",
             "spike link": "[behavior spike](spikes/adr-behavior/README.md)",
             "evidence audit link": "[evidence-gap audit](docs/roadmap/evidence-audit.md)",
+            "retired task registry link": "[retired task registry](docs/roadmap/retired-tasks.json)",
             "roadmap validation command": "python3 docs/roadmap/validate.py",
             "four-state workflow": "`TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`",
             "journal invariant": "journal은 append-only",
@@ -348,20 +498,36 @@ def main() -> int:
 
     print(f"phase_files={len(phase_files)}")
     print(
-        f"tasks={len(all_ids)} readiness="
+        f"active_tasks={len(all_ids)} historical_tasks={len(historical_ids)} "
+        f"retired_tasks={len(retired_ids)} readiness="
         f"{sum(task_id.startswith('RDY-') for task_id in all_ids)} "
         f"product={product_count}"
     )
     print(
-        "by_prefix="
+        "active_by_prefix="
         + ", ".join(
             f"{prefix}:{sum(task_id.startswith(prefix + '-') for task_id in all_ids)}"
-            for prefix in EXPECTED
+            for prefix in EXPECTED_HISTORY
+        )
+    )
+    print(
+        "retired_by_prefix="
+        + ", ".join(
+            f"{prefix}:{sum(task_id.startswith(prefix + '-') for task_id in retired_ids)}"
+            for prefix in EXPECTED_HISTORY
         )
     )
     print(f"local_and_external_links_parsed={link_count}")
     print("adr_trace=17/17 scenario_trace=24/24")
-    print(f"evidence_gap_audit={len(EVIDENCE_ROW.findall(evidence_text))}/67")
+    historical_product_count = sum(
+        not task_id.startswith("RDY-") for task_id in historical_ids
+    )
+    print(
+        "evidence_gap_audit="
+        f"{len(EVIDENCE_ROW.findall(evidence_text))}/{historical_product_count} "
+        f"active_product={product_count} retired_product="
+        f"{historical_product_count - product_count}"
+    )
 
     if errors:
         print("roadmap_audit=FAIL", file=sys.stderr)

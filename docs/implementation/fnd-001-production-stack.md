@@ -21,8 +21,8 @@ server package를 사용한다.
 | SQLite driver | `better-sqlite3@13.0.3` | bundled SQLite `3.53.4`를 검증 |
 
 직접 dependency는 range 없이 exact version으로 선언하고 `pnpm-lock.yaml`을 commit한다.
-설치와 CI는 `pnpm install --frozen-lockfile`을 사용한다. lockfile 변경은 dependency upgrade
-PR에서만 허용한다.
+설치와 필수 로컬 검증은 `pnpm install --frozen-lockfile`을 사용한다. lockfile 변경은
+dependency upgrade PR에서만 허용한다.
 
 ## 선택 이유
 
@@ -90,8 +90,8 @@ bundle 안에 native addon을 넣지 않는다. x86 32-bit,
 FreeBSD와 표에 없는 target은 v1 지원 밖이며 source compile로 조용히 우회하지 않고 설치
 또는 startup을 실패시킨다. DB 파일은 ADR-005에 따라 local filesystem에만 둔다.
 
-FND-006 CI는 최소 Linux x64에서 매 PR probe를 실행하고, release packaging을 다루는
-REL-009는 지원 OS/architecture별 설치·기동을 다시 검증한다.
+FND-005의 로컬 foundation suite는 최소 Linux x64에서 stack probe를 재현하고, release
+packaging을 다루는 REL-009는 지원 OS/architecture별 설치·기동을 다시 검증한다.
 
 ## 대안
 

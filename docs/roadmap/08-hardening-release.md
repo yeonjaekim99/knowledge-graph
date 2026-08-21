@@ -41,7 +41,8 @@
 - [ ] 고정 seed/clock으로 10만 event와 10만 active claim 조건을 각각 재현한다.
 - [ ] 한국어·영어, literal/entity, raw-only, TTL, conflict, hub와 다중 support를 포함한다.
 - [ ] merge/alias/retraction/reinterpret 비율과 기대 row/metric checksum을 manifest에 기록한다.
-- [ ] fixture 생성 시간은 benchmark에서 제외하고 DB artifact는 release asset 또는 CI cache로 관리한다.
+- [ ] fixture 생성 시간은 benchmark에서 제외하고 DB artifact는 재현 가능한 로컬 임시
+      경로나 release asset으로 관리한다.
 - [ ] 개인·비밀 데이터 없이 checksum이 같은 fixture를 깨끗한 환경에서 다시 만든다.
 
 ### REL-002 — replay·startup 성능 gate
@@ -186,11 +187,13 @@
 
 완료 체크:
 
-- [ ] ADR-001~017의 모든 Validation 항목이 test/CI/report/수동 증거 하나 이상과 연결된다.
+- [ ] ADR-001~017의 모든 Validation 항목이 test/로컬 검증/report/수동 증거 하나 이상과
+      연결된다.
 - [ ] S01~S24, crash/adversarial, contract, agent, 성능과 restore gate가 release commit에서 통과한다.
 - [ ] open `BLOCKED`, 설명 없는 golden diff, 고위험 agent error와 secret leak가 0건이다.
 - [ ] Deferred 항목은 trigger 충족 여부와 미도입 근거가 기록돼 있다.
-- [ ] roadmap의 67개 제품 작업이 DONE이고 owner·PR·검증 증거가 main에 있다.
+- [ ] roadmap의 active 제품 작업 66개가 DONE이고 owner·PR·검증 증거가 main에 있으며,
+      retired stable ID 1개의 범위 제외 결정도 추적된다.
 - [ ] version/tag, changelog, 운영자 승인과 rollback 기준이 기록됐다.
 
 ## Phase 종료 체크

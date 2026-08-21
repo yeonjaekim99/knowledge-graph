@@ -160,7 +160,7 @@ runtime 작성 경험은 좋지만 생성된 JSON Schema가 2차 산출물이 �
 - REV-001: action별 `MemoryReviseInput`, `ReviseResult` 실제 판별 union
 - MCP-003: 세 tool의 catalog `inputSchema`/`outputSchema`, response serializer와 실제
   `structuredContent` wiring
-- FND-005/006: 전체 test 계층, schema·문서 drift를 포함한 필수 CI
+- FND-005: 전체 로컬 test 계층과 schema·문서 drift 검증
 
 FND-004 capability fixture는 foundation 선택을 검증할 뿐 제품 DTO가 아니며, production
 코드에서 import하지 않는다.
