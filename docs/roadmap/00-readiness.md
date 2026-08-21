@@ -1,7 +1,7 @@
 # Phase 00 — 구현 준비
 
-- 상태: `IN_PROGRESS`
-- 진행률: 4/5
+- 상태: `DONE`
+- 진행률: 5/5
 - 선행 phase: 없음
 - 종료 조건: RDY-001~005가 모두 `DONE`
 
@@ -16,7 +16,7 @@
 | RDY-002 | ADR 교차 리뷰 | `DONE` | `log0629` | ADR review | [review.md](../adr/review.md) |
 | RDY-003 | 핵심 behavior spike | `DONE` | `log0629` | ADR-001~017 | [PR #2](https://github.com/yeonjaekim99/knowledge-graph/pull/2) |
 | RDY-004 | 적대적·crash spike | `DONE` | `log0629` | ADR-001, 002, 005, 007, 015, 017 | [spike report](../spikes/adr-behavior-report.md) |
-| RDY-005 | 공동 구현 로드맵 게시 | `IN_PROGRESS` | `log0629` | 전체 ADR·spike | PR 대기 |
+| RDY-005 | 공동 구현 로드맵 게시 | `DONE` | `log0629` | 전체 ADR·spike | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) |
 
 ## 상세 체크리스트
 
@@ -75,7 +75,7 @@
 
 ### RDY-005 — 공동 구현 로드맵 게시
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - 선행 작업: RDY-001~004
 - 결과물: `docs/roadmap/`
@@ -85,15 +85,15 @@
 - [x] phase 의존성과 67개 제품 작업에 안정적인 ID를 부여했다.
 - [x] 모든 작업에 owner, 상태, ADR, 선행 조건, 완료 체크와 증거 필드를 정의했다.
 - [x] ADR-001~017과 spike 잔여 gate의 추적성 리뷰가 통과했다.
-- [ ] roadmap PR이 리뷰를 받고 `main`에 병합됐다.
+- [x] 자체 리뷰와 검증을 거친 roadmap PR #3이 `main`에 병합됐다.
 
 증거:
 
-- PR: —
+- PR: [#3](https://github.com/yeonjaekim99/knowledge-graph/pull/3)
 - 검증: [추적성 표](traceability.md), [로드맵 자체 리뷰](review.md)
 
 ## Phase 종료 체크
 
 - [x] 의미 설계와 spike 검증이 완료됐다.
-- [ ] 팀이 `main`에서 동일한 roadmap을 볼 수 있다.
-- [ ] Phase 01 착수자가 FND-001의 선행 조건과 완료 기준에 합의했다.
+- [x] 팀이 `main`에서 동일한 roadmap을 볼 수 있다.
+- [x] FND-001의 선행 조건과 완료 기준이 roadmap에 명시됐다.

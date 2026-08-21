@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-21
 - 대상: `docs/roadmap/`과 root README 진입 링크
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토. RDY-005의 팀 PR 리뷰·main 병합을 대체하지 않음
-- 결과: **문서 구조와 추적성 통과 · 차단 결함 0개 · 게시 절차만 남음**
+- 성격: 작성자 자체 교차 검토와 PR #3 게시 검증
+- 결과: **문서 구조와 추적성 통과 · 차단 결함 0개 · main 게시 완료**
 
 ## 검토 결과
 
@@ -16,7 +16,7 @@
 | spike coverage | 통과 | S01~S24 모두 production 회귀 소유 작업에 연결 |
 | 협업 상태 모델 | 통과 | stable ID, 단일 owner, 네 상태, blocker와 PR evidence 규칙 명시 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | 제품 구현 0/67, RDY-005는 PR 병합 전이라 IN_PROGRESS 유지 |
+| 현재 상태 정확성 | 통과 | 제품 구현 0/67, RDY-005와 Phase 00은 PR #3 병합으로 DONE |
 
 ## 중점 검토와 반영 사항
 
@@ -35,13 +35,14 @@
 
 ## 의도적으로 남은 상태
 
-- RDY-005의 roadmap PR 리뷰와 `main` 병합은 아직 실행하지 않았다. 따라서 Phase 00과
-  전체 현황은 `IN_PROGRESS`, 4/5와 4/72가 맞다.
+- [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3)으로 roadmap을 `main`에
+  게시했으며 Phase 00은 5/5로 종료됐다.
 - FND-001의 production 언어/runtime/SQLite driver/MCP SDK 선택은 구현 결정이다. 이
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 모든 제품 task owner는 실제 planning 전까지 `unassigned`다. 임의 담당자를 문서에
   넣지 않았다.
-- 외부 peer review가 새 문제를 찾으면 RDY-005를 완료하기 전에 수정한다.
+- 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
+  반영한다.
 
 ## 이번 자체 검증 결과
 
