@@ -20,15 +20,18 @@
     "build": "tsc -p tsconfig.json",
     "check:architecture": "node scripts/check-module-boundaries.mjs",
     "test:fnd-002": "node --test test/foundation/module-boundaries.test.mjs",
+    "test:fnd-003": "node --test test/foundation/runtime-boundaries.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
-    "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002"
+    "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002",
+    "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
     "better-sqlite3": "13.0.3"
   },
   "devDependencies": {
+    "@types/node": "24.13.3",
     "typescript": "7.0.2"
   }
 }
