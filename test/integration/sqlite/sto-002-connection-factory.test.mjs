@@ -129,6 +129,10 @@ test("a reader verifies existing WAL mode and fails closed before writer bootstr
 
   const factory = await createSqliteConnectionFactory(readiness);
   try {
+    await assert.rejects(
+      createSqliteConnectionFactory(readiness),
+      connectionError("WRITER_ALREADY_ACTIVE"),
+    );
     const reader = await openSqliteReader(readiness);
     try {
       assert.equal(reader.configuration.journalMode, "wal");
@@ -138,6 +142,10 @@ test("a reader verifies existing WAL mode and fails closed before writer bootstr
   } finally {
     await factory.close();
   }
+
+  const reopenedFactory = await createSqliteConnectionFactory(readiness);
+  assert.equal(reopenedFactory.writerConfiguration.journalMode, "wal");
+  await reopenedFactory.close();
 });
 
 test("the FIFO queue commits complete transactions, rolls failures back, and remains usable", async (t) => {
@@ -182,6 +190,18 @@ test("the FIFO queue commits complete transactions, rolls failures back, and rem
       assert.doesNotMatch(error.message, /queue_probe|queued-1|UNIQUE|private/u);
       return true;
     },
+  );
+
+  await assert.rejects(
+    factory.enqueueWriteTransaction([
+      {
+        kind: "run",
+        sql: "INSERT INTO queue_probe(position, marker) VALUES (?, ?)",
+        parameters: [4, "manual-commit-must-roll-back"],
+      },
+      { kind: "exec", sql: "/* adapter owns this boundary */ COMMIT" },
+    ]),
+    connectionError("INVALID_TRANSACTION_PROGRAM"),
   );
 
   await factory.enqueueWriteTransaction([
@@ -304,8 +324,9 @@ test("close drains accepted writes, closes readers, and rejects new work", async
   const acceptedWrite = factory.enqueueWriteTransaction([
     {
       kind: "exec",
-      sql: "CREATE TABLE close_probe(value INTEGER NOT NULL); INSERT INTO close_probe VALUES (1)",
+      sql: "CREATE TABLE close_probe(value INTEGER NOT NULL)",
     },
+    { kind: "run", sql: "INSERT INTO close_probe VALUES (?)", parameters: [1] },
   ]);
   const closing = factory.close();
 

@@ -4,6 +4,37 @@ import type {
 } from "../../application/ports/journal-commit-port.js";
 
 export {
+  createSqliteConnectionFactory,
+  openSqliteReader,
+} from "./connection-factory.js";
+export type {
+  SqliteConnectionFactory,
+  SqliteReaderConnection,
+} from "./connection-factory.js";
+export {
+  SQLITE_CONNECTION_POLICY,
+  SqliteBusyError,
+  SqliteConnectionError,
+} from "./connection-protocol.js";
+export type {
+  SqliteAllCommand,
+  SqliteAllResult,
+  SqliteBinding,
+  SqliteCommandResult,
+  SqliteConnectionErrorCode,
+  SqliteConnectionPolicy,
+  SqliteExecCommand,
+  SqliteExecResult,
+  SqliteGetCommand,
+  SqliteGetResult,
+  SqliteReadQuery,
+  SqliteReadResult,
+  SqliteRunCommand,
+  SqliteRunResult,
+  SqliteTransactionCommand,
+} from "./connection-protocol.js";
+
+export {
   RECALL_DB_PATH_ENV,
   SQLITE_STORAGE_PERMISSIONS,
   SqliteStartupError,
@@ -25,9 +56,9 @@ export type {
 } from "./startup-gate.js";
 
 /**
- * STO-002/STO-007 supply the worker, connection, and transaction implementation.
- * Keeping that executor behind this adapter preserves an asynchronous application
- * port even though better-sqlite3 itself is synchronous.
+ * STO-002 supplies the worker-backed transaction queue. STO-007 supplies the
+ * concrete append/project executor that runs on it. The application port remains
+ * asynchronous even though better-sqlite3 is synchronous inside its worker.
  */
 export interface SqliteAtomicJournalExecutor<Intent, Receipt> {
   execute(events: NonEmptyReadonlyArray<Intent>): Promise<Receipt>;
