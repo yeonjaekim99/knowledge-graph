@@ -143,8 +143,9 @@
 - PR: [#11](https://github.com/yeonjaekim99/knowledge-graph/pull/11)
 - 검증: `pnpm verify:fnd-005` 42 tests, `python3 docs/roadmap/validate.py`, behavior
   spike 25 tests, 깨끗한 `git archive` 설치·검증, `pnpm audit --prod`
-- 범위 경계: S01~S24 target은 모두 `planned`다. 실제 SQLite·projector·MCP·process·성능
-  동작과 test는 manifest에 지정된 후속 제품 작업이 소유한다.
+- 범위 경계: FND-005 완료 당시 S01~S24 target은 모두 `planned`였다. 이후 실제
+  SQLite·projector·MCP·process·성능 동작은 manifest가 지정한 owner 작업만 `implemented`로
+  전환하며 현재 상태는 manifest가 소유한다.
 
 ### FND-007 — 개발자 bootstrap과 기여 문서
 

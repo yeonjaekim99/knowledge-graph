@@ -34,12 +34,13 @@
 | `E-TEST` | [PR #11](https://github.com/yeonjaekim99/knowledge-graph/pull/11), [로컬 TDD 테스트 전략](../implementation/fnd-005-test-strategy.md), [테스트 계층](../../test/README.md) | 7개 계층, 고정 실행 문맥, S01~S24 production 이전 manifest와 증분/full replay canonical parity harness | 실제 SQLite/projector/MCP/process 동작과 10만 규모 test는 각 후속 owner 작업이 구현 |
 | `E-BOOTSTRAP` | [PR #12](https://github.com/yeonjaekim99/knowledge-graph/pull/12), [기여 가이드](../../CONTRIBUTING.md), [README 빠른 시작](../../README.md#빠른-시작) | exact runtime과 frozen install, 로컬 TDD·검증·PR 흐름, 안전한 scratch DB 경계와 clean source 재현 | DB startup과 scope config는 별도 production evidence가 소유하고 지원 target packaging은 REL-009가 구현 |
 | `E-SQLITE-STARTUP` | [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13), [storage 운영 계약](../operations/storage.md), [integration test](../../test/integration/sqlite/sto-001-startup-gate.test.mjs) | 실제 file DB의 절대 경로·local filesystem·권한 gate와 FTS5/trigram/JSON/unixepoch fail-closed readiness | WAL/queue, migration, 영구 schema, scope와 MCP tool 조립은 후속 작업 |
-| `E-SQLITE-CONNECTION` | [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14), [connection/queue 구현 결정](../implementation/sto-002-sqlite-connections.md), [integration test](../../test/integration/sqlite/sto-002-connection-factory.test.mjs) | worker-backed writer/readers, WAL·PRAGMA 검증, FIFO `BEGIN IMMEDIATE`, 실제 5초 busy·reader/event-loop 진행과 safe typed error | append는 `E-JOURNAL-APPEND`, projector transaction과 8-client/process recovery는 후속 작업 |
-| `E-SQLITE-MIGRATION` | [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15), [migration runner 구현 결정](../implementation/sto-003-sqlite-migrations.md), [integration test](../../test/integration/sqlite/sto-003-migration-runner.test.mjs), [process test](../../test/e2e/process/sto-003-migration-crash-reopen.test.mjs) | exact-byte checksum, version/name history, 단일 writer transaction, 정상·hard-exit reopen과 safe typed error | 최초 v1 schema와 startup wiring, journal/projector 전체 crash·동시성은 후속 작업 |
-| `E-SQLITE-SCHEMA` | [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16), [v1 schema 구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [migration SQL](../../src/adapters/sqlite/migrations/001-v1-schema.sql), [integration test](../../test/integration/sqlite/sto-004-v1-schema.test.mjs) | exact-byte bundled v1 DDL, contentless trigram FTS·rebuild, 한국어 경계, partial unique/XOR/CHECK/FK 실패와 `foreign_key_check` | append는 `E-JOURNAL-APPEND`, recovery·projector/recall query와 MCP startup 조립은 후속 작업 |
+| `E-SQLITE-CONNECTION` | [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14), [connection/queue 구현 결정](../implementation/sto-002-sqlite-connections.md), [integration test](../../test/integration/sqlite/sto-002-connection-factory.test.mjs) | worker-backed writer/readers, WAL·PRAGMA 검증, FIFO `BEGIN IMMEDIATE`, 실제 5초 busy·reader/event-loop 진행과 safe typed error | append는 `E-JOURNAL-APPEND`, WAL 8-client/recovery는 `E-STORAGE-RECOVERY`; projector transaction과 실제 MCP load는 후속 작업 |
+| `E-SQLITE-MIGRATION` | [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15), [migration runner 구현 결정](../implementation/sto-003-sqlite-migrations.md), [integration test](../../test/integration/sqlite/sto-003-migration-runner.test.mjs), [process test](../../test/e2e/process/sto-003-migration-crash-reopen.test.mjs) | exact-byte checksum, version/name history, 단일 writer transaction, 정상·hard-exit reopen과 safe typed error | journal/FTS recovery는 `E-STORAGE-RECOVERY`; MCP startup wiring과 journal+projection 전체 crash는 후속 작업 |
+| `E-SQLITE-SCHEMA` | [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16), [v1 schema 구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [migration SQL](../../src/adapters/sqlite/migrations/001-v1-schema.sql), [integration test](../../test/integration/sqlite/sto-004-v1-schema.test.mjs) | exact-byte bundled v1 DDL, contentless trigram FTS·rebuild, 한국어 경계, partial unique/XOR/CHECK/FK 실패와 `foreign_key_check` | append는 `E-JOURNAL-APPEND`, recovery는 `E-STORAGE-RECOVERY`; projector/recall query와 MCP startup 조립은 후속 작업 |
 | `E-TRUSTED-SCOPE` | [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17), [scope 구현 결정](../implementation/sto-005-scope-resolver.md), [scope 운영 계약](../operations/scope.md), [foundation test](../../test/foundation/sto-005-scope-provider.test.mjs) | immutable project, explicit local user, authenticated remote principal, exact key·ASCII boundary와 fail-closed/no-fallback provider | journal append 연결은 `E-JOURNAL-APPEND`, actual authentication/tool lifecycle·query predicate와 concurrent request isolation은 후속 작업 |
 | `E-TRUSTED-METADATA` | [PR #18](https://github.com/yeonjaekim99/knowledge-graph/pull/18), [metadata 구현 결정](../implementation/sto-006-runtime-metadata.md), [metadata 운영 계약](../operations/metadata.md), [foundation test](../../test/foundation/sto-006-metadata-provider.test.mjs) | observed actor 정리, symbolic/detached/non-Git branch, optional keyed session correlation과 sanitizer/Git field-local failure | journal append 연결은 `E-JOURNAL-APPEND`; detector/masking, actual MCP request context와 log/DB leak 검증은 후속 작업 |
-| `E-JOURNAL-APPEND` | [PR #19](https://github.com/yeonjaekim99/knowledge-graph/pull/19), [append 구현 결정](../implementation/sto-007-append-only-journal.md), [integration test](../../test/integration/sqlite/sto-007-journal-repository.test.mjs) | canonical event ID 검증, exact envelope 보존, guarded whole-batch INSERT와 UNIQUE retry, statement/FTS rollback, private append-only API | projection 의미·journal+projection 성공 원자성, process crash/reopen·8-client WAL 부하, detector와 public MCP wiring은 후속 작업 |
+| `E-JOURNAL-APPEND` | [PR #19](https://github.com/yeonjaekim99/knowledge-graph/pull/19), [append 구현 결정](../implementation/sto-007-append-only-journal.md), [integration test](../../test/integration/sqlite/sto-007-journal-repository.test.mjs) | canonical event ID 검증, exact envelope 보존, guarded whole-batch INSERT와 UNIQUE retry, statement/FTS rollback, private append-only API | process/WAL recovery는 `E-STORAGE-RECOVERY`; projection 의미·journal+projection 성공 원자성, detector와 public MCP wiring은 후속 작업 |
+| `E-STORAGE-RECOVERY` | [PR #20](https://github.com/yeonjaekim99/knowledge-graph/pull/20), [recovery/concurrency 결정](../implementation/sto-008-storage-recovery-concurrency.md), [S20 target](../../test/e2e/process/s20-wal-concurrent-clients.test.mjs), [crash/reopen test](../../test/e2e/process/sto-008-journal-crash-reopen.test.mjs) | IPC hard exit의 old/complete-new journal·FTS, migration/FK/seq/ID reopen, 4 logical writer+4 WAL reader와 재사용 fixture | projection/correct/full replay crash parity, actual MCP load·다중 writer process와 10만 규모는 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -63,7 +64,7 @@
 - [x] `STO-005` | baseline: S09가 두 scope 격리와 cross-scope ID 차단을 확인했고 `E-RUNTIME`이 tool 인자 없는 scope port와 출력 검증을 제공한다. | production: `E-TRUSTED-SCOPE`에서 인증 principal·immutable project config 기반 concrete resolver, explicit local identity와 identity 부재 fail-closed를 완료했다.
 - [x] `STO-006` | baseline: ADR-003/011/016이 actor·branch·session 출처와 마스킹 경계를 확정했고 `E-RUNTIME`이 metadata port와 출력 검증을 제공한다. | production: `E-TRUSTED-METADATA`에서 client 정리, symbolic/detached/non-Git branch, session HMAC과 nullable secret-gate integration을 완료했다.
 - [x] `STO-007` | baseline: S02/S24가 append rollback·seq/ID 연속성과 FTS 원자성을 확인했고 `E-RUNTIME`이 canonical ULID generator를 제공한다. | production: `E-JOURNAL-APPEND`에서 UNIQUE 충돌 whole-batch retry와 append-only journal repository를 실제 transaction으로 완료했다.
-- [x] `STO-008` | baseline: S20/S24가 소규모 동시성·process crash·재개방 oracle을 제공한다. | production: file-backed storage recovery와 Phase 08에서 재사용할 8-client fixture를 만든다.
+- [x] `STO-008` | baseline: S20/S24가 소규모 동시성·process crash·재개방 oracle을 제공한다. | production: `E-STORAGE-RECOVERY`에서 file-backed journal/FTS recovery, S20 WAL target과 Phase 08 재사용 8-client fixture를 완료했다.
 
 ## Phase 03 Projection
 
@@ -137,14 +138,14 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 13/66이다. `FND-001`~`FND-005`, `FND-007`과 `STO-001`~`007`이
+- active 제품 작업 완료 수는 현재 14/66이다. `FND-001`~`FND-005`, `FND-007`과 `STO-001`~`008`이
   production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각 production
   gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6으로 종료됐고 Phase 02는 7/8이다. append-only journal primitive가 완료되어
-  storage recovery·concurrency integration의 `STO-008`이 다음 planning에서 시작할 수 있다.
+- Phase 01은 6/6, Phase 02는 8/8로 종료됐다. 다음 dependency-ready 작업은 Phase 03의 replay
+  입력·출력과 rules version 기반인 `PRJ-001`이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.
