@@ -1,7 +1,7 @@
 # Phase 01 — 개발 기반과 구현 결정
 
 - 상태: `IN_PROGRESS`
-- 진행률: 4/6
+- 진행률: 5/6
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
@@ -19,7 +19,7 @@
 | FND-002 | 제품 모듈과 의존 방향 설계 | `DONE` | `log0629` | FND-001 | [결정·검증](../implementation/fnd-002-module-boundaries.md), [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7) |
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
 | FND-004 | public/domain schema 단일 출처 결정 | `DONE` | `log0629` | FND-001, FND-002 | [결정·검증](../implementation/fnd-004-schema-source.md), [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9) |
-| FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
+| FND-005 | 테스트 계층과 oracle 전략 구축 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-005-test-strategy.md), [PR #11](https://github.com/yeonjaekim99/knowledge-graph/pull/11) |
 | FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~005 | — |
 
 ## 상세 체크리스트
@@ -123,18 +123,28 @@
 
 ### FND-005 — 테스트 계층과 oracle 전략 구축
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `fnd-005-local-tdd`
 - 근거: ADR 전체 Validation, [spike report](../spikes/adr-behavior-report.md)
 - 선행 작업: FND-002
 - 결과물: unit/integration/contract/e2e/performance test 구조
 
 완료 체크:
 
-- [ ] S01~S24를 production black-box fixture로 옮기는 방법을 문서화했다.
-- [ ] incremental prefix와 full replay oracle의 canonical dump 비교 helper가 있다.
-- [ ] 실제 SQLite file, process crash와 MCP contract test를 별도 계층으로 구분했다.
-- [ ] 고정 seed·clock·locale로 실패를 재현할 수 있다.
+- [x] S01~S24를 production black-box fixture로 옮기는 방법을 문서화했다.
+- [x] incremental prefix와 full replay oracle의 canonical dump 비교 helper가 있다.
+- [x] 실제 SQLite file, process crash와 MCP contract test를 별도 계층으로 구분했다.
+- [x] 고정 seed·clock·locale로 실패를 재현할 수 있다.
+
+증거:
+
+- 결정: [로컬 TDD 테스트 계층과 oracle 전략](../implementation/fnd-005-test-strategy.md)
+- PR: [#11](https://github.com/yeonjaekim99/knowledge-graph/pull/11)
+- 검증: `pnpm verify:fnd-005` 42 tests, `python3 docs/roadmap/validate.py`, behavior
+  spike 25 tests, 깨끗한 `git archive` 설치·검증, `pnpm audit --prod`
+- 범위 경계: S01~S24 target은 모두 `planned`다. 실제 SQLite·projector·MCP·process·성능
+  동작과 test는 manifest에 지정된 후속 제품 작업이 소유한다.
 
 ### FND-007 — 개발자 bootstrap과 기여 문서
 

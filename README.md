@@ -21,4 +21,5 @@
 - [FND-002 제품 모듈과 의존 방향](docs/implementation/fnd-002-module-boundaries.md)
 - [FND-003 결정적 runtime 경계](docs/implementation/fnd-003-runtime-boundaries.md)
 - [FND-004 public/domain schema 단일 출처](docs/implementation/fnd-004-schema-source.md)
+- [FND-005 로컬 TDD 테스트 전략](docs/implementation/fnd-005-test-strategy.md)
 - [FND-006 CI 작업 범위 제외 결정](docs/implementation/fnd-006-ci-retirement.md)

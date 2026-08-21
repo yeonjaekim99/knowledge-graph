@@ -19,6 +19,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "check:architecture": "node scripts/check-module-boundaries.mjs",
+    "test": "pnpm run build && node scripts/run-test-layers.mjs fast",
+    "test:foundation": "pnpm run build && node scripts/run-test-layers.mjs foundation",
+    "test:unit": "pnpm run build && node scripts/run-test-layers.mjs unit",
+    "test:integration": "pnpm run build && node scripts/run-test-layers.mjs integration",
+    "test:contract": "pnpm run build && node scripts/run-test-layers.mjs contract",
+    "test:e2e": "pnpm run build && node scripts/run-test-layers.mjs e2e",
+    "test:performance": "pnpm run build && node scripts/run-test-layers.mjs performance",
     "test:fnd-002": "node --test test/foundation/module-boundaries.test.mjs",
     "test:fnd-003": "node --test test/foundation/runtime-boundaries.test.mjs",
     "test:fnd-004": "node --test test/foundation/schema-source.test.mjs",
@@ -27,7 +34,9 @@
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
     "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002",
     "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003",
-    "verify:fnd-004": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:fnd-004 && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003 && pnpm run test:fnd-004"
+    "verify:fnd-004": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:fnd-004 && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003 && pnpm run test:fnd-004",
+    "verify:fnd-005": "pnpm run verify:fnd-001 && pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:fnd-004 && pnpm test",
+    "verify:local": "pnpm run verify:fnd-005"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",

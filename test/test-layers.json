@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "default_suite": "fast",
+  "environment": {
+    "TZ": "UTC",
+    "LANG": "C",
+    "LC_ALL": "C",
+    "RECALL_TEST_LOCALE": "en-US",
+    "RECALL_TEST_NOW_SECONDS": "1700000000",
+    "RECALL_TEST_SEED": "recall-fnd-005-v1"
+  },
+  "layers": [
+    {
+      "id": "foundation",
+      "root": "test/foundation",
+      "suites": ["fast"],
+      "purpose": "architecture, runtime, schema와 공통 test infrastructure 계약"
+    },
+    {
+      "id": "unit",
+      "root": "test/unit",
+      "suites": ["fast", "unit"],
+      "purpose": "IO 없는 domain과 application policy"
+    },
+    {
+      "id": "integration-sqlite",
+      "root": "test/integration/sqlite",
+      "suites": ["fast", "integration"],
+      "purpose": "실제 임시 SQLite file, migration, WAL과 transaction"
+    },
+    {
+      "id": "integration-projection",
+      "root": "test/integration/projection",
+      "suites": ["fast", "integration"],
+      "purpose": "journal prefix의 증분 projector와 독립 full replay parity"
+    },
+    {
+      "id": "contract-mcp",
+      "root": "test/contract/mcp",
+      "suites": ["fast", "contract"],
+      "purpose": "실제 MCP schema, catalog, structured result와 transport 계약"
+    },
+    {
+      "id": "e2e-process",
+      "root": "test/e2e/process",
+      "suites": ["fast", "e2e"],
+      "purpose": "별도 process lifecycle, hard exit, reopen과 동시 client"
+    },
+    {
+      "id": "performance",
+      "root": "test/performance",
+      "suites": ["performance"],
+      "purpose": "명시적으로만 실행하는 10만 event와 claim benchmark"
+    }
+  ]
+}
