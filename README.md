@@ -26,6 +26,7 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [에이전트 공통 작업 규칙](AGENTS.md)
 - [기여 가이드](CONTRIBUTING.md)
 - [SQLite 저장 경로와 startup 운영 계약](docs/operations/storage.md)
+- [Scope 배포 설정과 실패 계약](docs/operations/scope.md)
 - [초기 설계안](docs/init-design.md)
 - [Accepted ADR 목록](docs/adr/README.md)
 - [ADR 전체 리뷰](docs/adr/review.md)
@@ -38,3 +39,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [FND-004 public/domain schema 단일 출처](docs/implementation/fnd-004-schema-source.md)
 - [FND-005 로컬 TDD 테스트 전략](docs/implementation/fnd-005-test-strategy.md)
 - [FND-006 CI 작업 범위 제외 결정](docs/implementation/fnd-006-ci-retirement.md)
+- [STO-005 trusted scope resolver](docs/implementation/sto-005-scope-resolver.md)

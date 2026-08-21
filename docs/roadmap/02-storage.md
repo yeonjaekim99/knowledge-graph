@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
 - 상태: `IN_PROGRESS`
-- 진행률: 4/8
+- 진행률: 5/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -19,7 +19,7 @@
 | STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
 | STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
 | STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
-| STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
+| STO-005 | scope resolver와 deployment config | `DONE` | `log0629` | FND-003 | [구현 결정](../implementation/sto-005-scope-resolver.md), [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17) |
 | STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
 | STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
 | STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
@@ -153,18 +153,35 @@
 
 ### STO-005 — scope resolver와 deployment config
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-005-scope-resolver`
+- PR: [#17](https://github.com/yeonjaekim99/knowledge-graph/pull/17)
 - 근거: ADR-003
 - 선행 작업: FND-003
 - 결과물: immutable project config와 request principal scope resolver
 
 완료 체크:
 
-- [ ] `u:{user_id}/p:{project_id}` 형식과 길이를 검증한다.
-- [ ] local은 명시적 user/project, remote는 검증된 principal로 user를 결정한다.
-- [ ] scope 관련 값이 public tool input에 존재하지 않는다.
-- [ ] 누락된 인증/config에서는 tool을 제공하지 않고 cross-scope fallback도 없다.
+- [x] `u:{user_id}/p:{project_id}` 형식과 길이를 검증한다.
+- [x] local은 명시적 user/project, remote는 검증된 principal로 user를 결정한다.
+- [x] scope 관련 값이 public tool input에 존재하지 않는다.
+- [x] 누락된 인증/config에서는 tool을 제공하지 않고 cross-scope fallback도 없다.
+
+증거:
+
+- 구현: [`scope-provider.ts`](../../src/adapters/runtime/scope-provider.ts),
+  [trusted scope resolver 결정](../implementation/sto-005-scope-resolver.md),
+  [scope 배포 운영 계약](../operations/scope.md)
+- test: [`sto-005-scope-provider.test.mjs`](../../test/foundation/sto-005-scope-provider.test.mjs)
+- PR: [#17](https://github.com/yeonjaekim99/knowledge-graph/pull/17)
+- TDD: `pnpm test:sto-005` 최초 missing production export로 0 test / 1 file failure 후,
+  local/remote immutable scope와 정상·경계·실패 6/6 통과
+- 검증: `pnpm verify:local` 75/75, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` frozen install·전체 gate
+- 범위 경계: S09의 trusted scope 생성 seam만 production으로 이전했다. journal/query의 exact
+  scope predicate와 cross-scope ID 비노출, 실제 remote authentication/tool lifecycle은
+  STO-007, Phase 03·06과 MCP-001/006이 소유하므로 S09 scenario manifest는 `planned`를 유지한다.
 
 ### STO-006 — actor·branch·session metadata provider
 
