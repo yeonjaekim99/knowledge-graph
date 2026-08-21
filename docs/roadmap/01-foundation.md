@@ -19,7 +19,7 @@
 | FND-002 | 제품 모듈과 의존 방향 설계 | `DONE` | `log0629` | FND-001 | [결정·검증](../implementation/fnd-002-module-boundaries.md), [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7) |
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
 | FND-004 | public/domain schema 단일 출처 결정 | `DONE` | `log0629` | FND-001, FND-002 | [결정·검증](../implementation/fnd-004-schema-source.md), [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9) |
-| FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
+| FND-005 | 테스트 계층과 oracle 전략 구축 | `IN_PROGRESS` | `log0629` | FND-002 | branch `fnd-005-local-tdd` |
 | FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~005 | — |
 
 ## 상세 체크리스트
@@ -123,8 +123,9 @@
 
 ### FND-005 — 테스트 계층과 oracle 전략 구축
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `fnd-005-local-tdd`
 - 근거: ADR 전체 Validation, [spike report](../spikes/adr-behavior-report.md)
 - 선행 작업: FND-002
 - 결과물: unit/integration/contract/e2e/performance test 구조
