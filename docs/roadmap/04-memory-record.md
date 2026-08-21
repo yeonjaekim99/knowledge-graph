@@ -4,8 +4,12 @@
 - 진행률: 0/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
+- 선행 증거 감사: [Phase 04 baseline과 production gap](evidence-audit.md#phase-04-record)
 - 종료 조건: 구조 검증, 비밀값 처리, 부분 성공, ID 매핑과 동기 투영을 포함한 기록
   application service가 공개 계약대로 원자적으로 동작함
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 

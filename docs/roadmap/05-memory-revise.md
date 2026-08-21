@@ -4,8 +4,12 @@
 - 진행률: 0/7
 - 선행 phase: Phase 04 `DONE`
 - 주요 근거: ADR-001~003, ADR-007~010, ADR-013, ADR-015
+- 선행 증거 감사: [Phase 05 baseline과 production gap](evidence-audit.md#phase-05-revise)
 - 종료 조건: 철회·교정·병합·별칭이 모호성이나 경합을 숨기지 않고 모두 journal 사건과
   동기 projection으로 적용되며, undo와 full replay 결과가 일치함
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 

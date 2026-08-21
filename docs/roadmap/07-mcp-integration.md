@@ -4,8 +4,12 @@
 - 진행률: 0/8
 - 선행 phase: Phase 04~06 `DONE`
 - 주요 근거: ADR-003, ADR-011, ADR-013~017
+- 선행 증거 감사: [Phase 07 baseline과 production gap](evidence-audit.md#phase-07-mcp)
 - 종료 조건: MCP 2026-07-28 기준의 세 tool만 결정적으로 노출되고, schema·annotation·오류·
   metadata·description 계약이 Inspector와 지원 client에서 검증됨
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 

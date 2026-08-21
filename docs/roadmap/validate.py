@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ROADMAP = ROOT / "docs" / "roadmap"
 EXPECTED = {
-    "RDY": 6,
+    "RDY": 7,
     "FND": 7,
     "STO": 8,
     "PRJ": 10,
@@ -25,6 +25,14 @@ VALID_STATUSES = {"TODO", "IN_PROGRESS", "BLOCKED", "DONE"}
 TASK_HEADING = re.compile(r"^### ([A-Z]{3}-\d{3}) — (.+)$", re.MULTILINE)
 TASK_ROW = re.compile(r"^\| ([A-Z]{3}-\d{3}) \|.*$", re.MULTILINE)
 MARKDOWN_LINK = re.compile(r"(?<!!)\[[^]]+\]\(([^)]+)\)")
+EVIDENCE_ROW = re.compile(
+    r"^- \[x\] `([A-Z]{3}-\d{3})` \| baseline: (.+) \| production: (.+)$",
+    re.MULTILINE,
+)
+EVIDENCE_MARKER = re.compile(
+    r"^- \[([ x])\] `([A-Z]{3}-\d{3})`",
+    re.MULTILINE,
+)
 
 
 def expand_task_references(value: str) -> set[str]:
@@ -192,6 +200,38 @@ def main() -> int:
     for task_id in sorted(all_ids):
         visit(task_id, [])
 
+    evidence_path = ROADMAP / "evidence-audit.md"
+    evidence_text = ""
+    if not evidence_path.is_file():
+        errors.append("missing roadmap evidence audit")
+    else:
+        evidence_text = evidence_path.read_text(encoding="utf-8")
+        evidence_rows = EVIDENCE_ROW.findall(evidence_text)
+        evidence_ids = [task_id for task_id, _, _ in evidence_rows]
+        evidence_markers = EVIDENCE_MARKER.findall(evidence_text)
+        product_ids = sorted(
+            task_id for task_id in all_ids if not task_id.startswith("RDY-")
+        )
+        if len(evidence_markers) != len(evidence_rows):
+            errors.append("evidence audit has unchecked or malformed task rows")
+        if len(evidence_ids) != len(set(evidence_ids)):
+            errors.append("evidence audit has duplicate task rows")
+        if sorted(evidence_ids) != product_ids:
+            errors.append(
+                "evidence audit task mismatch "
+                f"{sorted(set(evidence_ids) ^ set(product_ids))}"
+            )
+        if "제품 작업 완료 수는 계속 0/67이다" not in evidence_text:
+            errors.append("evidence audit must preserve the product completion boundary")
+
+    for path, text, _, _ in parsed:
+        if path.name == "00-readiness.md":
+            continue
+        if "- 선행 증거 감사: [" not in text or "(evidence-audit.md#" not in text:
+            errors.append(f"{path.name}: missing evidence audit entry link")
+        if "완료 체크를 대신하지 않는다." not in text:
+            errors.append(f"{path.name}: missing baseline/product status boundary")
+
     agent_guide = ROOT / "AGENTS.md"
     claude_guide = ROOT / "CLAUDE.md"
     for path in (agent_guide, claude_guide):
@@ -206,10 +246,12 @@ def main() -> int:
             "Accepted ADR link": "[Accepted ADR 목록](docs/adr/README.md)",
             "roadmap link": "[구현 로드맵](docs/roadmap/README.md)",
             "spike link": "[behavior spike](spikes/adr-behavior/README.md)",
+            "evidence audit link": "[evidence-gap audit](docs/roadmap/evidence-audit.md)",
             "roadmap validation command": "python3 docs/roadmap/validate.py",
             "four-state workflow": "`TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`",
             "journal invariant": "journal은 append-only",
             "projection invariant": "projection과 FTS는 파생 상태",
+            "evidence gap rule": "baseline을 신규 작업으로 제안하거나 반복하지 않는다",
         }
         for label, expected in required_agent_content.items():
             if expected not in agent_text:
@@ -313,6 +355,7 @@ def main() -> int:
     )
     print(f"local_and_external_links_parsed={link_count}")
     print("adr_trace=17/17 scenario_trace=24/24")
+    print(f"evidence_gap_audit={len(EVIDENCE_ROW.findall(evidence_text))}/67")
 
     if errors:
         print("roadmap_audit=FAIL", file=sys.stderr)

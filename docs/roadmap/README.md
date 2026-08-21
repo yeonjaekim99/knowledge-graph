@@ -2,7 +2,7 @@
 
 > 기준일: 2026-08-21
 > 범위: Recall v1 production 구현
-> 현재 상태: **아키텍처·구현 준비 완료 · 제품 구현 미착수**
+> 현재 상태: **선행 증거·잔여 production gate 정합성 감사 중 · 제품 구현 미착수**
 
 이 디렉터리는 [Accepted ADR](../adr/README.md)을 팀이 실행할 수 있는 작업 순서와
 체크리스트로 바꾼다. ADR은 **왜와 무엇을**, 이 로드맵은 **순서·담당·완료 증거를**
@@ -13,12 +13,16 @@
 
 | 구분 | 완료 | 전체 | 판정 |
 |---|---:|---:|---|
-| 구현 준비 | 6 | 6 | 완료 |
+| 구현 준비 | 6 | 7 | 진행 중 |
 | 제품 구현 | 0 | 67 | 미착수 |
-| 전체 | 6 | 73 | Phase 00 완료 |
+| 전체 | 6 | 74 | Phase 00 진행 중 |
 
 진행률은 수동 퍼센트가 아니라 `DONE 작업 수 / 전체 작업 수`로만 표시한다. 상세 문서의
 작업 상태와 증거가 원본이며 이 표는 각 PR에서 함께 갱신하는 roll-up이다.
+
+[Evidence-gap audit](evidence-audit.md)의 `[x]`는 제품 작업별 선행 증거 대조가 끝났다는
+뜻이며 제품 작업 진행률에는 포함하지 않는다. 제품 `DONE`은 production 결과물과 해당
+phase의 완료 체크·PR 증거가 있을 때만 계산한다.
 
 ## 단계와 의존성
 
@@ -33,7 +37,7 @@ service가 모두 준비된 뒤 시작한다.
 
 | Phase | 문서 | 상태 | 완료/전체 | 진입 조건 | 핵심 결과 |
 |---:|---|---|---:|---|---|
-| 00 | [구현 준비](00-readiness.md) | `DONE` | 6/6 | 없음 | ADR·spike·로드맵·작업 계약 합의 |
+| 00 | [구현 준비](00-readiness.md) | `IN_PROGRESS` | 6/7 | 없음 | ADR·spike·로드맵·작업 계약·증거 gap 합의 |
 | 01 | [개발 기반](01-foundation.md) | `TODO` | 0/7 | Phase 00 `DONE` | 기술 선택, 모듈 경계, CI |
 | 02 | [SQLite·저널](02-storage.md) | `TODO` | 0/8 | Phase 01 `DONE` | migration, scope, writer, journal |
 | 03 | [투영·재생](03-projection.md) | `TODO` | 0/10 | Phase 02 `DONE` | 증분/전체 replay parity |
@@ -102,7 +106,8 @@ python3 docs/roadmap/validate.py
 ```
 
 검사는 작업 수와 ID, 현황/상세 상태 일치, owner와 체크박스, 의존성 cycle, 문서 링크,
-ADR 17개·scenario 24개 추적성과 상위 진행률을 함께 확인한다.
+ADR 17개·scenario 24개 추적성, 제품 작업 67개의 evidence-gap 감사와 상위 진행률을 함께
+확인한다.
 
 ## 공통 Definition of Done
 
@@ -131,8 +136,9 @@ ADR 17개·scenario 24개 추적성과 상위 진행률을 함께 확인한다.
 ## 작업 항목 형식
 
 새 작업은 [작업 템플릿](task-template.md)을 복사한다. 작업 ID, ADR, 선행 조건, owner,
-상태, 결과물, 완료 체크와 증거를 생략하지 않는다. 날짜는 `YYYY-MM-DD`, owner는 GitHub
-handle로 적고 미정이면 `unassigned`를 쓴다.
+상태, 결과물, 완료 체크와 증거를 생략하지 않는다. 같은 PR에서 evidence-gap audit 행도
+추가해 기존 baseline과 production 잔여 범위를 분리한다. 날짜는 `YYYY-MM-DD`, owner는
+GitHub handle로 적고 미정이면 `unassigned`를 쓴다.
 
 ## 기준 자료
 
@@ -142,4 +148,5 @@ handle로 적고 미정이면 `unassigned`를 쓴다.
 - [behavior spike 결과](../spikes/adr-behavior-report.md)
 - [behavior scenario matrix](../../spikes/adr-behavior/scenario-matrix.json)
 - [ADR·spike 추적성 표](traceability.md)
+- [기존 증거와 production 잔여 gate 감사](evidence-audit.md)
 - [로드맵 자체 리뷰](review.md)

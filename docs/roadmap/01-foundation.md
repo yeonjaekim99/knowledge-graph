@@ -4,14 +4,18 @@
 - 진행률: 0/7
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
+- 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
 - 종료 조건: 선택한 production stack에서 빈 server·DB bootstrap·CI가 재현 가능하고
   spike를 import하지 않는 제품 모듈 경계가 확정됨
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| FND-001 | production 기술 스택 결정 | `TODO` | `unassigned` | RDY-005 | — |
+| FND-001 | production 기술 스택 결정 | `TODO` | `unassigned` | RDY-007 | — |
 | FND-002 | 제품 모듈과 의존 방향 설계 | `TODO` | `unassigned` | FND-001 | — |
 | FND-003 | 결정적 runtime 경계 추상화 | `TODO` | `unassigned` | FND-002 | — |
 | FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
@@ -26,13 +30,15 @@
 - 상태: `TODO`
 - Owner: `unassigned`
 - 근거: ADR-005, ADR-016과 spike의 implementation decision
-- 선행 작업: RDY-005
+- 선행 작업: RDY-007
 - 결과물: runtime, package manager, SQLite driver, MCP SDK와 지원 버전을 기록한 결정 문서
 
 완료 체크:
 
-- [ ] MCP `2026-07-28`, JSON Schema 2020-12와 structuredContent 지원 여부를 실제 API로 확인했다.
-- [ ] SQLite FTS5 trigram, JSON 함수, `unixepoch()`, WAL과 transaction 제어를 검증했다.
+- [ ] 선택한 production MCP SDK의 실제 API에서 MCP `2026-07-28`, JSON Schema 2020-12와
+      structuredContent 지원 여부를 확인했다.
+- [ ] 선택한 production SQLite driver/runtime 조합에서 FTS5 trigram, JSON 함수,
+      `unixepoch()`, WAL과 transaction 제어를 확인했다.
 - [ ] native dependency 배포 방식과 지원 OS/runtime 범위를 명시했다.
 - [ ] 대안, 선택 이유, upgrade 책임과 lockfile 정책을 팀이 리뷰했다.
 - [ ] 선택이 Accepted ADR 의미를 바꾸면 별도 ADR을 먼저 작성했다.

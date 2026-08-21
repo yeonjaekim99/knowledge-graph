@@ -4,6 +4,10 @@
 검증되는지 보여준다. “spike 통과”는 production gate를 면제하지 않는다. 구현 PR은 자신이
 닫는 작업 ID에서 이 표를 따라 관련 ADR Validation을 다시 확인해야 한다.
 
+작업별로 이미 재사용할 수 있는 증거와 실제로 남은 범위는
+[evidence-gap audit](evidence-audit.md)에 분리돼 있다. 이 표의 scenario 연결을 신규 작업으로
+반복하지 말고, 해당 audit 행의 production gap만 구현 범위로 삼는다.
+
 ## ADR → 구현 → production 검증
 
 | ADR | 주요 구현 작업 | production 검증·운영 작업 |
