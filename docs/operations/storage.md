@@ -1,8 +1,8 @@
 # SQLite 저장 경로와 startup 운영 계약
 
-- 소유 작업: `STO-001`, `STO-002`
-- 규범 근거: ADR-005
-- 적용 범위: Recall v1 production DB path·capability gate와 connection lifecycle
+- 소유 작업: `STO-001`, `STO-002`, `STO-003`
+- 규범 근거: ADR-001, ADR-005
+- 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle과 migration gate
 
 ## 필수 설정
 
@@ -33,6 +33,8 @@ state directory는 startup 전에 존재해야 한다. gate가 임의 위치를 
    query가 실패하면 `SqliteStartupError`로 종료한다.
 7. readiness로 writer connection factory를 하나 만들고 WAL mode와 connection policy를
    검증한다. 이 단계가 실패하면 tool을 노출하지 않는다.
+8. 같은 writer queue에서 bundled migration의 version·name·checksum을 검증하고 아직 적용하지
+   않은 version을 transaction으로 적용한다. 이 단계가 실패해도 tool을 노출하지 않는다.
 
 현재 MCP tool은 아직 구현되지 않았다. `MCP-001`은 이 readiness를 받은 뒤에만 tool을
 노출해야 하며, startup error를 우회하는 fallback을 만들 수 없다.
@@ -56,6 +58,24 @@ FIFO queue와 `BEGIN IMMEDIATE`로 직렬화한다. writer와 reader는 별도 w
 lock을 얻지 못하면 `retryable=true`, `timeoutMs=5000`인 `SqliteBusyError`를 반환한다.
 오류에는 DB path, SQL, binding이나 driver cause가 포함되지 않는다.
 
+## migration 운영 계약
+
+bundled migration version은 양의 정수 1부터 빈틈없이 증가한다. runner가 입력을 version
+순으로 정렬해 같은 `BEGIN IMMEDIATE` transaction에서 아직 적용되지 않은 migration을
+차례로 실행하고, `schema_migrations`에 version, name, checksum과 서버가 제공한 UTC epoch
+초를 기록한다. checksum은 migration source의 **정확한 UTF-8 byte**를 lowercase SHA-256으로
+계산하므로 줄바꿈이나 공백만 바뀌어도 다른 migration으로 판정한다.
+
+이미 적용된 version의 name 또는 checksum이 bundled source와 다르거나 DB가 현재 bundle보다
+높은 version을 담고 있으면 startup을 중단한다. 적용된 파일을 수정하지 말고 다음 version을
+추가해야 한다. migration source가 자기 transaction을 열거나 닫는 것은 금지하며, trigger의
+`BEGIN … END` body는 transaction control로 보지 않는다. 실패한 migration의 DDL과 history는
+함께 rollback된다.
+
+STO-003은 runner와 운영 metadata만 제공한다. 최초 production v1 migration source와
+journal·projection·FTS schema는 STO-004가 추가하며, MCP-001은 migration 성공 이후에만 tool을
+노출하도록 startup을 조립한다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -73,19 +93,18 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- `STO-003`: migration version/name/checksum runner
 - `STO-004`: journal·projection·contentless FTS 영구 schema
 - `STO-005`: user/project scope deployment config
 
-startup/connection 단계는 위 작업을 대신하지 않고 DB에 영구 table이나 migration
-metadata를 남기지 않는다. generic transaction helper가 실제 journal append나 projection을
-구현한 것도 아니다.
+현재 startup은 `schema_migrations`만 운영 metadata로 남긴다. journal·projection·FTS 영구
+schema와 실제 journal append/projector는 아직 구현하지 않았다.
 
 ## 검증
 
 ```bash
 pnpm test:sto-001
 pnpm test:sto-002
+pnpm test:sto-003
 pnpm verify:local
 python3 docs/roadmap/validate.py
 ```
@@ -94,3 +113,6 @@ integration test는 실제 OS 임시 file을 사용해 정상 startup·재개방
 network filesystem, capability별 누락과 driver 오류 redaction을 검증한다. connection test는
 WAL/PRAGMA, sidecar mode, FIFO commit/rollback, 중복 writer, close drain과 실제 5초 lock 중
 reader/event-loop 진행 및 timeout 뒤 queue 복구를 검증한다.
+
+migration test는 exact-byte checksum, version/name drift, future version, rollback, 정상 재개방과
+열린 migration transaction에서 hard exit한 뒤의 재개방을 검증한다.

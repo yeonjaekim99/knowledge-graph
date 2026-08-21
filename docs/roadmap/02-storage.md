@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | STO-001 | DB 경로·SQLite capability startup gate | `DONE` | `log0629` | FND-001, FND-003 | [운영 계약](../operations/storage.md), [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13) |
 | STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
-| STO-003 | migration runner와 checksum 검증 | `TODO` | `unassigned` | STO-001 | — |
+| STO-003 | migration runner와 checksum 검증 | `IN_PROGRESS` | `log0629` | STO-001 | 작업 branch `sto-003-sqlite-migration-runner` |
 | STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
 | STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
 | STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
@@ -87,8 +87,9 @@
 
 ### STO-003 — migration runner와 checksum 검증
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `sto-003-sqlite-migration-runner`
 - 근거: ADR-001과 spike reopen finding
 - 선행 작업: STO-001
 - 결과물: immutable versioned migration runner

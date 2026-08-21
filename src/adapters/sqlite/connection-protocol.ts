@@ -92,6 +92,17 @@ export type SqliteConnectionErrorCode =
   | "CONNECTION_CLOSED"
   | "SQLITE_BUSY";
 
+export type SqliteMigrationErrorCode =
+  | "MIGRATION_BUNDLE_INVALID"
+  | "MIGRATION_HISTORY_MISMATCH"
+  | "MIGRATION_VERSION_UNSUPPORTED"
+  | "MIGRATION_APPLICATION_FAILED"
+  | "MIGRATION_RUNNER_UNAVAILABLE";
+
+export type SqliteWorkerErrorCode =
+  | SqliteConnectionErrorCode
+  | SqliteMigrationErrorCode;
+
 const CONNECTION_ERROR_MESSAGES: Readonly<
   Record<SqliteConnectionErrorCode, string>
 > = Object.freeze({
@@ -136,6 +147,44 @@ export class SqliteBusyError extends SqliteConnectionError {
   }
 }
 
+const MIGRATION_ERROR_MESSAGES: Readonly<
+  Record<SqliteMigrationErrorCode, string>
+> = Object.freeze({
+  MIGRATION_BUNDLE_INVALID: "SQLite migration bundle is invalid",
+  MIGRATION_HISTORY_MISMATCH:
+    "SQLite migration history does not match the bundled migrations",
+  MIGRATION_VERSION_UNSUPPORTED:
+    "SQLite schema version is newer than this server supports",
+  MIGRATION_APPLICATION_FAILED:
+    "SQLite migration failed and was rolled back safely",
+  MIGRATION_RUNNER_UNAVAILABLE:
+    "SQLite migration runner requires the managed writer connection",
+});
+
+export class SqliteMigrationError extends Error {
+  public override readonly name: string = "SqliteMigrationError";
+  public readonly code: SqliteMigrationErrorCode;
+  public readonly retryable: false = false;
+
+  public constructor(code: SqliteMigrationErrorCode) {
+    super(MIGRATION_ERROR_MESSAGES[code]);
+    this.code = code;
+  }
+}
+
+export interface SqlitePreparedMigration {
+  readonly version: number;
+  readonly name: string;
+  readonly checksum: string;
+  readonly sql: string;
+  readonly appliedAtSeconds: number;
+}
+
+export interface SqliteMigrationExecutionResult {
+  readonly appliedVersions: readonly number[];
+  readonly currentVersion: number;
+}
+
 export type SqliteWorkerRole = "writer" | "reader";
 
 export interface SqliteWorkerData {
@@ -147,6 +196,12 @@ export interface SqliteWorkerTransactionRequest {
   readonly type: "transaction";
   readonly requestId: number;
   readonly commands: readonly SqliteTransactionCommand[];
+}
+
+export interface SqliteWorkerMigrationRequest {
+  readonly type: "migrate";
+  readonly requestId: number;
+  readonly migrations: readonly SqlitePreparedMigration[];
 }
 
 export interface SqliteWorkerQueryRequest {
@@ -162,6 +217,7 @@ export interface SqliteWorkerCloseRequest {
 
 export type SqliteWorkerRequest =
   | SqliteWorkerTransactionRequest
+  | SqliteWorkerMigrationRequest
   | SqliteWorkerQueryRequest
   | SqliteWorkerCloseRequest;
 
@@ -179,7 +235,7 @@ export interface SqliteWorkerSuccessResponse {
 export interface SqliteWorkerErrorResponse {
   readonly type: "failure";
   readonly requestId: number | null;
-  readonly code: SqliteConnectionErrorCode;
+  readonly code: SqliteWorkerErrorCode;
 }
 
 export type SqliteWorkerResponse =
@@ -188,9 +244,13 @@ export type SqliteWorkerResponse =
   | SqliteWorkerErrorResponse;
 
 export function connectionErrorFromCode(
-  code: SqliteConnectionErrorCode,
-): SqliteConnectionError {
-  return code === "SQLITE_BUSY"
-    ? new SqliteBusyError()
-    : new SqliteConnectionError(code);
+  code: SqliteWorkerErrorCode,
+): SqliteConnectionError | SqliteMigrationError {
+  if (code === "SQLITE_BUSY") {
+    return new SqliteBusyError();
+  }
+  if (code.startsWith("MIGRATION_")) {
+    return new SqliteMigrationError(code as SqliteMigrationErrorCode);
+  }
+  return new SqliteConnectionError(code as SqliteConnectionErrorCode);
 }

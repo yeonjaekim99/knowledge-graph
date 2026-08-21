@@ -7,15 +7,17 @@ import {
   type SqliteAllResult,
   type SqliteBinding,
   type SqliteCommandResult,
-  type SqliteConnectionErrorCode,
   type SqliteConnectionPolicy,
   type SqliteGetResult,
+  type SqliteMigrationExecutionResult,
+  type SqlitePreparedMigration,
   type SqliteReadQuery,
   type SqliteReadResult,
   type SqliteRunResult,
   type SqliteTransactionCommand,
   type SqliteWorkerData,
   type SqliteWorkerRequest,
+  type SqliteWorkerErrorCode,
   type SqliteWorkerResponse,
 } from "./connection-protocol.js";
 
@@ -50,9 +52,9 @@ interface SqliteDatabaseConstructor {
 }
 
 class WorkerConnectionFailure extends Error {
-  public readonly code: Exclude<SqliteConnectionErrorCode, "SQLITE_BUSY">;
+  public readonly code: Exclude<SqliteWorkerErrorCode, "SQLITE_BUSY">;
 
-  public constructor(code: Exclude<SqliteConnectionErrorCode, "SQLITE_BUSY">) {
+  public constructor(code: Exclude<SqliteWorkerErrorCode, "SQLITE_BUSY">) {
     super(code);
     this.code = code;
   }
@@ -67,6 +69,14 @@ const TRANSACTION_CONTROL_KEYWORDS: ReadonlySet<string> = new Set([
   "SAVEPOINT",
   "RELEASE",
 ]);
+const SCHEMA_MIGRATIONS_DDL = `
+CREATE TABLE schema_migrations (
+  version    INTEGER PRIMARY KEY,
+  name       TEXT NOT NULL UNIQUE,
+  checksum   TEXT NOT NULL,
+  applied_at INTEGER NOT NULL
+)
+`;
 
 function loadSqliteDatabaseConstructor(): SqliteDatabaseConstructor {
   return require("better-sqlite3") as SqliteDatabaseConstructor;
@@ -289,6 +299,152 @@ function executeTransaction(
   }
 }
 
+interface AppliedMigrationRow {
+  readonly version: number;
+  readonly name: string;
+  readonly checksum: string;
+  readonly appliedAtSeconds: number;
+}
+
+function readAppliedMigrations(
+  database: SqliteDatabaseConnection,
+): readonly AppliedMigrationRow[] {
+  const rawRows = database
+    .prepare(
+      "SELECT version, name, checksum, applied_at FROM schema_migrations ORDER BY version",
+    )
+    .all();
+  return rawRows.map((rawRow) => {
+    if (rawRow === null || typeof rawRow !== "object" || Array.isArray(rawRow)) {
+      throw new WorkerConnectionFailure("MIGRATION_HISTORY_MISMATCH");
+    }
+    const row = rawRow as Readonly<Record<string, unknown>>;
+    if (
+      !Number.isSafeInteger(row["version"]) ||
+      typeof row["name"] !== "string" ||
+      typeof row["checksum"] !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(row["checksum"]) ||
+      !Number.isSafeInteger(row["applied_at"]) ||
+      Number(row["applied_at"]) < 0
+    ) {
+      throw new WorkerConnectionFailure("MIGRATION_HISTORY_MISMATCH");
+    }
+    return Object.freeze({
+      version: Number(row["version"]),
+      name: row["name"],
+      checksum: row["checksum"],
+      appliedAtSeconds: Number(row["applied_at"]),
+    });
+  });
+}
+
+function ensureSchemaMigrationsTable(database: SqliteDatabaseConnection): void {
+  const schemaObject = database
+    .prepare("SELECT type FROM sqlite_schema WHERE name = 'schema_migrations'")
+    .get();
+  if (schemaObject === undefined) {
+    database.exec(SCHEMA_MIGRATIONS_DDL);
+    return;
+  }
+  if (
+    schemaObject === null ||
+    typeof schemaObject !== "object" ||
+    Array.isArray(schemaObject) ||
+    (schemaObject as Readonly<Record<string, unknown>>)["type"] !== "table"
+  ) {
+    throw new WorkerConnectionFailure("MIGRATION_HISTORY_MISMATCH");
+  }
+}
+
+function validatePreparedMigrations(
+  migrations: readonly SqlitePreparedMigration[],
+): void {
+  if (!Array.isArray(migrations)) {
+    throw new WorkerConnectionFailure("MIGRATION_BUNDLE_INVALID");
+  }
+  for (const [index, migration] of migrations.entries()) {
+    if (
+      migration === null ||
+      typeof migration !== "object" ||
+      migration.version !== index + 1 ||
+      typeof migration.name !== "string" ||
+      migration.name.length === 0 ||
+      typeof migration.checksum !== "string" ||
+      !/^[0-9a-f]{64}$/u.test(migration.checksum) ||
+      typeof migration.sql !== "string" ||
+      migration.sql.trim().length === 0 ||
+      !Number.isSafeInteger(migration.appliedAtSeconds) ||
+      migration.appliedAtSeconds < 0
+    ) {
+      throw new WorkerConnectionFailure("MIGRATION_BUNDLE_INVALID");
+    }
+  }
+}
+
+function executeMigrations(
+  database: SqliteDatabaseConnection,
+  databasePath: string,
+  migrations: readonly SqlitePreparedMigration[],
+): SqliteMigrationExecutionResult {
+  validatePreparedMigrations(migrations);
+  let transactionStarted = false;
+  try {
+    database.exec("BEGIN IMMEDIATE");
+    transactionStarted = true;
+    assertSafeSidecars(databasePath);
+    ensureSchemaMigrationsTable(database);
+
+    const applied = readAppliedMigrations(database);
+    for (const [index, row] of applied.entries()) {
+      if (row.version > migrations.length) {
+        throw new WorkerConnectionFailure("MIGRATION_VERSION_UNSUPPORTED");
+      }
+      const expected = migrations[index];
+      if (
+        expected === undefined ||
+        row.version !== index + 1 ||
+        row.name !== expected.name ||
+        row.checksum !== expected.checksum
+      ) {
+        throw new WorkerConnectionFailure("MIGRATION_HISTORY_MISMATCH");
+      }
+    }
+
+    const appliedVersions: number[] = [];
+    for (const migration of migrations.slice(applied.length)) {
+      database.exec(migration.sql);
+      if (!database.inTransaction) {
+        throw new WorkerConnectionFailure("MIGRATION_APPLICATION_FAILED");
+      }
+      database
+        .prepare(
+          "INSERT INTO schema_migrations(version, name, checksum, applied_at) VALUES (?, ?, ?, ?)",
+        )
+        .run(
+          migration.version,
+          migration.name,
+          migration.checksum,
+          migration.appliedAtSeconds,
+        );
+      appliedVersions.push(migration.version);
+    }
+    database.exec("COMMIT");
+    return Object.freeze({
+      appliedVersions: Object.freeze(appliedVersions),
+      currentVersion: migrations.length,
+    });
+  } catch (error) {
+    if (transactionStarted && database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The original failure determines the safe public error.
+      }
+    }
+    throw error;
+  }
+}
+
 function executeRead(
   database: SqliteDatabaseConnection,
   query: SqliteReadQuery,
@@ -312,8 +468,8 @@ function isSqliteBusy(error: unknown): boolean {
 
 function safeFailureCode(
   error: unknown,
-  fallback: Exclude<SqliteConnectionErrorCode, "SQLITE_BUSY">,
-): SqliteConnectionErrorCode {
+  fallback: Exclude<SqliteWorkerErrorCode, "SQLITE_BUSY">,
+): SqliteWorkerErrorCode {
   if (isSqliteBusy(error)) {
     return "SQLITE_BUSY";
   }
@@ -366,6 +522,32 @@ function handleRequest(
         type: "failure",
         requestId: request.requestId,
         code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "migrate") {
+    if (data.role !== "writer") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "MIGRATION_RUNNER_UNAVAILABLE",
+      });
+      return;
+    }
+    try {
+      const result = executeMigrations(
+        database,
+        data.databasePath,
+        request.migrations,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "MIGRATION_APPLICATION_FAILED"),
       });
     }
     return;
