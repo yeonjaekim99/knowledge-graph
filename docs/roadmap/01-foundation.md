@@ -1,7 +1,7 @@
 # Phase 01 — 개발 기반과 구현 결정
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/7
+- 진행률: 2/7
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | FND-001 | production 기술 스택 결정 | `DONE` | `log0629` | RDY-007 | [결정·검증](../implementation/fnd-001-production-stack.md), [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6) |
-| FND-002 | 제품 모듈과 의존 방향 설계 | `TODO` | `unassigned` | FND-001 | — |
+| FND-002 | 제품 모듈과 의존 방향 설계 | `DONE` | `log0629` | FND-001 | [결정·검증](../implementation/fnd-002-module-boundaries.md), [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7) |
 | FND-003 | 결정적 runtime 경계 추상화 | `TODO` | `unassigned` | FND-002 | — |
 | FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
@@ -52,18 +52,25 @@
 
 ### FND-002 — 제품 모듈과 의존 방향 설계
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
 - 근거: ADR-001, ADR-007, ADR-016
 - 선행 작업: FND-001
 - 결과물: source/package 구조와 dependency rule
 
 완료 체크:
 
-- [ ] domain reducer, application service, SQLite adapter, MCP adapter와 maintenance 경계를 분리했다.
-- [ ] journal을 쓰지 않고 projection을 변경할 수 있는 public 경로가 없다.
-- [ ] `spikes/adr-behavior`를 production source에서 import하지 않는 검사가 있다.
-- [ ] adapter 없이 pure reducer를 fixture로 실행할 수 있다.
+- [x] domain reducer, application service, SQLite adapter, MCP adapter와 maintenance 경계를 분리했다.
+- [x] journal을 쓰지 않고 projection을 변경할 수 있는 public 경로가 없다.
+- [x] `spikes/adr-behavior`를 production source에서 import하지 않는 검사가 있다.
+- [x] adapter 없이 pure reducer를 fixture로 실행할 수 있다.
+
+증거:
+
+- 결정: [제품 모듈과 의존 방향](../implementation/fnd-002-module-boundaries.md)
+- PR: [#7](https://github.com/yeonjaekim99/knowledge-graph/pull/7)
+- 검증: `pnpm verify:fnd-002`, `pnpm verify:fnd-001`,
+  `python3 docs/roadmap/validate.py`, behavior spike 25 tests
 
 ### FND-003 — 결정적 runtime 경계 추상화
 

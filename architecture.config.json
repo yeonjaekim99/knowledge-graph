@@ -1,0 +1,90 @@
+{
+  "version": 1,
+  "sourceRoot": "src",
+  "publicEntry": "src/index.ts",
+  "publicApiFiles": [
+    "src/index.ts",
+    "src/application/index.ts"
+  ],
+  "privatePublicTargets": [
+    "src/application/ports",
+    "src/adapters",
+    "src/composition",
+    "src/domain",
+    "src/maintenance"
+  ],
+  "forbiddenImportFragments": [
+    "spikes/adr-behavior"
+  ],
+  "requiredFiles": [
+    "src/index.ts",
+    "src/domain/index.ts",
+    "src/domain/reducer.ts",
+    "src/application/index.ts",
+    "src/application/use-case.ts",
+    "src/application/write-service.ts",
+    "src/application/ports/journal-commit-port.ts",
+    "src/adapters/sqlite/index.ts",
+    "src/adapters/mcp/index.ts",
+    "src/maintenance/index.ts",
+    "src/composition/index.ts"
+  ],
+  "atomicWritePort": {
+    "file": "src/application/ports/journal-commit-port.ts",
+    "interface": "JournalCommitPort",
+    "method": "appendAndProject"
+  },
+  "layers": [
+    {
+      "name": "domain",
+      "root": "src/domain",
+      "mayImport": ["domain"],
+      "externalPackages": []
+    },
+    {
+      "name": "application",
+      "root": "src/application",
+      "mayImport": ["application", "domain"],
+      "externalPackages": []
+    },
+    {
+      "name": "sqlite-adapter",
+      "root": "src/adapters/sqlite",
+      "mayImport": ["sqlite-adapter", "application", "domain"],
+      "externalPackages": ["better-sqlite3"]
+    },
+    {
+      "name": "mcp-adapter",
+      "root": "src/adapters/mcp",
+      "mayImport": ["mcp-adapter", "application"],
+      "externalPackages": ["@modelcontextprotocol/server"]
+    },
+    {
+      "name": "maintenance",
+      "root": "src/maintenance",
+      "mayImport": ["maintenance", "application"],
+      "externalPackages": ["node:"]
+    },
+    {
+      "name": "composition",
+      "root": "src/composition",
+      "mayImport": [
+        "composition",
+        "application",
+        "domain",
+        "sqlite-adapter",
+        "mcp-adapter",
+        "maintenance"
+      ],
+      "externalPackages": [
+        "@modelcontextprotocol/server",
+        "better-sqlite3",
+        "node:"
+      ]
+    }
+  ],
+  "publicEntryRule": {
+    "mayImport": ["application"],
+    "externalPackages": []
+  }
+}

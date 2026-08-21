@@ -28,6 +28,7 @@
 | `E-ROADMAP` | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) | stable task, 의존성, 추적성, validator | 제품 CI와 구현 증거는 아님 |
 | `E-AGENT` | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) | 공통 agent 작업 계약과 Claude import | 규칙 준수 여부는 각 작업에서 계속 리뷰 |
 | `E-STACK` | [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6), [production 기술 스택](../implementation/fnd-001-production-stack.md) | Node/pnpm/TypeScript/MCP SDK/SQLite driver pin과 실제 MCP·SQLite·native 배포 probe | 제품 모듈 경계·schema source·CI와 지원 target별 release 검증은 후속 작업 |
+| `E-ARCH` | [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7), [제품 모듈과 의존 방향](../implementation/fnd-002-module-boundaries.md) | 실제 TypeScript layer, atomic write port, package export 제한, import guard와 pure reducer fixture | runtime provider·규범 schema·실제 SQLite/projector 구현과 전체 test 계층은 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -35,10 +36,10 @@
 ## Phase 01 Foundation
 
 - [x] `FND-001` | baseline: `E-ADR`이 MCP 계약 요구를 확정했고 `E-SQL`과 S01/S20이 Python/SQLite feasibility를 확인했다. | production: `E-STACK`에서 runtime·package manager·SQLite driver·MCP SDK 선택과 실제 API·배포 probe를 완료했다.
-- [x] `FND-002` | baseline: `E-ADR`과 `E-SPIKE`가 journal/projection 분리와 pure deterministic oracle의 성립을 확인했다. | production: 실제 package/module 경계와 dependency/import guard를 만든다.
-- [x] `FND-003` | baseline: 고정 clock·ID·scope를 사용한 S02/S09/S14~S16/S23이 결정성 요구를 확인했다. | production: 동일 계약의 runtime provider interface와 production/test adapter를 만든다.
-- [x] `FND-004` | baseline: ADR-013~016이 public/domain schema 규범과 union/XOR를 확정했다. | production: 선택한 stack의 단일 schema source, runtime validation과 drift 검사를 결정한다.
-- [x] `FND-005` | baseline: `E-SPIKE`가 S01~S24와 재현 가능한 reference oracle을 제공한다. | production: unit/integration/contract/e2e 계층과 black-box parity helper를 구축한다.
+- [x] `FND-002` | baseline: `E-ADR`과 `E-SPIKE`가 journal/projection 분리와 pure deterministic oracle의 성립을 확인했다. | production: `E-ARCH`에서 실제 package/module 경계, atomic write port와 dependency/import guard를 완료했다.
+- [x] `FND-003` | baseline: 고정 clock·ID·scope를 사용한 S02/S09/S14~S16/S23과 `E-ARCH`의 pure reducer seam이 결정성 요구를 확인했다. | production: 동일 계약의 runtime provider interface와 production/test adapter를 만든다.
+- [x] `FND-004` | baseline: ADR-013~016이 public/domain schema 규범과 union/XOR를 확정했고 `E-ARCH`가 schema를 둘 application/package 경계를 제공한다. | production: 선택한 stack의 단일 schema source, runtime validation과 drift 검사를 결정한다.
+- [x] `FND-005` | baseline: `E-SPIKE`가 S01~S24 reference oracle을, `E-ARCH`가 targeted Node test와 architecture guard를 제공한다. | production: unit/integration/contract/e2e 계층과 black-box parity helper를 구축한다.
 - [x] `FND-006` | baseline: `E-ROADMAP` validator가 문서·의존성·추적성을 로컬에서 검사한다. | production: 선택한 stack의 format/lint/type/test와 기존 validator를 PR 필수 CI로 묶는다.
 - [x] `FND-007` | baseline: `E-ROADMAP`과 `E-AGENT`가 branch·PR·상태·증거 운영 규칙을 제공한다. | production: 깨끗한 checkout용 설치·실행·DB 안전 경로와 기여 문서를 작성한다.
 
@@ -125,11 +126,12 @@
 
 ## 감사 결론
 
-- 제품 작업 완료 수는 현재 1/67이다. `FND-001`만 production artifact와 검증·PR 증거를
-  갖춰 `DONE`으로 올렸고 나머지 작업은 각 production gate를 유지한다.
+- 제품 작업 완료 수는 현재 2/67이다. `FND-001`과 `FND-002`가 production artifact와
+  검증·PR 증거를 갖춰 `DONE`이며 나머지 작업은 각 production gate를 유지한다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- 다음에 열 수 있는 제품 작업은 `FND-002`이며, `E-STACK`을 재사용해 실제 제품 모듈과
-  의존 방향 및 동기 SQLite driver의 실행 경계를 설계한다.
+- 다음에 열 수 있는 작업은 `FND-003`, `FND-004`, `FND-005`다. 모두 `E-STACK`과
+  `E-ARCH`를 재사용하며 각자 runtime provider, schema source, test strategy 잔여 gate만
+  닫는다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

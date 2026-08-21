@@ -3,13 +3,26 @@
   "version": "0.0.0",
   "private": true,
   "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
   "engines": {
     "node": ">=24.19.0 <25",
     "pnpm": "11.22.0"
   },
   "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "verify:fnd-001": "node scripts/verify-fnd-001.mjs"
+    "build": "tsc -p tsconfig.json",
+    "check:architecture": "node scripts/check-module-boundaries.mjs",
+    "test:fnd-002": "node --test test/foundation/module-boundaries.test.mjs",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
+    "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
