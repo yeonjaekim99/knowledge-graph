@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 4/66, FND-006은 별도 결정과 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 5/66, FND-006은 별도 결정과 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -42,6 +42,9 @@
    `TODO/DONE`을 분리했고, FND-001은 선택한 driver/SDK 조합의 검증만 요구하도록 고쳤다.
 8. maintainer 결정으로 FND-006 자동 CI 작업을 active 범위에서 제외했다. ID는 registry와
    evidence audit에 보존하고, 로컬 test/기여 절차는 FND-005와 FND-007이 소유하도록 했다.
+9. FND-005는 자동 CI 없이도 같은 TDD 경계를 공유하도록 7개 로컬 계층, 고정 실행 문맥,
+   S01~S24 이전 manifest와 canonical replay parity harness를 추가했다. 24개 target은 실제
+   제품 의미를 선점하지 않도록 모두 `planned`로 남기고 후속 owner를 고정했다.
 
 ## 의도적으로 남은 상태
 
@@ -63,9 +66,12 @@
 |---|---|
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
-| Markdown link·공백·conflict marker 검사 | PASS — evidence audit 포함 link 120개, 오류 0 |
-| behavior spike 전체 회귀 | PASS — 25 tests |
-| 변경 범위 | PASS — 작업 계약·roadmap·implementation decision과 validator만 변경, 제품 구현 없음 |
+| Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
+| FND-005 로컬 gate | PASS — production probe, architecture/type/build와 Node test 42/42 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치와 FND-005 gate 재현 |
+| dependency audit | PASS — production 알려진 취약점 0개 |
+| behavior spike 전체 회귀 | PASS — 25/25 |
+| 변경 범위 | PASS — test infrastructure·문서만 변경, production 상태 의미와 자동 CI 추가 없음 |
 
 ## 게시 전 재현 검사
 

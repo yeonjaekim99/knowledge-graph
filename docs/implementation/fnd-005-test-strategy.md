@@ -4,6 +4,7 @@
 - 결정일: 2026-08-21
 - 작업: FND-005
 - Owner: `log0629`
+- PR: [#11](https://github.com/yeonjaekim99/knowledge-graph/pull/11)
 - 규범 관계: ADR을 대체하지 않는 implementation decision
 
 ## 기존 증거와 production gap
@@ -224,6 +225,11 @@ git diff --check
 
 ## 증거
 
-- PR: merge 전 연결
-- local fast suite: FND-002~005 42 tests
-- behavior oracle: S01~S24 25 tests는 독립 회귀로 유지
+- PR: [#11](https://github.com/yeonjaekim99/knowledge-graph/pull/11)
+- `pnpm verify:fnd-005`: production probe, architecture/type/build와 local fast suite 42/42 통과
+- `python3 docs/roadmap/validate.py`: active 73, historical 74, retired 1, ADR 17/17,
+  scenario 24/24와 dependency graph 통과
+- 깨끗한 `git archive`에서 `pnpm install --frozen-lockfile`과 같은 FND-005 gate 통과
+- `pnpm audit --prod`: 알려진 취약점 0개
+- behavior oracle: S01~S24 25/25는 독립 회귀로 유지
+- `git diff --check`와 새 JavaScript 파일 syntax 검사 통과

@@ -34,6 +34,16 @@ ADR-016은 behavior spike에서 의도적으로 실행하지 않은 유일한 tr
 MCP-002~008이 catalog, schema, annotation, description, Inspector와 agent fixture를 별도
 production gate로 닫는다.
 
+## 공통 production test 기반
+
+[FND-005 테스트 전략](../implementation/fnd-005-test-strategy.md)과
+[`adr-production-scenarios.json`](../../test/manifests/adr-production-scenarios.json)은 아래
+S01~S24 각각에 유일한 production target, test 계층과 이 표의 전체 owner 작업을 고정한다.
+foundation drift test가 source matrix checksum, ADR·task 연결과 target 상태를 검사한다.
+현재 target은 모두 `planned`이며, 실제 동작과 black-box test는 각 행의 구현·검증 작업이
+같은 PR에서 추가한다. 공통 harness가 있다는 사실은 개별 production gate의 완료 증거를
+대신하지 않는다.
+
 ## Spike scenario → production 회귀
 
 | Scenario | 핵심 동작 | 구현 작업 | production 검증 작업 |
