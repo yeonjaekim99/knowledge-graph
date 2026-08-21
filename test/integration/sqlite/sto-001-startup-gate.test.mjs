@@ -89,15 +89,33 @@ test("explicit configuration opens a real file DB and returns frozen readiness",
   }
 });
 
-test("the startup gate is idempotent for an existing safe empty database", () => {
+test("the startup gate reopens an existing safe database without changing content", () => {
   const { databasePath } = createStateDirectory();
   const config = loadSqliteStartupConfig({ [RECALL_DB_PATH_ENV]: databasePath });
 
   const first = runSqliteStartupGate(config);
+  const fixtureDatabase = new Database(databasePath);
+  try {
+    fixtureDatabase.exec(
+      "CREATE TABLE existing_marker(value TEXT NOT NULL); " +
+        "INSERT INTO existing_marker(value) VALUES ('preserved')",
+    );
+  } finally {
+    fixtureDatabase.close();
+  }
   const second = runSqliteStartupGate(config);
 
   assert.deepEqual(second, first);
   assert.equal(lstatSync(databasePath).mode & 0o777, 0o600);
+  const verificationDatabase = new Database(databasePath, { readonly: true });
+  try {
+    assert.deepEqual(
+      verificationDatabase.prepare("SELECT value FROM existing_marker").get(),
+      { value: "preserved" },
+    );
+  } finally {
+    verificationDatabase.close();
+  }
 });
 
 test("missing and unsafe database path forms fail closed without echoing values", () => {
