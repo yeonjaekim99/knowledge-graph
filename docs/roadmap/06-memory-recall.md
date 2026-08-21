@@ -1,0 +1,179 @@
+# Phase 06 — memory_recall 검색·탐색·응답
+
+- 상태: `TODO`
+- 진행률: 0/9
+- 선행 phase: Phase 03 `DONE`
+- 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
+- 종료 조건: search/overview가 고정 snapshot·scope·now에서 유효 claim만 탐색하고 결정적
+  path/ranking/응답을 만들며 영구 product state를 전혀 쓰지 않음
+
+## 작업 현황
+
+| ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
+|---|---|---|---|---|---|
+| RCL-001 | recall 계약·snapshot·유효 aggregate | `TODO` | `unassigned` | FND-004, PRJ-008 | — |
+| RCL-002 | query term과 surface seed | `TODO` | `unassigned` | RCL-001, PRJ-005 | — |
+| RCL-003 | 안전한 FTS와 raw fallback | `TODO` | `unassigned` | RCL-001, STO-004 | — |
+| RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
+| RCL-005 | BFS 이동·수집·경로 복원 | `TODO` | `unassigned` | RCL-001, RCL-002 | — |
+| RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
+| RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
+| RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
+| RCL-009 | 대표 fixture 성능 baseline | `TODO` | `unassigned` | RCL-008, STO-008 | — |
+
+## 상세 체크리스트
+
+### RCL-001 — recall 계약·snapshot·유효 aggregate
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-003, ADR-010, ADR-014
+- 선행 작업: FND-004, PRJ-008
+- 결과물: MemoryRecall schema, read transaction과 scope TEMP aggregate
+
+완료 체크:
+
+- [ ] search/overview 판별 union, 기본값과 query/terms/depth/limit 조합을 엄격히 검증한다.
+- [ ] 호출 시작의 scope와 UTC epoch `now`를 한 번 캡처하고 같은 read transaction을 쓴다.
+- [ ] scope/now parameterized query로 `TEMP recall_claim_agg`를 한 번 materialize한다.
+- [ ] aggregate source의 column을 명시적으로 alias해 SQLite 이름 충돌 가능성을 제거한다.
+- [ ] 이후 진입·이동·수집·상충·detail이 이 TEMP 유효 집합만 사용한다.
+
+### RCL-002 — query term과 surface seed
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-006, ADR-008, ADR-012
+- 선행 작업: RCL-001, PRJ-005
+- 결과물: deterministic term extractor와 surface seed resolver
+
+완료 체크:
+
+- [ ] 명시 terms는 입력 순서를, 미지정 query는 전체+문자/숫자 run을 긴 순서로 최대 10개 쓴다.
+- [ ] 두 글자 미만 normalized 후보를 제외하고 형태소/LLM 의미 추출을 하지 않는다.
+- [ ] surface 행을 전부 canonicalize하고 term 순서·entity ID 순으로 중복 제거한다.
+- [ ] 최대 50개 seed를 쓰고 51번째로 surface 절단을 감지한다.
+- [ ] 다의 surface를 모두 seed로 쓰되 cross-scope entity는 한 건도 포함하지 않는다.
+
+### RCL-003 — 안전한 FTS와 raw fallback
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-005, ADR-010, ADR-012, ADR-014
+- 선행 작업: RCL-001, STO-004
+- 결과물: FTS candidate query와 graph/raw 진입 변환
+
+완료 체크:
+
+- [ ] 사용자 문자열을 FTS operator가 아닌 escaped phrase literal로만 만든다.
+- [ ] normalized 3자 미만 후보뿐이면 FTS를 생략하고 이유 있는 none note를 준비한다.
+- [ ] live·unexpired statement를 21개 읽어 20개만 쓰고 절단을 기록한다.
+- [ ] 유효 support claim의 양 끝을 seed로 만들고 원 claim을 reached에 고정한다.
+- [ ] live·unexpired parsed=[]만 raw이며 죽은 parsed claim 원문으로 fallback하지 않는다.
+- [ ] 같은 raw_text의 유효 graph statement가 있으면 raw-only 복제 답을 제거한다.
+
+### RCL-004 — overview seed와 raw-only 개요
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-010, ADR-012, ADR-014
+- 선행 작업: RCL-001, RCL-003
+- 결과물: deterministic overview candidate provider
+
+완료 체크:
+
+- [ ] distinct 유효 incident claim 수 DESC, 최근성 DESC, entity ID ASC로 정렬한다.
+- [ ] 상위 `min(limit,10)` entity를 depth 0 seed로 쓰고 하나 더 읽어 절단을 판정한다.
+- [ ] claim 랭킹 뒤 남는 칸만 최근 live·unexpired parsed=[] raw로 채운다.
+- [ ] raw-only scope도 overview가 되며 철회/만료 graph 원문은 우회하지 않는다.
+- [ ] 별도 entity answer type을 만들지 않고 entry=overview로 구분한다.
+
+### RCL-005 — BFS 이동·수집·경로 복원
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-010, ADR-012
+- 선행 작업: RCL-001, RCL-002
+- 결과물: TEMP link/incident views, reached와 parent map
+
+완료 체크:
+
+- [ ] entity-object claim만 양방향 이동하고 방문 entity의 literal 포함 incident를 별도 수집한다.
+- [ ] 요청 depth까지 조기 종료 없이 BFS하며 canonical entity 기준으로 한 번 방문한다.
+- [ ] link와 incident를 규정된 aggregate tie-break로 31개 읽어 30개만 쓴다.
+- [ ] 같은 claim은 가장 낮은 depth와 가장 이른 seed/간선 경로를 유지한다.
+- [ ] 별칭·FTS·overview 표시와 entity 간 실제 hops를 구분해 path를 복원한다.
+- [ ] incoming, literal, multi-seed와 cycle fixture에서 path/hops가 반복 실행마다 같다.
+
+### RCL-006 — ranking·상충·문장 조합
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-004, ADR-010, ADR-012
+- 선행 작업: RCL-005, PRJ-008
+- 결과물: parameterized ranking query와 brief formatter
+
+완료 체크:
+
+- [ ] depth·provenance·support·30일 최근성·상충 가중치를 SQL 안에서 계산한다.
+- [ ] score 동률은 depth/strongest/count/last_seen/origin_seq/숫자 index 순으로 푼다.
+- [ ] uses/rejects 양쪽이 같은 TEMP aggregate에 있을 때만 contested다.
+- [ ] relation label도 같은 aggregate에서 읽고 만료되면 이전 label로 돌아간다.
+- [ ] canonical literal과 기본 predicate를 이어붙이며 한국어 조사를 임의 보정하지 않는다.
+
+### RCL-007 — Answer 구성·detail·payload budget
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-012, ADR-014
+- 선행 작업: RCL-003, RCL-006
+- 결과물: RecallResult assembler와 truncation ledger
+
+완료 체크:
+
+- [ ] canonical claim_id, support 세 값과 UTC `Z` 시각을 같은 snapshot에서 만든다.
+- [ ] effective created_at과 실제 append recorded_at을 재해석 fixture에서 구분한다.
+- [ ] brief에는 detail이 없고 full에는 현재 유효 support만 최근 순으로 예산 내 포함한다.
+- [ ] raw text와 detail raw_text의 합산 UTF-8 payload를 1 MiB, detail을 전역 100개로 제한한다.
+- [ ] surface/overview/fanout/limit/FTS/raw/detail 절단 원인을 more_available과 note에 누적한다.
+- [ ] 정상 빈 기억은 entry=none, 장애/손상은 tool error로 분리한다.
+
+### RCL-008 — 결정성·scope·read-only 회귀 suite
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-003, ADR-010, ADR-012, ADR-014와 behavior spike
+- 선행 작업: RCL-001~007
+- 결과물: recall golden/negative/invariant test suite
+
+완료 체크:
+
+- [ ] 같은 snapshot·입력·now의 serialized result가 byte-equivalent다.
+- [ ] 두 scope를 섞은 fixture에서 seed/reached/detail/answer 교차 누출이 0건이다.
+- [ ] 만료/철회 claim이 이동·수집·overview·상충과 raw fallback 모두에서 사라진다.
+- [ ] 51 seed, 31 link/incident, limit+1, FTS 21, 1 MiB 절단 case를 모두 검증한다.
+- [ ] 호출 전후 journal/projection/FTS 내용과 `PRAGMA data_version`이 변하지 않는다.
+- [ ] S19/S21/S22 및 대표 search/overview golden 결과가 통과한다.
+
+### RCL-009 — 대표 fixture 성능 baseline
+
+- 상태: `TODO`
+- Owner: `unassigned`
+- 근거: ADR-005, ADR-010, ADR-012
+- 선행 작업: RCL-008, STO-008
+- 결과물: 재현 가능한 recall benchmark와 query plan 기록
+
+완료 체크:
+
+- [ ] 소형·중형·hub·다중 support fixture를 고정 seed로 생성한다.
+- [ ] surface 1-hop, graph 2-hop과 FTS 구간을 warm/cold 조건별로 분리 측정한다.
+- [ ] `EXPLAIN QUERY PLAN`, SQLite/runtime/host 정보와 raw sample을 보존한다.
+- [ ] 명백한 full scan이나 N+1을 release fixture 전에 제거한다.
+- [ ] 최종 10만 규모 p95 판정은 REL-003 소유임을 명시해 중복 gate를 만들지 않는다.
+
+## Phase 종료 체크
+
+- [ ] search와 overview가 공통 유효성·랭킹·Answer 계약을 공유한다.
+- [ ] traversal과 collection이 분리돼 literal과 incoming claim도 조회된다.
+- [ ] 모든 절단, 빈 결과와 장애가 응답에서 구분된다.
+- [ ] recall이 TEMP 외 product state를 쓰지 않고 결정적 결과를 반환한다.
