@@ -10,6 +10,7 @@
 
 ## Documentation
 
+- [에이전트 공통 작업 규칙](AGENTS.md)
 - [초기 설계안](docs/init-design.md)
 - [Accepted ADR 목록](docs/adr/README.md)
 - [ADR 전체 리뷰](docs/adr/review.md)
