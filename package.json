@@ -42,7 +42,7 @@
     "verify:fnd-007": "pnpm run verify:fnd-005",
     "verify:sto-001": "pnpm run verify:fnd-007",
     "verify:sto-002": "pnpm run verify:fnd-007",
-    "verify:local": "pnpm run verify:sto-002"
+    "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
