@@ -42,6 +42,7 @@
 | `E-JOURNAL-APPEND` | [PR #19](https://github.com/yeonjaekim99/knowledge-graph/pull/19), [append 구현 결정](../implementation/sto-007-append-only-journal.md), [integration test](../../test/integration/sqlite/sto-007-journal-repository.test.mjs) | canonical event ID 검증, exact envelope 보존, guarded whole-batch INSERT와 UNIQUE retry, statement/FTS rollback, private append-only API | process/WAL recovery는 `E-STORAGE-RECOVERY`; projection 의미·journal+projection 성공 원자성, detector와 public MCP wiring은 후속 작업 |
 | `E-STORAGE-RECOVERY` | [PR #20](https://github.com/yeonjaekim99/knowledge-graph/pull/20), [recovery/concurrency 결정](../implementation/sto-008-storage-recovery-concurrency.md), [S20 target](../../test/e2e/process/s20-wal-concurrent-clients.test.mjs), [crash/reopen test](../../test/e2e/process/sto-008-journal-crash-reopen.test.mjs) | IPC hard exit의 old/complete-new journal·FTS, migration/FK/seq/ID reopen, 4 logical writer+4 WAL reader와 재사용 fixture | projection/correct/full replay crash parity, actual MCP load·다중 writer process와 10만 규모는 후속 작업 |
 | `E-PROJECTION-REPLAY` | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21), [scope replay 결정](../implementation/prj-001-replay-contract.md), [domain test](../../test/unit/domain/prj-001-replay-contract.test.mjs), [integration test](../../test/integration/projection/prj-001-scope-replay.test.mjs) | clock-free scope/rules/journal reducer 입력, worker-held 원자 교체와 meta 판정, rollback·WAL reader·scope isolation, 독립 canonical dump parity | normalize·ID·pre-scan·entity/claim 의미는 PRJ-002~008, append/project dispatcher와 S02/S24 parity는 PRJ-009/010 |
+| `E-PROJECTION-RULES` | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22), [rules 구현 결정](../implementation/prj-002-normalization-relations.md), [domain test](../../test/unit/domain/prj-002-normalization-relations.test.mjs), [locale process test](../../test/e2e/process/prj-002-normalization-locale.test.mjs) | versioned normalize와 literal identity, immutable relation registry·label 검증, C/Turkish locale 결정성과 safe typed error | entity/surface·claim reducer는 PRJ-005/006, aggregate label은 PRJ-008, rules 조립·S01/S03 parity는 PRJ-009/010 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -70,7 +71,7 @@
 ## Phase 03 Projection
 
 - [x] `PRJ-001` | baseline: S02/S23이 반복 replay와 canonical checksum 결정성을 확인했고 `E-RUNTIME`이 결정적 runtime seam을 제공한다. | production: `E-PROJECTION-REPLAY`에서 scope/rules/journal 전용 reducer 입력, projection meta 판정, 원자 scope 교체·rollback과 canonical dump를 완료했다.
-- [x] `PRJ-002` | baseline: S01/S03과 ADR-004/006/009가 normalize·relation·literal identity를 확인했다. | production: versioned primitive와 locale/relation fixture를 별도 코드로 구현한다.
+- [x] `PRJ-002` | baseline: S01/S03과 ADR-004/006/009가 normalize·relation·literal identity를 확인했다. | production: `E-PROJECTION-RULES`에서 versioned primitive, immutable registry와 locale/relation fixture를 완료했다.
 - [x] `PRJ-003` | baseline: S03/S07/S23/S24가 occurrence 위치·redirect·stable ID 불변식을 확인했다. | production: redirect registry, 손상 방어와 rules dry-run을 구현한다.
 - [x] `PRJ-004` | baseline: S14~S16이 effective metadata/order·cascade·approval 경계를 확인했다. | production: 사건 pre-scan과 effective stream reducer를 구현한다.
 - [x] `PRJ-005` | baseline: S08/S21이 entity·surface origin과 confirmed alias 후속 해석을 확인했다. | production: entity/surface/kind reducer와 모호성·철회 fixture를 구현한다.
@@ -139,14 +140,14 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 15/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`과
-  `PRJ-001`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 16/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`과
+  `PRJ-001`~`002`가 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 1/10이다. 다음 dependency-ready
-  작업은 정규화·관계·리터럴 동일성 규칙인 `PRJ-002`다.
+- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 2/10이다. 다음 dependency-ready
+  작업은 occurrence ID와 redirect registry인 `PRJ-003`이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

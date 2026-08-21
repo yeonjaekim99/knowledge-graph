@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/10
+- 진행률: 2/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
-| PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `IN_PROGRESS` | `log0629` | PRJ-001 | `prj-002-normalization-relations` |
+| PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
 | PRJ-003 | occurrence ID와 redirect registry | `TODO` | `unassigned` | PRJ-001, PRJ-002 | — |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
 | PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
@@ -60,21 +60,34 @@
 
 ### PRJ-002 — 정규화·관계·리터럴 동일성 규칙
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `prj-002-normalization-relations`
+- PR: [#22](https://github.com/yeonjaekim99/knowledge-graph/pull/22)
 - 근거: ADR-004, ADR-006, ADR-009
 - 선행 작업: PRJ-001
 - 결과물: versioned normalize와 claim identity primitive
 
 완료 체크:
 
-- [ ] entity/surface는 trim → NFKC → locale 비의존 lowercase → 공백·하이픈·underscore 제거 순서를 고정한다.
-- [ ] 한국어 조사 제거, fuzzy match와 자동 relation 승격은 구현하지 않는다.
-- [ ] 정규화 뒤 빈 문자열을 거부하고 locale을 바꿔도 같은 fixture 결과를 만든다.
-- [ ] literal은 trim+NFKC만 적용하고 내부 공백·대소문자·문장부호를 보존한다.
-- [ ] 정규 relation 5종과 `describes` 단일 카디널리티를 한 registry에서 제공한다.
-- [ ] `relates_to`의 비어 있지 않은 label 조건과 relation별 fixture가 있다.
+- [x] entity/surface는 trim → NFKC → locale 비의존 lowercase → 공백·하이픈·underscore 제거 순서를 고정한다.
+- [x] 한국어 조사 제거, fuzzy match와 자동 relation 승격은 구현하지 않는다.
+- [x] 정규화 뒤 빈 문자열을 거부하고 locale을 바꿔도 같은 fixture 결과를 만든다.
+- [x] literal은 trim+NFKC만 적용하고 내부 공백·대소문자·문장부호를 보존한다.
+- [x] 정규 relation 5종과 `describes` 단일 카디널리티를 한 registry에서 제공한다.
+- [x] `relates_to`의 비어 있지 않은 label 조건과 relation별 fixture가 있다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-002-normalization-relations.md)에 `normalize_v1`, literal
+  identity, relation registry, label 계약과 후속 reducer·schema·운영 owner 경계를 고정했다.
+- TDD RED는 아직 없는 relation/normalization domain export 때문에 실패했고, GREEN은
+  `pnpm verify:prj-002` 7/7과 전체 `pnpm verify:local` 108/108이다.
+- C와 Turkish locale의 별도 process가 같은 fixture byte를 만들며 NFKC 순서, 한국어 조사,
+  빈 값, punctuation과 256/257 Unicode code-point label 경계를 검증했다.
+- replay snapshot relation validator가 같은 immutable registry source를 사용하지만 entity,
+  claim과 dispatcher를 구현한 것으로 과장하지 않는다. S01/S03은 후속 PRJ-005/006/010까지
+  `planned`를 유지한다.
 
 ### PRJ-003 — occurrence ID와 redirect registry
 
