@@ -45,3 +45,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [STO-007 append-only journal repository](docs/implementation/sto-007-append-only-journal.md)
 - [STO-008 storage recovery와 concurrency 검증](docs/implementation/sto-008-storage-recovery-concurrency.md)
 - [PRJ-001 scope replay와 canonical projection 계약](docs/implementation/prj-001-replay-contract.md)
+- [PRJ-002 정규화·관계·리터럴 동일성 규칙](docs/implementation/prj-002-normalization-relations.md)

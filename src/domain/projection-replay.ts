@@ -1,3 +1,8 @@
+import {
+  CANONICAL_RELATIONS,
+  type CanonicalRelation,
+} from "./projection-rules.js";
+
 const EVENT_ID_PATTERN = /^ev_[0-7][0-9A-HJKMNP-TV-Z]{25}$/u;
 const SCOPE_KEY_PATTERN = /^u:[A-Za-z0-9._-]{1,64}\/p:[A-Za-z0-9._-]{1,64}$/u;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f-\u009f]/u;
@@ -22,13 +27,7 @@ const SURFACE_ORIGINS: ReadonlySet<string> = new Set([
   "agent_supplied",
   "confirmed",
 ]);
-const RELATIONS: ReadonlySet<string> = new Set([
-  "uses",
-  "rejects",
-  "contains",
-  "describes",
-  "relates_to",
-]);
+const RELATIONS: ReadonlySet<string> = new Set(CANONICAL_RELATIONS);
 const CLAIM_STATES: ReadonlySet<string> = new Set([
   "active",
   "superseded",
@@ -96,12 +95,7 @@ export interface ClaimProjectionRow {
   readonly id: string;
   readonly scopeKey: string;
   readonly subjectId: string;
-  readonly relation:
-    | "uses"
-    | "rejects"
-    | "contains"
-    | "describes"
-    | "relates_to";
+  readonly relation: CanonicalRelation;
   readonly objectId: string | null;
   readonly objectValue: string | null;
   readonly state: "active" | "superseded" | "retracted";

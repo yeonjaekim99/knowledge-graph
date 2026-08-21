@@ -1,10 +1,11 @@
 # SQLite 저장 경로와 startup 운영 계약
 
-- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`, `STO-008`, `PRJ-001`
+- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`, `STO-008`, `PRJ-001`,
+  `PRJ-002`
 - 규범 근거: ADR-001, ADR-005, ADR-007, ADR-017
 - 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate,
-  v1 physical schema, append-only journal storage primitive, process/WAL recovery gate와 scope
-  full replay primitive
+  v1 physical schema, append-only journal storage primitive, process/WAL recovery gate, scope
+  full replay primitive와 projection rules version 경계
 
 ## 필수 설정
 
@@ -141,6 +142,19 @@ canonical dump는 한 reader snapshot에서 scope의 `statements`, `entities`, `
 TEMP와 FTS는 실행 의미가 아니므로 제외한다. 상세 contract와 table별 PK는
 [PRJ-001 구현 결정](../implementation/prj-001-replay-contract.md)에 고정한다.
 
+## projection rules version 운영 경계
+
+PRJ-002의 정규화 버전은 `v1`이다. 현재 production primitive는 trim → NFKC → locale 비의존
+lowercase → Unicode White_Space·ASCII hyphen·underscore 제거 순서를 고정한다. entity와
+surface 경로가 생기면 둘 다 이 primitive를 사용해야 하며 literal은 별도의 trim+NFKC
+identity를 사용한다. 운영 process locale을 바꾸어 이 의미를 조정하지 않는다.
+
+정규화 순서, relation 집합·카디널리티나 label 의미를 바꾸는 배포는 기존 상수를 조용히
+수정하지 않는다. superseding ADR, 새 normalization/rules version, journal을 건드리지 않는
+dry-run과 승인된 전체 replay가 필요하다. 실제 rules version 조립·회귀 지표·rollout/rollback은
+PRJ-009/010과 REL-006/007이 소유한다. PRJ-002만으로 현재 projection row를 재생하거나 DB를
+변경하는 운영 명령은 제공하지 않는다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -158,7 +172,7 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- Phase 03: normalize·ID·pre-scan·사건 상태 reducer, 증분 dispatcher와 journal+projection crash parity
+- Phase 03: ID·pre-scan·entity/claim 상태 reducer, 증분 dispatcher와 journal+projection crash parity
 - Phase 08: 실제 MCP 8-client load, kill/restart와 처리량·지연 판정
 
 user/project 설정, local/remote identity binding과 fail-closed 규칙은 별도

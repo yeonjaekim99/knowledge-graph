@@ -7,4 +7,6 @@
   4 WAL reader의 production scenario target
 - `sto-008-journal-crash-reopen.test.mjs`: journal INSERT 전·후와 commit 뒤 hard exit의 storage
   범위 복구 증거. projection fault point를 포함한 S24 전체 target은 아니다.
+- `prj-002-normalization-locale.test.mjs`: C와 Turkish process locale에서 `normalize_v1`의
+  NFKC/lowercase 결과 byte가 같은지 검증한다.
 - `fixtures/`: IPC fault barrier처럼 production API에 넣지 않는 process 전용 test harness
