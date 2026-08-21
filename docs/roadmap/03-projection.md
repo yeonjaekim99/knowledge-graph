@@ -1,6 +1,6 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
-- 상태: `TODO`
+- 상태: `IN_PROGRESS`
 - 진행률: 0/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| PRJ-001 | replay 입력·출력과 rules version 기반 | `TODO` | `unassigned` | STO-003, STO-004, FND-003 | — |
+| PRJ-001 | replay 입력·출력과 rules version 기반 | `IN_PROGRESS` | `log0629` | STO-003, STO-004, FND-003 | `prj-001-replay-contract` |
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `TODO` | `unassigned` | PRJ-001 | — |
 | PRJ-003 | occurrence ID와 redirect registry | `TODO` | `unassigned` | PRJ-001, PRJ-002 | — |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
@@ -30,8 +30,9 @@
 
 ### PRJ-001 — replay 입력·출력과 rules version 기반
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `prj-001-replay-contract`
 - 근거: ADR-001, ADR-007, ADR-017
 - 선행 작업: STO-003, STO-004, FND-003
 - 결과물: 결정적 reducer 계약, projection_meta와 canonical dump
