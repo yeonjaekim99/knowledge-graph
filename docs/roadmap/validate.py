@@ -425,6 +425,7 @@ def main() -> int:
 
     markdown_files = [
         ROOT / "README.md",
+        ROOT / "CONTRIBUTING.md",
         agent_guide,
         claude_guide,
         *sorted(ROADMAP.glob("*.md")),

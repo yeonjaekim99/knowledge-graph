@@ -12,7 +12,7 @@
 - production dependency 설치에는 지원 OS/architecture용 native prebuild가 필요하다.
   지원 범위는 [FND-001 기술 스택 결정](docs/implementation/fnd-001-production-stack.md)을
   따른다.
-- Python 3.12 이상은 독립 behavior spike와 roadmap 문서 검증에 사용한다. production
+- Python 3.12 계열은 독립 behavior spike와 roadmap 문서 검증에 사용한다. production
   runtime이나 reducer는 Python spike를 import하지 않는다.
 
 다른 Node major, pnpm 버전 또는 native dependency source build로 조용히 우회하지 않는다.
@@ -114,6 +114,7 @@ startup capability 판정과 권한 정책은 `STO-001`이 소유하므로 이 �
 | 모든 production/test 변경 | `pnpm verify:local` |
 | 문서 또는 roadmap 변경 | `python3 docs/roadmap/validate.py` |
 | 상태 의미·spike 연관 변경 | `python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v` |
+| dependency 또는 lockfile 변경 | frozen install, `pnpm audit --prod`, `pnpm list --depth 0` |
 | 성능 소유 작업 | `pnpm test:performance`와 해당 phase의 대표 fixture |
 
 추가로 `git diff --check`를 실행하고, 실행하지 못한 검사는 성공으로 적지 말고 이유를 PR에

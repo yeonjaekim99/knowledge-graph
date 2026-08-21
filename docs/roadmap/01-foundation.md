@@ -1,7 +1,7 @@
 # Phase 01 — 개발 기반과 구현 결정
 
-- 상태: `IN_PROGRESS`
-- 진행률: 5/6
+- 상태: `DONE`
+- 진행률: 6/6
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
@@ -20,7 +20,7 @@
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
 | FND-004 | public/domain schema 단일 출처 결정 | `DONE` | `log0629` | FND-001, FND-002 | [결정·검증](../implementation/fnd-004-schema-source.md), [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9) |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-005-test-strategy.md), [PR #11](https://github.com/yeonjaekim99/knowledge-graph/pull/11) |
-| FND-007 | 개발자 bootstrap과 기여 문서 | `IN_PROGRESS` | `log0629` | FND-001~005 | branch `fnd-007-developer-bootstrap` |
+| FND-007 | 개발자 bootstrap과 기여 문서 | `DONE` | `log0629` | FND-001~005 | [기여 가이드](../../CONTRIBUTING.md), [PR #12](https://github.com/yeonjaekim99/knowledge-graph/pull/12) |
 
 ## 상세 체크리스트
 
@@ -148,7 +148,7 @@
 
 ### FND-007 — 개발자 bootstrap과 기여 문서
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `fnd-007-developer-bootstrap`
 - 근거: 협업 운영 요구
@@ -157,10 +157,21 @@
 
 완료 체크:
 
-- [ ] 깨끗한 checkout에서 설치와 전체 빠른 test가 한 문서대로 성공한다.
-- [ ] local DB가 repository 밖 또는 ignore된 안전한 경로에 생성된다.
-- [ ] task owner/status/evidence 갱신 예시가 있다.
-- [ ] 지원하지 않는 network filesystem·다중 writer 구성을 명시한다.
+- [x] 깨끗한 checkout에서 설치와 전체 빠른 test가 한 문서대로 성공한다.
+- [x] local DB가 repository 밖 또는 ignore된 안전한 경로에 생성된다.
+- [x] task owner/status/evidence 갱신 예시가 있다.
+- [x] 지원하지 않는 network filesystem·다중 writer 구성을 명시한다.
+
+증거:
+
+- 문서: [Recall 기여 가이드](../../CONTRIBUTING.md), [README 빠른 시작](../../README.md#빠른-시작)
+- PR: [#12](https://github.com/yeonjaekim99/knowledge-graph/pull/12)
+- TDD: contributor 계약 최초 0/3 실패, task script 계약 2/3 통과 후
+  `pnpm test:fnd-007` 3/3 통과
+- 검증: 깨끗한 `git archive`에서 frozen install과 `pnpm verify:local` 45/45,
+  `python3 docs/roadmap/validate.py`, behavior spike 25/25, `pnpm audit --prod`
+- 안전 경계: test/probe DB는 OS 임시 디렉터리를 사용하고 checkout 안의 유일한 영속
+  허용 위치 `/.recall/`은 ignore된다. production path/startup 구현은 STO-001에 남겼다.
 
 ## 범위에서 제외된 안정적 작업 ID
 
@@ -171,7 +182,7 @@
 
 ## Phase 종료 체크
 
-- [ ] 기술 선택 문서가 병합됐다.
-- [ ] 빈 production package와 필수 로컬 검증이 깨끗한 환경에서 통과한다.
-- [ ] 제품 코드가 spike 구현을 import하지 않는다.
-- [ ] Phase 02 작업자가 DB·scope·writer interface를 구현할 수 있다.
+- [x] 기술 선택 문서가 병합됐다.
+- [x] 빈 production package와 필수 로컬 검증이 깨끗한 환경에서 통과한다.
+- [x] 제품 코드가 spike 구현을 import하지 않는다.
+- [x] Phase 02 작업자가 DB·scope·writer interface를 구현할 수 있다.
