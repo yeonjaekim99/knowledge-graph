@@ -25,6 +25,7 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 
 - [에이전트 공통 작업 규칙](AGENTS.md)
 - [기여 가이드](CONTRIBUTING.md)
+- [SQLite 저장 경로와 startup 운영 계약](docs/operations/storage.md)
 - [초기 설계안](docs/init-design.md)
 - [Accepted ADR 목록](docs/adr/README.md)
 - [ADR 전체 리뷰](docs/adr/review.md)

@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
-- 상태: `TODO`
-- 진행률: 0/8
+- 상태: `IN_PROGRESS`
+- 진행률: 1/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| STO-001 | DB 경로·SQLite capability startup gate | `TODO` | `unassigned` | FND-001, FND-003 | — |
+| STO-001 | DB 경로·SQLite capability startup gate | `DONE` | `log0629` | FND-001, FND-003 | [운영 계약](../operations/storage.md), [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13) |
 | STO-002 | connection factory와 writer 직렬화 | `TODO` | `unassigned` | STO-001 | — |
 | STO-003 | migration runner와 checksum 검증 | `TODO` | `unassigned` | STO-001 | — |
 | STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
@@ -28,18 +28,32 @@
 
 ### STO-001 — DB 경로·SQLite capability startup gate
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-001-sqlite-startup-gate`
 - 근거: ADR-005
 - 선행 작업: FND-001, FND-003
 - 결과물: database path validator와 capability smoke test
 
 완료 체크:
 
-- [ ] 로컬 filesystem 경로만 지원하고 network filesystem 위험을 startup에서 안내한다.
-- [ ] FTS5, trigram, JSON 함수와 `unixepoch()`를 실제 query로 검증한다.
-- [ ] 필수 capability 하나라도 없으면 tool을 노출하기 전에 명확히 실패한다.
-- [ ] DB/WAL/backup 기본 권한 정책을 배포 문서와 test에 고정한다.
+- [x] 로컬 filesystem 경로만 지원하고 network filesystem 위험을 startup에서 안내한다.
+- [x] FTS5, trigram, JSON 함수와 `unixepoch()`를 실제 query로 검증한다.
+- [x] 필수 capability 하나라도 없으면 tool을 노출하기 전에 명확히 실패한다.
+- [x] DB/WAL/backup 기본 권한 정책을 배포 문서와 test에 고정한다.
+
+증거:
+
+- 구현: [`startup-gate.ts`](../../src/adapters/sqlite/startup-gate.ts),
+  [SQLite 저장 경로와 startup 운영 계약](../operations/storage.md)
+- PR: [#13](https://github.com/yeonjaekim99/knowledge-graph/pull/13)
+- TDD: `pnpm test:integration` 최초 0 pass / 1 file failure 후
+  `pnpm test:sto-001` 9/9 통과
+- 검증: `pnpm verify:local` 54/54, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  깨끗한 `git archive` frozen install·전체 gate와 `pnpm audit --prod`
+- 범위 경계: S01의 capability startup만 production으로 이전했다. 영구 FTS schema/rebuild와
+  normalize는 `STO-004`/`PRJ-002`, WAL·connection queue는 `STO-002`, 실제 tool startup
+  연결은 `MCP-001`이 소유하므로 scenario manifest는 `planned`를 유지한다.
 
 ### STO-002 — connection factory와 writer 직렬화
 

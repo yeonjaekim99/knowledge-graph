@@ -3,6 +3,27 @@ import type {
   NonEmptyReadonlyArray,
 } from "../../application/ports/journal-commit-port.js";
 
+export {
+  RECALL_DB_PATH_ENV,
+  SQLITE_STORAGE_PERMISSIONS,
+  SqliteStartupError,
+  createSqliteStartupGate,
+  loadSqliteStartupConfig,
+  runSqliteStartupGate,
+} from "./startup-gate.js";
+export type {
+  SqliteCapabilities,
+  SqliteCapabilityEvidence,
+  SqliteCapabilityName,
+  SqliteFilesystemEvidence,
+  SqliteStartupConfig,
+  SqliteStartupDependencyOverrides,
+  SqliteStartupErrorCode,
+  SqliteStartupGate,
+  SqliteStartupReadiness,
+  SqliteStoragePermissions,
+} from "./startup-gate.js";
+
 /**
  * STO-002/STO-007 supply the worker, connection, and transaction implementation.
  * Keeping that executor behind this adapter preserves an asynchronous application

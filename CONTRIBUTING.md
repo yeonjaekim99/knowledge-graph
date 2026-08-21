@@ -43,9 +43,18 @@ Recall v1에는 자동 CI workflow가 없다. 위 명령의 성공 결과를 PR�
 
 ## 로컬 DB와 상태 파일 안전 규칙
 
-현재 production DB 경로 resolver는 구현되지 않았다. production 경로 설정 이름,
-startup capability 판정과 권한 정책은 `STO-001`이 소유하므로 이 문서에서 임의의 환경
-변수나 기본 경로를 만들지 않는다.
+production DB 경로는 `RECALL_DB_PATH`에 **절대 file 경로**로 명시한다. 기본 경로나
+in-memory/URI fallback은 없다. startup gate는 안전한 로컬 filesystem과 권한 및
+FTS5·trigram·JSON·`unixepoch()`을 확인한 뒤에만 readiness를 발급한다. 자세한 운영 계약은
+[SQLite 저장 경로와 startup](docs/operations/storage.md)을 따른다.
+이 경계는 `STO-001`이 구현했으며 WAL 연결과 writer 직렬화는 `STO-002`에 남아 있다.
+
+로컬에서 repository 안의 상태를 명시적으로 유지할 때는 다음처럼 준비한다.
+
+```bash
+install -d -m 700 .recall
+export RECALL_DB_PATH="$PWD/.recall/recall.sqlite3"
+```
 
 - 자동 test와 일회성 SQLite 실험은 OS 임시 디렉터리에 격리하고 test 종료 시 닫는다.
 - 꼭 checkout 안에 상태를 유지해야 하면 repository root의 `/.recall/` 디렉터리만 쓴다.
@@ -58,7 +67,9 @@ startup capability 판정과 권한 정책은 `STO-001`이 소유하므로 이 �
 - 여러 reader는 가능하지만 같은 DB를 향한 다중 writer process는 Recall v1에서 지원하지
   않는다. writer 직렬화 구현은 `STO-002`가 소유한다.
 
-지원 여부가 불명확하면 DB를 만들지 말고 `STO-001` 작업에서 startup gate와 함께 결정한다.
+지원 여부가 불명확하면 DB를 만들지 않는다. startup이 filesystem을 명확히 판별하지 못하는
+배포에서는 운영자가 실제 로컬 디스크인지 확인해야 하며, NFS·SMB·동기화 드라이브나 같은
+DB의 다중 writer process를 허용하는 override는 없다.
 
 ## 작업 시작과 TDD 흐름
 
