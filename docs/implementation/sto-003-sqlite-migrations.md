@@ -4,6 +4,7 @@
 - 결정일: 2026-08-21
 - 작업: STO-003
 - Owner: `log0629`
+- PR: [#15](https://github.com/yeonjaekim99/knowledge-graph/pull/15)
 - 규범 근거: ADR-001
 - 규범 관계: ADR을 대체하지 않는 implementation decision
 
