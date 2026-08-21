@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
-| PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `TODO` | `unassigned` | PRJ-001 | — |
+| PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `IN_PROGRESS` | `log0629` | PRJ-001 | `prj-002-normalization-relations` |
 | PRJ-003 | occurrence ID와 redirect registry | `TODO` | `unassigned` | PRJ-001, PRJ-002 | — |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
 | PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
@@ -60,15 +60,16 @@
 
 ### PRJ-002 — 정규화·관계·리터럴 동일성 규칙
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `prj-002-normalization-relations`
 - 근거: ADR-004, ADR-006, ADR-009
 - 선행 작업: PRJ-001
 - 결과물: versioned normalize와 claim identity primitive
 
 완료 체크:
 
-- [ ] entity/surface는 lowercase → NFKC → 공백·하이픈·underscore 제거 순서를 고정한다.
+- [ ] entity/surface는 trim → NFKC → locale 비의존 lowercase → 공백·하이픈·underscore 제거 순서를 고정한다.
 - [ ] 한국어 조사 제거, fuzzy match와 자동 relation 승격은 구현하지 않는다.
 - [ ] 정규화 뒤 빈 문자열을 거부하고 locale을 바꿔도 같은 fixture 결과를 만든다.
 - [ ] literal은 trim+NFKC만 적용하고 내부 공백·대소문자·문장부호를 보존한다.
