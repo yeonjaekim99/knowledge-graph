@@ -11,7 +11,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 ROADMAP = ROOT / "docs" / "roadmap"
 EXPECTED = {
-    "RDY": 5,
+    "RDY": 6,
     "FND": 7,
     "STO": 8,
     "PRJ": 10,
@@ -192,9 +192,49 @@ def main() -> int:
     for task_id in sorted(all_ids):
         visit(task_id, [])
 
-    markdown_files = [ROOT / "README.md", *sorted(ROADMAP.glob("*.md"))]
+    agent_guide = ROOT / "AGENTS.md"
+    claude_guide = ROOT / "CLAUDE.md"
+    for path in (agent_guide, claude_guide):
+        if not path.is_file():
+            errors.append(f"missing agent instruction file: {path.name}")
+
+    if agent_guide.is_file():
+        agent_text = agent_guide.read_text(encoding="utf-8")
+        if len(agent_text.encode("utf-8")) > 32 * 1024:
+            errors.append("AGENTS.md exceeds the 32 KiB project instruction budget")
+        required_agent_content = {
+            "Accepted ADR link": "[Accepted ADR 목록](docs/adr/README.md)",
+            "roadmap link": "[구현 로드맵](docs/roadmap/README.md)",
+            "spike link": "[behavior spike](spikes/adr-behavior/README.md)",
+            "roadmap validation command": "python3 docs/roadmap/validate.py",
+            "four-state workflow": "`TODO`, `IN_PROGRESS`, `BLOCKED`, `DONE`",
+            "journal invariant": "journal은 append-only",
+            "projection invariant": "projection과 FTS는 파생 상태",
+        }
+        for label, expected in required_agent_content.items():
+            if expected not in agent_text:
+                errors.append(f"AGENTS.md: missing {label}")
+
+    if claude_guide.is_file():
+        claude_text = claude_guide.read_text(encoding="utf-8")
+        imports = [
+            line.strip() for line in claude_text.splitlines() if line.strip() == "@AGENTS.md"
+        ]
+        if len(imports) != 1:
+            errors.append("CLAUDE.md must import @AGENTS.md exactly once")
+        if len(claude_text.splitlines()) > 20:
+            errors.append("CLAUDE.md should remain a thin tool-specific entry file")
+
+    markdown_files = [
+        ROOT / "README.md",
+        agent_guide,
+        claude_guide,
+        *sorted(ROADMAP.glob("*.md")),
+    ]
     link_count = 0
     for path in markdown_files:
+        if not path.is_file():
+            continue
         text = path.read_text(encoding="utf-8")
         for line_number, line in enumerate(text.splitlines(), start=1):
             if line.rstrip() != line:
