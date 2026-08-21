@@ -1,7 +1,7 @@
 # Phase 00 — 구현 준비
 
-- 상태: `IN_PROGRESS`
-- 진행률: 5/6
+- 상태: `DONE`
+- 진행률: 6/6
 - 선행 phase: 없음
 - 종료 조건: RDY-001~006이 모두 `DONE`
 
@@ -17,7 +17,7 @@
 | RDY-003 | 핵심 behavior spike | `DONE` | `log0629` | ADR-001~017 | [PR #2](https://github.com/yeonjaekim99/knowledge-graph/pull/2) |
 | RDY-004 | 적대적·crash spike | `DONE` | `log0629` | ADR-001, 002, 005, 007, 015, 017 | [spike report](../spikes/adr-behavior-report.md) |
 | RDY-005 | 공동 구현 로드맵 게시 | `DONE` | `log0629` | 전체 ADR·spike | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) |
-| RDY-006 | 에이전트 공통 작업 계약 게시 | `IN_PROGRESS` | `log0629` | 전체 ADR·roadmap | `docs/agent-working-agreements` |
+| RDY-006 | 에이전트 공통 작업 계약 게시 | `DONE` | `log0629` | 전체 ADR·roadmap | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) |
 
 ## 상세 체크리스트
 
@@ -95,7 +95,7 @@
 
 ### RDY-006 — 에이전트 공통 작업 계약 게시
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - 선행 작업: RDY-001~005
 - 결과물: [공통 작업 규칙](../../AGENTS.md), [Claude Code 진입 파일](../../CLAUDE.md)
@@ -107,11 +107,16 @@
 - [x] 핵심 아키텍처 불변식과 ADR 충돌 시 `BLOCKED`/superseding ADR 절차를 명시한다.
 - [x] `CLAUDE.md`가 공통 규칙을 복제하지 않고 `@AGENTS.md`를 불러온다.
 - [x] roadmap validator와 behavior spike 전체 회귀가 통과했다.
-- [ ] 작업 계약 PR이 `main`에 병합됐다.
+- [x] 작업 계약 PR #4가 `main`에 병합됐다.
+
+증거:
+
+- PR: [#4](https://github.com/yeonjaekim99/knowledge-graph/pull/4)
+- 검증: [로드맵 자체 리뷰](review.md), `python3 docs/roadmap/validate.py`, behavior spike 25 tests
 
 ## Phase 종료 체크
 
 - [x] 의미 설계와 spike 검증이 완료됐다.
 - [x] 팀이 `main`에서 동일한 roadmap을 볼 수 있다.
-- [ ] Codex와 Claude Code가 같은 공통 작업 계약에서 시작한다.
+- [x] Codex와 Claude Code가 같은 공통 작업 계약에서 시작한다.
 - [x] FND-001의 선행 조건과 완료 기준이 roadmap에 명시됐다.

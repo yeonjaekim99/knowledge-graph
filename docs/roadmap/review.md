@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-21
 - 대상: `docs/roadmap/`, root README와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3 게시 검증과 RDY-006 작업 계약 리뷰
-- 결과: **문서 구조와 추적성 통과 · 작업 계약 게시 진행 중 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토와 PR #3·#4 게시 검증
+- 결과: **문서 구조와 추적성 통과 · 차단 결함 0개 · main 게시 완료**
 
 ## 검토 결과
 
@@ -17,7 +17,7 @@
 | 협업 상태 모델 | 통과 | stable ID, 단일 owner, 네 상태, blocker와 PR evidence 규칙 명시 |
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | 제품 구현 0/67, RDY-006과 Phase 00은 작업 계약 PR에서 진행 중 |
+| 현재 상태 정확성 | 통과 | 제품 구현 0/67, RDY-006과 Phase 00은 PR #4 병합으로 DONE |
 
 ## 중점 검토와 반영 사항
 
@@ -40,7 +40,8 @@
 ## 의도적으로 남은 상태
 
 - [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3)으로 roadmap을 `main`에
-  게시했고, RDY-006에서 agent instruction 계약과 기계 검증을 추가하고 있다.
+  게시했고 [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4)에서 agent
+  instruction 계약과 기계 검증을 추가해 Phase 00을 6/6으로 종료했다.
 - FND-001의 production 언어/runtime/SQLite driver/MCP SDK 선택은 구현 결정이다. 이
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 모든 제품 task owner는 실제 planning 전까지 `unassigned`다. 임의 담당자를 문서에
@@ -54,7 +55,7 @@
 |---|---|
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, task 73, product 67, 의존성 cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
-| Markdown link·공백·conflict marker 검사 | PASS — agent instruction 포함 link 50개, 오류 0 |
+| Markdown link·공백·conflict marker 검사 | PASS — agent instruction 포함 link 54개, 오류 0 |
 | behavior spike 전체 회귀 | PASS — 25 tests |
 | 변경 범위 | PASS — agent instruction과 roadmap 문서만 변경, 제품 구현 없음 |
 
