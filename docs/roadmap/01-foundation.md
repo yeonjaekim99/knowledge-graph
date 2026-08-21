@@ -20,7 +20,7 @@
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
 | FND-004 | public/domain schema 단일 출처 결정 | `DONE` | `log0629` | FND-001, FND-002 | [결정·검증](../implementation/fnd-004-schema-source.md), [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9) |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-005-test-strategy.md), [PR #11](https://github.com/yeonjaekim99/knowledge-graph/pull/11) |
-| FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~005 | — |
+| FND-007 | 개발자 bootstrap과 기여 문서 | `IN_PROGRESS` | `log0629` | FND-001~005 | branch `fnd-007-developer-bootstrap` |
 
 ## 상세 체크리스트
 
@@ -148,8 +148,9 @@
 
 ### FND-007 — 개발자 bootstrap과 기여 문서
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `fnd-007-developer-bootstrap`
 - 근거: 협업 운영 요구
 - 선행 작업: FND-001~005
 - 결과물: setup, test, branch/PR, roadmap 갱신 가이드
