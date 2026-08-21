@@ -19,7 +19,7 @@
 | STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
 | STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
 | STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
-| STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
+| STO-005 | scope resolver와 deployment config | `IN_PROGRESS` | `log0629` | FND-003 | `sto-005-scope-resolver` |
 | STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
 | STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
 | STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
@@ -153,8 +153,9 @@
 
 ### STO-005 — scope resolver와 deployment config
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `sto-005-scope-resolver`
 - 근거: ADR-003
 - 선행 작업: FND-003
 - 결과물: immutable project config와 request principal scope resolver
