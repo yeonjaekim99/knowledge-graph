@@ -1,0 +1,166 @@
+{
+  "schema_version": 1,
+  "scenarios": [
+    {
+      "id": "S01",
+      "test": "test_001_sqlite_capabilities_normalization_and_fts_rebuild",
+      "adrs": ["ADR-005", "ADR-006"],
+      "behavior": "SQLite capability, normalize_v1, Korean trigram boundary, contentless FTS rebuild"
+    },
+    {
+      "id": "S02",
+      "test": "test_002_append_rollback_and_replay_are_deterministic",
+      "adrs": ["ADR-001", "ADR-007", "ADR-017"],
+      "behavior": "journal/projection atomic rollback and repeated canonical replay checksum"
+    },
+    {
+      "id": "S03",
+      "test": "test_003_reinforcement_duplicate_draft_and_stable_ids",
+      "adrs": ["ADR-002", "ADR-009", "ADR-013"],
+      "behavior": "occurrence IDs, request deduplication, reinforcement and stable redirects"
+    },
+    {
+      "id": "S04",
+      "test": "test_004_describes_claim_and_event_retractions_have_different_history",
+      "adrs": ["ADR-007", "ADR-009", "ADR-015"],
+      "behavior": "describes replacement and claim/event retraction restoration boundary"
+    },
+    {
+      "id": "S05",
+      "test": "test_005_claim_and_statement_retraction_scopes_differ",
+      "adrs": ["ADR-007", "ADR-015"],
+      "behavior": "single-claim support removal versus whole-statement removal"
+    },
+    {
+      "id": "S06",
+      "test": "test_006_correct_is_two_consecutive_atomic_events",
+      "adrs": ["ADR-001", "ADR-015"],
+      "behavior": "atomic adjacent retraction/statement correction and injected rollback"
+    },
+    {
+      "id": "S07",
+      "test": "test_007_merge_deduplicates_claim_support_and_event_retraction_undoes_it",
+      "adrs": ["ADR-002", "ADR-007", "ADR-008", "ADR-009", "ADR-015"],
+      "behavior": "directed entity merge, claim/support deduplication, redirect and merge undo"
+    },
+    {
+      "id": "S08",
+      "test": "test_008_alias_confirmation_and_retraction_restore_origin",
+      "adrs": ["ADR-007", "ADR-008", "ADR-015"],
+      "behavior": "agent-supplied alias promotion to confirmed and event retraction fallback"
+    },
+    {
+      "id": "S09",
+      "test": "test_009_scope_isolation_applies_to_recall_and_ids",
+      "adrs": ["ADR-003", "ADR-010", "ADR-012", "ADR-015"],
+      "behavior": "scope-only aggregate/recall and cross-scope ID non-disclosure"
+    },
+    {
+      "id": "S10",
+      "test": "test_010_ttl_aggregate_label_fallback_and_contested_expiry",
+      "adrs": ["ADR-004", "ADR-010", "ADR-012", "ADR-014"],
+      "behavior": "valid-support aggregation, label fallback and time-dependent contested result"
+    },
+    {
+      "id": "S11",
+      "test": "test_011_raw_fallback_respects_ttl_and_never_resurrects_parsed_claim",
+      "adrs": ["ADR-005", "ADR-010", "ADR-012", "ADR-013", "ADR-014"],
+      "behavior": "raw-only FTS lifetime and parsed-claim deletion/expiry bypass prevention"
+    },
+    {
+      "id": "S12",
+      "test": "test_012_graph_recall_collects_literals_and_traverses_both_directions",
+      "adrs": ["ADR-010", "ADR-012", "ADR-014"],
+      "behavior": "bidirectional graph traversal, literal collection, path and hops"
+    },
+    {
+      "id": "S13",
+      "test": "test_013_hub_fanout_is_bounded_and_visible",
+      "adrs": ["ADR-012", "ADR-014"],
+      "behavior": "30-claim incident cap with explicit more_available reason"
+    },
+    {
+      "id": "S14",
+      "test": "test_014_reinterpret_inherits_metadata_and_respects_prior_claim_retraction",
+      "adrs": ["ADR-007", "ADR-010", "ADR-013", "ADR-017"],
+      "behavior": "root order/time/provenance/TTL inheritance and downstream claim cutoff"
+    },
+    {
+      "id": "S15",
+      "test": "test_015_backdated_reinterpret_cannot_override_later_describes_and_can_be_undone",
+      "adrs": ["ADR-007", "ADR-009", "ADR-015", "ADR-017"],
+      "behavior": "root-order reinterpret, later decision precedence and cascade-false undo"
+    },
+    {
+      "id": "S16",
+      "test": "test_016_reinterpret_approval_is_payload_bound_expiring_and_stale",
+      "adrs": ["ADR-011", "ADR-013", "ADR-017"],
+      "behavior": "payload/target/scope/through_seq-bound one-time approval and expiry"
+    },
+    {
+      "id": "S17",
+      "test": "test_017_merge_with_competing_describes_uses_latest_structural_activation",
+      "adrs": ["ADR-008", "ADR-009"],
+      "behavior": "merge-time describes conflict ordering and merge undo"
+    },
+    {
+      "id": "S18",
+      "test": "test_018_secret_masking_partial_draft_rejection_and_fail_closed_revise",
+      "adrs": ["ADR-011", "ADR-013", "ADR-015"],
+      "behavior": "raw masking, draft partial success, stored index and revise fail-closed boundary"
+    },
+    {
+      "id": "S19",
+      "test": "test_019_overview_is_deterministic_and_read_only",
+      "adrs": ["ADR-010", "ADR-012", "ADR-014"],
+      "behavior": "overview repeatability and no persistent mutation during recall"
+    },
+    {
+      "id": "S20",
+      "test": "test_020_wal_supports_serialized_writes_and_concurrent_readers",
+      "adrs": ["ADR-001", "ADR-005", "ADR-008"],
+      "behavior": "process-serialized writers, concurrent WAL readers and FK integrity"
+    },
+    {
+      "id": "S21",
+      "test": "test_022_confirmed_alias_resolves_later_statement_to_the_same_entity",
+      "adrs": ["ADR-002", "ADR-007", "ADR-008"],
+      "behavior": "confirmed surface participates in later statement entity resolution and replay"
+    },
+    {
+      "id": "S22",
+      "test": "test_023_surface_without_valid_claim_falls_back_to_fts_and_overview_raw",
+      "adrs": ["ADR-005", "ADR-010", "ADR-012", "ADR-014"],
+      "behavior": "surface with no valid incident falls through to FTS and raw-only overview"
+    },
+    {
+      "id": "S23",
+      "test": "test_024_seeded_state_machine_and_metamorphic_invariants",
+      "adrs": [
+        "ADR-001",
+        "ADR-002",
+        "ADR-003",
+        "ADR-005",
+        "ADR-007",
+        "ADR-008",
+        "ADR-009",
+        "ADR-010",
+        "ADR-015",
+        "ADR-017"
+      ],
+      "behavior": "seeded adversarial prefixes, independent SQL invariants, scope interleaving, compound-operation equivalence, undo and TTL time-shift metamorphisms"
+    },
+    {
+      "id": "S24",
+      "test": "test_025_process_crash_reopen_is_atomic_and_recoverable",
+      "adrs": ["ADR-001", "ADR-002", "ADR-005", "ADR-007", "ADR-015", "ADR-017"],
+      "behavior": "hard process exit across journal, projection and commit boundaries; reopen yields only the old or committed new state and remains writable"
+    }
+  ],
+  "non_executable_assessment": {
+    "ADR-016": {
+      "classification": "implementation decision",
+      "reason": "MCP catalog, JSON Schema, annotations, descriptions and agent choice fixtures require the production transport boundary explicitly excluded from this spike."
+    }
+  }
+}
