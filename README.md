@@ -13,3 +13,4 @@
 - [초기 설계안](docs/init-design.md)
 - [Accepted ADR 목록](docs/adr/README.md)
 - [ADR 전체 리뷰](docs/adr/review.md)
+- [ADR 시스템 동작 spike 결과](docs/spikes/adr-behavior-report.md)
