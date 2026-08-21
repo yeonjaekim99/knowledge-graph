@@ -32,6 +32,7 @@
 | `E-RUNTIME` | [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8), [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md) | request-scoped runtime port, Node clock/CSPRNG·canonical ULID/token, 고정 evaluation time, deterministic provider와 domain ambient-runtime guard | concrete scope resolver·Git/HMAC metadata, journal 연결·충돌 retry, public schema와 전체 로컬 test 계층은 후속 작업 |
 | `E-SCHEMA` | [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9), [public/domain schema 단일 출처](../implementation/fnd-004-schema-source.md) | Draft 2020-12 규범 source, type 추론, MCP runtime validator, 닫힌 object/oneOf/XOR/min-max fixture와 canonical serialization | 실제 세 tool schema·application 의미 검증·catalog/structuredContent wiring과 전체 로컬 drift 검증은 후속 작업 |
 | `E-TEST` | [PR #11](https://github.com/yeonjaekim99/knowledge-graph/pull/11), [로컬 TDD 테스트 전략](../implementation/fnd-005-test-strategy.md), [테스트 계층](../../test/README.md) | 7개 계층, 고정 실행 문맥, S01~S24 production 이전 manifest와 증분/full replay canonical parity harness | 실제 SQLite/projector/MCP/process 동작과 10만 규모 test는 각 후속 owner 작업이 구현 |
+| `E-BOOTSTRAP` | [PR #12](https://github.com/yeonjaekim99/knowledge-graph/pull/12), [기여 가이드](../../CONTRIBUTING.md), [README 빠른 시작](../../README.md#빠른-시작) | exact runtime과 frozen install, 로컬 TDD·검증·PR 흐름, 안전한 scratch DB 경계와 clean source 재현 | production DB path/startup은 STO-001, scope config는 STO-005, 지원 target packaging은 REL-009가 구현 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -44,7 +45,7 @@
 - [x] `FND-004` | baseline: ADR-013~016이 public/domain schema 규범과 union/XOR를 확정했고 `E-ARCH`가 schema를 둘 application/package 경계를 제공한다. | production: `E-SCHEMA`에서 선택한 stack의 단일 schema source, runtime validation과 drift 검사를 완료했다.
 - [x] `FND-005` | baseline: `E-SPIKE`가 S01~S24 reference oracle을, `E-ARCH`·`E-RUNTIME`·`E-SCHEMA`가 targeted Node test, deterministic provider, schema fixture와 architecture guard를 제공한다. | production: `E-TEST`에서 unit/integration/contract/e2e/performance 계층, 기계 판독 scenario 이전 계획과 black-box parity helper를 완료했다.
 - [x] `FND-006` | baseline: `E-ROADMAP` validator가 문서·의존성·추적성을 로컬에서 검사한다. | production: 2026-08-21 maintainer 결정으로 Recall v1 active 범위에서 제외했다. 안정적 ID는 [결정](../implementation/fnd-006-ci-retirement.md)과 registry에 남기고 로컬 검증 책임은 FND-005/FND-007이 소유한다.
-- [x] `FND-007` | baseline: `E-ROADMAP`과 `E-AGENT`가 branch·PR·상태·증거 운영 규칙을 제공한다. | production: 깨끗한 checkout용 설치·실행·DB 안전 경로와 기여 문서를 작성한다.
+- [x] `FND-007` | baseline: `E-ROADMAP`과 `E-AGENT`가 branch·PR·상태·증거 운영 규칙을 제공한다. | production: `E-BOOTSTRAP`에서 깨끗한 checkout 설치·실행, DB 안전 경로와 기계 검증되는 기여 흐름을 완료했다.
 
 ## Phase 02 Storage
 
@@ -129,13 +130,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 5/66이다. `FND-001`~`FND-005`가 production artifact와
-  검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각 production gate를 유지한다.
+- active 제품 작업 완료 수는 현재 6/66이다. `FND-001`~`FND-005`와 `FND-007`이 production
+  artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각 production gate를
+  유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- 다음에 열 수 있는 작업은 `FND-007`이다. `E-STACK`과 `E-TEST`를 사용해 깨끗한 checkout,
-  안전한 local DB 경로와 roadmap/PR 기여 절차를 하나의 onboarding 문서로 재현한다.
+- Phase 01은 6/6으로 종료됐다. 다음 planning에서 서로 독립적으로 시작할 수 있는 작업은
+  `STO-001`과 `STO-005`다. 각각 `E-STACK`/`E-BOOTSTRAP`의 local DB 경계와
+  `E-RUNTIME`의 trusted scope seam을 재사용한다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

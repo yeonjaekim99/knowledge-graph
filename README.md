@@ -8,9 +8,23 @@
 
 초기 개발 단계입니다.
 
+## 빠른 시작
+
+개발 환경은 Node.js `24.19.0`과 pnpm `11.22.0`을 사용합니다.
+
+```bash
+pnpm install --frozen-lockfile
+pnpm verify:local
+```
+
+작업 ID 선택, TDD, 로컬 DB 안전 경로, 검증과 PR 절차는
+[기여 가이드](CONTRIBUTING.md)를 따릅니다. Recall v1은 자동 CI를 운영하지 않으므로 각
+PR에 로컬 검증 결과를 남겨야 합니다.
+
 ## Documentation
 
 - [에이전트 공통 작업 규칙](AGENTS.md)
+- [기여 가이드](CONTRIBUTING.md)
 - [초기 설계안](docs/init-design.md)
 - [Accepted ADR 목록](docs/adr/README.md)
 - [ADR 전체 리뷰](docs/adr/review.md)
