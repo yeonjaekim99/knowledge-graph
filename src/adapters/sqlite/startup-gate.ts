@@ -167,7 +167,6 @@ interface SqliteDatabaseConstructor {
 }
 
 const require = createRequire(import.meta.url);
-const BetterSqlite3 = require("better-sqlite3") as SqliteDatabaseConstructor;
 const POSIX_PERMISSION_MASK = 0o777;
 const UNSIGNED_FILESYSTEM_TYPE_MASK = 0xffff_ffffn;
 const NETWORK_FILESYSTEM_TYPES: ReadonlySet<bigint> = new Set([
@@ -288,9 +287,14 @@ function checkCapability(operation: () => boolean): boolean {
   }
 }
 
+function loadSqliteDatabaseConstructor(): SqliteDatabaseConstructor {
+  return require("better-sqlite3") as SqliteDatabaseConstructor;
+}
+
 function probeNodeSqliteCapabilities(
   databasePath: string,
 ): SqliteCapabilityEvidence {
+  const BetterSqlite3 = loadSqliteDatabaseConstructor();
   const database = new BetterSqlite3(databasePath, {
     readonly: true,
     fileMustExist: true,
