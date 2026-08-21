@@ -1,9 +1,9 @@
 # 기존 증거와 production 잔여 gate 감사
 
 - 감사일: 2026-08-21
-- 범위: Phase 01~08의 제품 작업 67개
+- 범위: Phase 01~08의 active 제품 작업 66개와 retired stable ID 1개
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24, PR #1~#4
-- 결과: **67개 작업의 선행 증거와 production 잔여 gate 분류 완료**
+- 결과: **historical 제품 ID 67개의 선행 증거와 production 잔여 gate·범위 제외 분류 완료**
 
 ## 표기와 상태 의미
 
@@ -25,12 +25,12 @@
 | `E-ADR` | [PR #1](https://github.com/yeonjaekim99/knowledge-graph/pull/1), [Accepted ADR](../adr/README.md) | 17개 결정과 Validation, 교차 리뷰 | production API·성능·배포를 실행한 것은 아님 |
 | `E-SQL` | [ADR 전체 리뷰](../adr/review.md) | Python 3.12/SQLite 3.45.1의 통합 DDL·FTS·제약 query | 선택할 production driver 증거는 아님 |
 | `E-SPIKE` | [PR #2](https://github.com/yeonjaekim99/knowledge-graph/pull/2), [spike report](../spikes/adr-behavior-report.md) | S01~S24, 25 tests, 288 prefix, 8 crash case | MCP transport·증분 projector·10만 규모는 제외 |
-| `E-ROADMAP` | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) | stable task, 의존성, 추적성, validator | 제품 CI와 구현 증거는 아님 |
+| `E-ROADMAP` | [PR #3](https://github.com/yeonjaekim99/knowledge-graph/pull/3) | stable task, 의존성, 추적성, validator | 제품 구현과 작업별 로컬 검증 증거는 아님 |
 | `E-AGENT` | [PR #4](https://github.com/yeonjaekim99/knowledge-graph/pull/4) | 공통 agent 작업 계약과 Claude import | 규칙 준수 여부는 각 작업에서 계속 리뷰 |
-| `E-STACK` | [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6), [production 기술 스택](../implementation/fnd-001-production-stack.md) | Node/pnpm/TypeScript/MCP SDK/SQLite driver pin과 실제 MCP·SQLite·native 배포 probe | 제품 모듈 경계·schema source·CI와 지원 target별 release 검증은 후속 작업 |
+| `E-STACK` | [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6), [production 기술 스택](../implementation/fnd-001-production-stack.md) | Node/pnpm/TypeScript/MCP SDK/SQLite driver pin과 실제 MCP·SQLite·native 배포 probe | 제품 모듈 경계·schema source·전체 로컬 test 계층과 지원 target별 release 검증은 후속 작업 |
 | `E-ARCH` | [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7), [제품 모듈과 의존 방향](../implementation/fnd-002-module-boundaries.md) | 실제 TypeScript layer, atomic write port, package export 제한, import guard와 pure reducer fixture | runtime provider·규범 schema·실제 SQLite/projector 구현과 전체 test 계층은 후속 작업 |
-| `E-RUNTIME` | [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8), [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md) | request-scoped runtime port, Node clock/CSPRNG·canonical ULID/token, 고정 evaluation time, deterministic provider와 domain ambient-runtime guard | concrete scope resolver·Git/HMAC metadata, journal 연결·충돌 retry, public schema와 전체 test/CI는 후속 작업 |
-| `E-SCHEMA` | [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9), [public/domain schema 단일 출처](../implementation/fnd-004-schema-source.md) | Draft 2020-12 규범 source, type 추론, MCP runtime validator, 닫힌 object/oneOf/XOR/min-max fixture와 canonical serialization | 실제 세 tool schema·application 의미 검증·catalog/structuredContent wiring과 전체 CI는 후속 작업 |
+| `E-RUNTIME` | [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8), [결정적 runtime 경계](../implementation/fnd-003-runtime-boundaries.md) | request-scoped runtime port, Node clock/CSPRNG·canonical ULID/token, 고정 evaluation time, deterministic provider와 domain ambient-runtime guard | concrete scope resolver·Git/HMAC metadata, journal 연결·충돌 retry, public schema와 전체 로컬 test 계층은 후속 작업 |
+| `E-SCHEMA` | [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9), [public/domain schema 단일 출처](../implementation/fnd-004-schema-source.md) | Draft 2020-12 규범 source, type 추론, MCP runtime validator, 닫힌 object/oneOf/XOR/min-max fixture와 canonical serialization | 실제 세 tool schema·application 의미 검증·catalog/structuredContent wiring과 전체 로컬 drift 검증은 후속 작업 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -42,7 +42,7 @@
 - [x] `FND-003` | baseline: 고정 clock·ID·scope를 사용한 S02/S09/S14~S16/S23과 `E-ARCH`의 pure reducer seam이 결정성 요구를 확인했다. | production: `E-RUNTIME`에서 동일 계약의 request-scoped provider, Node clock/CSPRNG·canonical ID/token, deterministic provider와 ambient-runtime guard를 완료했다.
 - [x] `FND-004` | baseline: ADR-013~016이 public/domain schema 규범과 union/XOR를 확정했고 `E-ARCH`가 schema를 둘 application/package 경계를 제공한다. | production: `E-SCHEMA`에서 선택한 stack의 단일 schema source, runtime validation과 drift 검사를 완료했다.
 - [x] `FND-005` | baseline: `E-SPIKE`가 S01~S24 reference oracle을, `E-ARCH`·`E-RUNTIME`·`E-SCHEMA`가 targeted Node test, deterministic provider, schema fixture와 architecture guard를 제공한다. | production: unit/integration/contract/e2e 계층과 black-box parity helper를 구축한다.
-- [x] `FND-006` | baseline: `E-ROADMAP` validator가 문서·의존성·추적성을 로컬에서 검사한다. | production: 선택한 stack의 format/lint/type/test와 기존 validator를 PR 필수 CI로 묶는다.
+- [x] `FND-006` | baseline: `E-ROADMAP` validator가 문서·의존성·추적성을 로컬에서 검사한다. | production: 2026-08-21 maintainer 결정으로 Recall v1 active 범위에서 제외했다. 안정적 ID는 [결정](../implementation/fnd-006-ci-retirement.md)과 registry에 남기고 로컬 검증 책임은 FND-005/FND-007이 소유한다.
 - [x] `FND-007` | baseline: `E-ROADMAP`과 `E-AGENT`가 branch·PR·상태·증거 운영 규칙을 제공한다. | production: 깨끗한 checkout용 설치·실행·DB 안전 경로와 기여 문서를 작성한다.
 
 ## Phase 02 Storage
@@ -124,12 +124,14 @@
 - [x] `REL-007` | baseline: S02/S23/S24가 replay checksum·rollback oracle을 제공한다. | production: dry-run diff·approval gate·rules rollout/rollback runbook을 구현한다.
 - [x] `REL-008` | baseline: S14~S16이 reinterpret metadata/order·approval·undo 의미를 확인했고 `E-RUNTIME`이 canonical token generator를 제공한다. | production: candidate report·payload-bound process-memory token store·constant-time 비교·만료/소비·batch 운영과 실패 보상을 구현한다.
 - [x] `REL-009` | baseline: S24가 DB reopen 원자성만 확인했고 backup/restore/upgrade는 실행하지 않았다. | production: packaging과 실제 backup·restore·upgrade·incident runbook을 rehearsal한다.
-- [x] `REL-010` | baseline: `E-ADR`, `E-SPIKE`, `E-ROADMAP`이 설계·scenario·작업 추적성의 출발점을 제공한다. | production: 67개 제품 작업과 모든 release gate를 release commit에서 양방향 감사한다.
+- [x] `REL-010` | baseline: `E-ADR`, `E-SPIKE`, `E-ROADMAP`이 설계·scenario·작업 추적성의 출발점을 제공한다. | production: active 제품 작업 66개, retired stable ID 결정 1개와 모든 release gate를 release commit에서 양방향 감사한다.
 
 ## 감사 결론
 
-- 제품 작업 완료 수는 현재 4/67이다. `FND-001`~`FND-004`가 production artifact와
-  검증·PR 증거를 갖춰 `DONE`이며 나머지 작업은 각 production gate를 유지한다.
+- active 제품 작업 완료 수는 현재 4/66이다. `FND-001`~`FND-004`가 production artifact와
+  검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각 production gate를 유지한다.
+- `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
+  따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
 - 다음에 열 수 있는 작업은 `FND-005`다. `E-SPIKE`, `E-ARCH`, `E-RUNTIME`과

@@ -1,12 +1,12 @@
 # Phase 01 — 개발 기반과 구현 결정
 
 - 상태: `IN_PROGRESS`
-- 진행률: 4/7
+- 진행률: 4/6
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
-- 종료 조건: 선택한 production stack에서 빈 server·DB bootstrap·CI가 재현 가능하고
-  spike를 import하지 않는 제품 모듈 경계가 확정됨
+- 종료 조건: 선택한 production stack에서 빈 server·DB bootstrap과 필수 로컬 검증이
+  재현 가능하고 spike를 import하지 않는 제품 모듈 경계가 확정됨
 
 > evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
 > 완료 체크를 대신하지 않는다.
@@ -20,8 +20,7 @@
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
 | FND-004 | public/domain schema 단일 출처 결정 | `DONE` | `log0629` | FND-001, FND-002 | [결정·검증](../implementation/fnd-004-schema-source.md), [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9) |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
-| FND-006 | CI와 repository 품질 gate 구축 | `TODO` | `unassigned` | FND-001, FND-005 | — |
-| FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~006 | — |
+| FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~005 | — |
 
 ## 상세 체크리스트
 
@@ -119,7 +118,8 @@
 - 검증: `pnpm verify:fnd-004`, `pnpm verify:fnd-001`,
   `python3 docs/roadmap/validate.py`, behavior spike 25 tests
 - 범위 경계: 실제 record/recall/revise schema는 REC-001/RCL-001/REV-001, catalog와
-  structuredContent wiring은 MCP-003, 전체 test/CI 구조는 FND-005/006이 소유한다.
+  structuredContent wiring은 MCP-003, 전체 로컬 test 구조와 drift 검증은 FND-005가
+  소유한다.
 
 ### FND-005 — 테스트 계층과 oracle 전략 구축
 
@@ -136,27 +136,12 @@
 - [ ] 실제 SQLite file, process crash와 MCP contract test를 별도 계층으로 구분했다.
 - [ ] 고정 seed·clock·locale로 실패를 재현할 수 있다.
 
-### FND-006 — CI와 repository 품질 gate 구축
-
-- 상태: `TODO`
-- Owner: `unassigned`
-- 근거: ADR review release gate
-- 선행 작업: FND-001, FND-005
-- 결과물: PR 필수 CI workflow
-
-완료 체크:
-
-- [ ] format, lint, typecheck, unit와 SQLite integration test가 PR에서 실행된다.
-- [ ] 선택한 최소/현재 runtime과 SQLite capability smoke test를 실행한다.
-- [ ] schema·roadmap·문서 링크 drift 검사가 실패를 차단한다.
-- [ ] 실제 secret이나 DB artifact가 commit되지 않도록 검사한다.
-
 ### FND-007 — 개발자 bootstrap과 기여 문서
 
 - 상태: `TODO`
 - Owner: `unassigned`
 - 근거: 협업 운영 요구
-- 선행 작업: FND-001~006
+- 선행 작업: FND-001~005
 - 결과물: setup, test, branch/PR, roadmap 갱신 가이드
 
 완료 체크:
@@ -166,9 +151,16 @@
 - [ ] task owner/status/evidence 갱신 예시가 있다.
 - [ ] 지원하지 않는 network filesystem·다중 writer 구성을 명시한다.
 
+## 범위에서 제외된 안정적 작업 ID
+
+- `FND-006` — **CI와 repository 품질 gate 구축**은 2026-08-21 maintainer 결정으로
+  Recall v1 active 범위와 완료율에서 제외했다. ID는 재사용하지 않으며 로컬 검증 책임은
+  FND-005와 FND-007이 나누어 소유한다. 근거는 [CI 작업 범위 제외 결정](../implementation/fnd-006-ci-retirement.md)과
+  [retired task registry](retired-tasks.json)에 남긴다.
+
 ## Phase 종료 체크
 
 - [ ] 기술 선택 문서가 병합됐다.
-- [ ] 빈 production package와 CI가 깨끗한 환경에서 통과한다.
+- [ ] 빈 production package와 필수 로컬 검증이 깨끗한 환경에서 통과한다.
 - [ ] 제품 코드가 spike 구현을 import하지 않는다.
 - [ ] Phase 02 작업자가 DB·scope·writer interface를 구현할 수 있다.

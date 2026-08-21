@@ -77,6 +77,6 @@ production gate로 닫는다.
 REL-010은 다음 두 방향을 모두 확인한다.
 
 - ADR/Scenario → 최소 하나의 구현 작업과 production 검증 증거가 존재한다.
-- `DONE` 제품 작업 → 관련 ADR, test/CI와 병합 PR 증거가 존재한다.
+- `DONE` 제품 작업 → 관련 ADR, test·로컬 검증과 병합 PR 증거가 존재한다.
 
 새 ADR 또는 scenario가 생기면 같은 PR에서 이 표와 해당 phase 작업을 함께 갱신한다.

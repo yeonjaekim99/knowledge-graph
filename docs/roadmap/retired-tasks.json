@@ -1,0 +1,16 @@
+{
+  "schema_version": 1,
+  "tasks": [
+    {
+      "id": "FND-006",
+      "title": "CI와 repository 품질 gate 구축",
+      "retired_on": "2026-08-21",
+      "decision": "../implementation/fnd-006-ci-retirement.md",
+      "reason": "Recall v1은 자동 CI를 운영하지 않고 FND-005의 로컬 TDD 검증과 FND-007의 재현 가능한 기여 절차를 필수 gate로 사용한다.",
+      "replacement_tasks": [
+        "FND-005",
+        "FND-007"
+      ]
+    }
+  ]
+}
