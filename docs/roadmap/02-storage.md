@@ -20,7 +20,7 @@
 | STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
 | STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
 | STO-005 | scope resolver와 deployment config | `DONE` | `log0629` | FND-003 | [구현 결정](../implementation/sto-005-scope-resolver.md), [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17) |
-| STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
+| STO-006 | actor·branch·session metadata provider | `IN_PROGRESS` | `log0629` | STO-005 | `sto-006-runtime-metadata` |
 | STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
 | STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
 
@@ -185,8 +185,9 @@
 
 ### STO-006 — actor·branch·session metadata provider
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `sto-006-runtime-metadata`
 - 근거: ADR-003, ADR-011, ADR-016
 - 선행 작업: STO-005
 - 결과물: nullable normalized metadata adapter
