@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
 - 상태: `IN_PROGRESS`
-- 진행률: 3/8
+- 진행률: 4/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -18,7 +18,7 @@
 | STO-001 | DB 경로·SQLite capability startup gate | `DONE` | `log0629` | FND-001, FND-003 | [운영 계약](../operations/storage.md), [PR #13](https://github.com/yeonjaekim99/knowledge-graph/pull/13) |
 | STO-002 | connection factory와 writer 직렬화 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-002-sqlite-connections.md), [PR #14](https://github.com/yeonjaekim99/knowledge-graph/pull/14) |
 | STO-003 | migration runner와 checksum 검증 | `DONE` | `log0629` | STO-001 | [구현 결정](../implementation/sto-003-sqlite-migrations.md), [PR #15](https://github.com/yeonjaekim99/knowledge-graph/pull/15) |
-| STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
+| STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
 | STO-005 | scope resolver와 deployment config | `TODO` | `unassigned` | FND-003 | — |
 | STO-006 | actor·branch·session metadata provider | `TODO` | `unassigned` | STO-005 | — |
 | STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
@@ -119,19 +119,37 @@
 
 ### STO-004 — v1 journal·projection·FTS schema
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-004-v1-sqlite-schema`
+- PR: [#16](https://github.com/yeonjaekim99/knowledge-graph/pull/16)
 - 근거: ADR-001, ADR-002, ADR-005, ADR-007
 - 선행 작업: STO-003
 - 결과물: 규범 DDL migration
 
 완료 체크:
 
-- [ ] journal, projection, redirects, projection_meta와 schema_migrations DDL이 ADR과 같다.
-- [ ] contentless trigram FTS와 statement INSERT trigger가 생성된다.
-- [ ] 한국어 3글자 부분 MATCH와 2글자 미지원 경계, delete-all/rebuild/optimize 결과를 고정한다.
-- [ ] partial unique, XOR, FK와 CHECK 제약을 실제 실패 fixture로 검증한다.
-- [ ] `PRAGMA foreign_key_check`가 빈 결과다.
+- [x] journal, projection, redirects, projection_meta와 schema_migrations DDL이 ADR과 같다.
+- [x] contentless trigram FTS와 statement INSERT trigger가 생성된다.
+- [x] 한국어 3글자 부분 MATCH와 2글자 미지원 경계, delete-all/rebuild/optimize 결과를 고정한다.
+- [x] partial unique, XOR, FK와 CHECK 제약을 실제 실패 fixture로 검증한다.
+- [x] `PRAGMA foreign_key_check`가 빈 결과다.
+
+증거:
+
+- 구현: [`001-v1-schema.sql`](../../src/adapters/sqlite/migrations/001-v1-schema.sql),
+  [`bundled-migrations.ts`](../../src/adapters/sqlite/bundled-migrations.ts),
+  [v1 schema 구현 결정](../implementation/sto-004-v1-sqlite-schema.md),
+  [storage 운영 계약](../operations/storage.md)
+- test: [`sto-004-v1-schema.test.mjs`](../../test/integration/sqlite/sto-004-v1-schema.test.mjs)
+- PR: [#16](https://github.com/yeonjaekim99/knowledge-graph/pull/16)
+- TDD: `pnpm test:sto-004` 최초 missing production export로 0 test / 1 file failure 후,
+  실제 file-backed schema·FTS·constraint 정상·경계·실패 4/4 통과
+- 검증: `pnpm verify:local` 69/69, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` frozen install·전체 gate
+- 범위 경계: S01의 physical DDL·FTS/rebuild 조각만 production으로 이전했다. normalize,
+  journal append·recovery, projector/recall query와 MCP startup wiring은 PRJ-002, STO-007~008,
+  Phase 03·06과 MCP-001이 소유하므로 S01 scenario manifest는 `planned`를 유지한다.
 
 ### STO-005 — scope resolver와 deployment config
 

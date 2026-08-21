@@ -17,7 +17,7 @@
   },
   "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-sqlite-migrations.mjs",
     "check:architecture": "node scripts/check-module-boundaries.mjs",
     "test": "pnpm run build && node scripts/run-test-layers.mjs fast",
     "test:foundation": "pnpm run build && node scripts/run-test-layers.mjs foundation",
@@ -33,6 +33,7 @@
     "test:sto-001": "pnpm run build && node --test test/integration/sqlite/sto-001-startup-gate.test.mjs",
     "test:sto-002": "pnpm run build && node --test test/integration/sqlite/sto-002-connection-factory.test.mjs",
     "test:sto-003": "pnpm run build && node --test test/integration/sqlite/sto-003-migration-runner.test.mjs test/e2e/process/sto-003-migration-crash-reopen.test.mjs",
+    "test:sto-004": "pnpm run build && node --test test/integration/sqlite/sto-004-v1-schema.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
@@ -44,6 +45,7 @@
     "verify:sto-001": "pnpm run verify:fnd-007",
     "verify:sto-002": "pnpm run verify:fnd-007",
     "verify:sto-003": "pnpm run verify:fnd-007",
+    "verify:sto-004": "pnpm run verify:fnd-007",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
