@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | FND-001 | production 기술 스택 결정 | `DONE` | `log0629` | RDY-007 | [결정·검증](../implementation/fnd-001-production-stack.md), [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6) |
-| FND-002 | 제품 모듈과 의존 방향 설계 | `TODO` | `unassigned` | FND-001 | — |
+| FND-002 | 제품 모듈과 의존 방향 설계 | `IN_PROGRESS` | `log0629` | FND-001 | 작업 branch `fnd-002-module-boundaries` |
 | FND-003 | 결정적 runtime 경계 추상화 | `TODO` | `unassigned` | FND-002 | — |
 | FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
@@ -52,8 +52,8 @@
 
 ### FND-002 — 제품 모듈과 의존 방향 설계
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
 - 근거: ADR-001, ADR-007, ADR-016
 - 선행 작업: FND-001
 - 결과물: source/package 구조와 dependency rule
