@@ -271,6 +271,15 @@ test("invalid or tool-shaped intents fail before consuming an event ID or touchi
     eventIds: [firstValidId],
   });
   const secret = "SHOULD_NOT_APPEAR";
+  let accessorCalls = 0;
+  const accessorIntent = { kind: "statement" };
+  Object.defineProperty(accessorIntent, "bodyJson", {
+    enumerable: true,
+    get() {
+      accessorCalls += 1;
+      return "{}";
+    },
+  });
   const invalidBatches = [
     [],
     [{ kind: "unknown", bodyJson: "{}" }],
@@ -279,6 +288,7 @@ test("invalid or tool-shaped intents fail before consuming an event ID or touchi
     [{ kind: "statement", bodyJson: "null" }],
     [{ kind: "statement", bodyJson: "{}", id: eventId("7") }],
     [{ kind: "statement", bodyJson: "{}", scope_key: "u:other/p:other" }],
+    [accessorIntent],
   ];
 
   for (const batch of invalidBatches) {
@@ -291,6 +301,34 @@ test("invalid or tool-shaped intents fail before consuming an event ID or touchi
       return true;
     });
   }
+  assert.equal(accessorCalls, 0);
+  assert.deepEqual(await queryRows(factory, "SELECT seq, id FROM journal"), []);
+
+  const trustedSnapshot = createDeterministicRuntimeProvider({
+    scope: SCOPE,
+    metadata: METADATA,
+    nowMilliseconds: NOW_SECONDS * 1_000,
+  });
+  const invalidIdRepository = createSqliteJournalRepository({
+    factory,
+    runtime: Object.freeze({
+      capture() {
+        return trustedSnapshot.capture();
+      },
+      nextEventId() {
+        return "ev_noncanonical";
+      },
+      nextApprovalToken() {
+        return trustedSnapshot.nextApprovalToken();
+      },
+    }),
+  });
+  await assert.rejects(
+    invalidIdRepository.append([
+      { kind: "statement", bodyJson: '{"raw_text":"invalid id"}' },
+    ]),
+    journalAppendError("INVALID_EVENT_ID"),
+  );
   assert.deepEqual(await queryRows(factory, "SELECT seq, id FROM journal"), []);
 
   assert.deepEqual(
