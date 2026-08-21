@@ -13,10 +13,10 @@ import {
   EmptyJournalBatchError,
   JournalWriteService,
 } from "../../dist/application/index.js";
-import * as publicApi from "../../dist/index.js";
 import { createSqliteJournalCommitPort } from "../../dist/adapters/sqlite/index.js";
 import { reduceEvents } from "../../dist/domain/index.js";
 import { validateArchitecture } from "../../scripts/check-module-boundaries.mjs";
+import * as publicApi from "@recall/mcp-server";
 
 const temporaryDirectories = [];
 
@@ -172,6 +172,13 @@ test("SQLite adapter surface contains no projection-only capability", async () =
 
 test("package root exposes no runtime write, port, or adapter capability", () => {
   assert.deepEqual(Object.keys(publicApi), []);
+});
+
+test("package exports reject adapter deep imports", async () => {
+  await assert.rejects(
+    import("@recall/mcp-server/adapters/sqlite"),
+    (error) => error?.code === "ERR_PACKAGE_PATH_NOT_EXPORTED",
+  );
 });
 
 test("architecture guard accepts the repository and a minimal valid graph", () => {
