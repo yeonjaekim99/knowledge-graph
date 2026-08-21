@@ -326,12 +326,11 @@ export function validateArchitecture({
           );
         }
         if (
-          kind === "export" &&
           config.publicApiFiles.includes(relativeFile) &&
           isPrivatePublicTarget(relativeTarget, config)
         ) {
           errors.push(
-            `${relativeFile}: public API may not export private target ${specifier}`,
+            `${relativeFile}: public API may not reference private target ${specifier}`,
           );
         }
       } else if (

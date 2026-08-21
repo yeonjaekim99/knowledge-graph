@@ -224,7 +224,22 @@ test("architecture guard rejects a private write port re-export", () => {
 
   const result = validateArchitecture({ projectRoot: root });
 
-  assert.match(result.errors.join("\n"), /public API may not export private target/);
+  assert.match(result.errors.join("\n"), /public API may not reference private target/);
+});
+
+test("architecture guard rejects an indirect private write port re-export", () => {
+  const root = createFixture({
+    applicationIndex: [
+      'import type { JournalCommitPort } from "./ports/journal-commit-port.js";',
+      "export type PublicPort<Intent, Receipt> = JournalCommitPort<Intent, Receipt>;",
+      "export const marker = 1;",
+      "",
+    ].join("\n"),
+  });
+
+  const result = validateArchitecture({ projectRoot: root });
+
+  assert.match(result.errors.join("\n"), /public API may not reference private target/);
 });
 
 test("architecture guard rejects a projection-only write capability", () => {

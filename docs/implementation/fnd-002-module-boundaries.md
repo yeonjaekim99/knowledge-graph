@@ -151,12 +151,12 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py'
 ```
 
 `verify:fnd-002`는 architecture guard, strict typecheck, build와 Node test를 순서대로 실행한다.
-현재 12개 test가 다음 경계를 확인한다.
+현재 13개 test가 다음 경계를 확인한다.
 
 - 정상: pure reducer 결정성, atomic write 위임, SQLite adapter 단일 surface, 허용 import graph
 - 경계: 빈 event batch 사전 거부, package root runtime surface와 deep import 제한
-- 실패: adapter transaction 오류 전파, domain의 application 역참조, spike import, private port
-  re-export와 projection-only write capability 차단
+- 실패: adapter transaction 오류 전파, domain의 application 역참조, spike import, private port의
+  직접·간접 re-export와 projection-only write capability 차단
 
 이 작업은 상태 의미를 추가하지 않으므로 behavior spike와 결과 parity를 새로 복제하지 않고
 기존 25개 regression을 그대로 실행해 불변식 문서와 충돌이 없는지만 확인한다.
