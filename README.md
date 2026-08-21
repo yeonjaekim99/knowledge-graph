@@ -20,3 +20,4 @@
 - [FND-001 production 기술 스택 결정](docs/implementation/fnd-001-production-stack.md)
 - [FND-002 제품 모듈과 의존 방향](docs/implementation/fnd-002-module-boundaries.md)
 - [FND-003 결정적 runtime 경계](docs/implementation/fnd-003-runtime-boundaries.md)
+- [FND-004 public/domain schema 단일 출처](docs/implementation/fnd-004-schema-source.md)
