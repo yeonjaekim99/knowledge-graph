@@ -199,7 +199,7 @@
       "layer": "e2e-process",
       "target": "test/e2e/process/s20-wal-concurrent-clients.test.mjs",
       "owner_tasks": ["STO-002", "STO-008", "REL-004"],
-      "status": "planned"
+      "status": "implemented"
     },
     {
       "id": "S21",
