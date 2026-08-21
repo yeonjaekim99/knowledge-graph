@@ -176,7 +176,7 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py'
 pnpm audit --prod
 ```
 
-STO-006 integration test는 실제 임시 Git repository에서 symbolic/detached/non-Git 결과,
+STO-006 runtime test는 실제 임시 Git repository에서 symbolic/detached/non-Git 결과,
 actor control 제거·128 code-point 경계, canonical HMAC과 config snapshot, key/session 비노출,
 sanitizer masking·예외 및 Git 실패의 필드별 NULL 격리, typed config 오류, zero-argument/private
 surface를 검증한다.

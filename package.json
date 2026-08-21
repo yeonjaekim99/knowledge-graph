@@ -35,7 +35,7 @@
     "test:sto-003": "pnpm run build && node --test test/integration/sqlite/sto-003-migration-runner.test.mjs test/e2e/process/sto-003-migration-crash-reopen.test.mjs",
     "test:sto-004": "pnpm run build && node --test test/integration/sqlite/sto-004-v1-schema.test.mjs",
     "test:sto-005": "pnpm run build && node --test test/foundation/sto-005-scope-provider.test.mjs",
-    "test:sto-006": "pnpm run build && node --test test/integration/runtime/sto-006-metadata-provider.test.mjs",
+    "test:sto-006": "pnpm run build && node --test test/foundation/sto-006-metadata-provider.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",

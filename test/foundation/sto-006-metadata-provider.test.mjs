@@ -18,7 +18,7 @@ import {
   createRequestMetadataProvider,
   gitProjectBranchResolver,
   loadMetadataDeploymentConfig,
-} from "../../../dist/adapters/runtime/index.js";
+} from "../../dist/adapters/runtime/index.js";
 
 const temporaryDirectories = [];
 
