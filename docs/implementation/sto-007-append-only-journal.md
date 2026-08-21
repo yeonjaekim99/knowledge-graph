@@ -4,7 +4,7 @@
 - 결정일: 2026-08-22
 - 작업: STO-007
 - Owner: `log0629`
-- PR: 이 작업 PR에서 확정
+- PR: [#19](https://github.com/yeonjaekim99/knowledge-graph/pull/19)
 - 규범 근거: ADR-001, ADR-002, ADR-005
 - 규범 관계: ADR을 대체하지 않는 implementation decision
 

@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-22
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#18 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01 종료 · Phase 02 6/8 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#19 누적 게시·로컬 검증과 2026-08-22 scope 재검토
+- 결과: **Phase 01 종료 · Phase 02 7/8 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 12/66, Phase 01 `DONE`, Phase 02 6/8, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 13/66, Phase 01 `DONE`, Phase 02 7/8, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -69,6 +69,10 @@
     zero-argument metadata provider에 묶었다. detector-backed sanitizer를 필수 dependency로
     두고 field별 실패를 NULL로 격리했으며, 최초 full gate에서 새 test 경로가 빠진 문제도
     발견 즉시 canonical foundation layer로 옮겨 81/81에 포함했다.
+17. STO-007은 신뢰 runtime snapshot과 validated event envelope만 받는 private append surface를
+    만들고, guarded CTE 한 문장으로 non-empty batch와 statement/FTS를 원자적으로 기록한다.
+    기존 ID가 하나라도 있으면 노출 전 batch 전체 후보를 최대 네 번 다시 만들며, 리뷰에서
+    accessor 미평가와 noncanonical runtime ID 거부까지 추가해 preflight 신뢰 경계를 닫았다.
 
 ## 의도적으로 남은 상태
 
@@ -81,8 +85,8 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6으로 종료됐고 Phase 02는 6/8이다. trusted scope와 metadata seam이
-  완료되어 다음 dependency-ready 작업은 append-only journal API인 `STO-007`이다.
+- Phase 01은 6/6으로 종료됐고 Phase 02는 7/8이다. append-only journal primitive가
+  완료되어 다음 dependency-ready 작업은 storage recovery·concurrency integration인 `STO-008`이다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -93,11 +97,11 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~006 로컬 gate | PASS — metadata 6/6, scope 6/6, schema 4/4, migration 6/6, architecture/type/build와 Node test 81/81 |
-| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 81/81과 roadmap audit 재현 |
+| STO-001~007 로컬 gate | PASS — journal 6/6, metadata 6/6, scope 6/6, schema 4/4, migration 6/6, architecture/type/build와 Node test 87/87 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 87/87과 roadmap audit 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — observed client/Git/HMAC metadata adapter·test·운영 문서만 추가, detector/journal/MCP wiring·자동 CI 추가 없음 |
+| 변경 범위 | PASS — internal append-only journal repository·test·운영 문서만 추가, projection 의미·public memory/MCP wiring·자동 CI 추가 없음 |
 
 ## 게시 전 재현 검사
 
