@@ -1,7 +1,7 @@
 # Phase 01 — 개발 기반과 구현 결정
 
-- 상태: `TODO`
-- 진행률: 0/7
+- 상태: `IN_PROGRESS`
+- 진행률: 1/7
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| FND-001 | production 기술 스택 결정 | `TODO` | `unassigned` | RDY-007 | — |
+| FND-001 | production 기술 스택 결정 | `DONE` | `log0629` | RDY-007 | [결정·검증](../implementation/fnd-001-production-stack.md), [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6) |
 | FND-002 | 제품 모듈과 의존 방향 설계 | `TODO` | `unassigned` | FND-001 | — |
 | FND-003 | 결정적 runtime 경계 추상화 | `TODO` | `unassigned` | FND-002 | — |
 | FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
@@ -27,21 +27,28 @@
 
 ### FND-001 — production 기술 스택 결정
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
 - 근거: ADR-005, ADR-016과 spike의 implementation decision
 - 선행 작업: RDY-007
 - 결과물: runtime, package manager, SQLite driver, MCP SDK와 지원 버전을 기록한 결정 문서
 
 완료 체크:
 
-- [ ] 선택한 production MCP SDK의 실제 API에서 MCP `2026-07-28`, JSON Schema 2020-12와
+- [x] 선택한 production MCP SDK의 실제 API에서 MCP `2026-07-28`, JSON Schema 2020-12와
       structuredContent 지원 여부를 확인했다.
-- [ ] 선택한 production SQLite driver/runtime 조합에서 FTS5 trigram, JSON 함수,
+- [x] 선택한 production SQLite driver/runtime 조합에서 FTS5 trigram, JSON 함수,
       `unixepoch()`, WAL과 transaction 제어를 확인했다.
-- [ ] native dependency 배포 방식과 지원 OS/runtime 범위를 명시했다.
-- [ ] 대안, 선택 이유, upgrade 책임과 lockfile 정책을 팀이 리뷰했다.
-- [ ] 선택이 Accepted ADR 의미를 바꾸면 별도 ADR을 먼저 작성했다.
+- [x] native dependency 배포 방식과 지원 OS/runtime 범위를 명시했다.
+- [x] 대안, 선택 이유, upgrade 책임과 lockfile 정책을 팀이 리뷰했다.
+- [x] Accepted ADR 의미 변경이 없음을 확인해 별도 ADR이 필요하지 않다고 판정했다.
+
+증거:
+
+- 결정: [production 기술 스택](../implementation/fnd-001-production-stack.md)
+- PR: [#6](https://github.com/yeonjaekim99/knowledge-graph/pull/6)
+- 검증: `pnpm install --prod --frozen-lockfile`, `pnpm verify:fnd-001`,
+  `python3 docs/roadmap/validate.py`, behavior spike 25 tests
 
 ### FND-002 — 제품 모듈과 의존 방향 설계
 

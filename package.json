@@ -1,0 +1,21 @@
+{
+  "name": "@recall/mcp-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": ">=24.19.0 <25",
+    "pnpm": "11.22.0"
+  },
+  "packageManager": "pnpm@11.22.0",
+  "scripts": {
+    "verify:fnd-001": "node scripts/verify-fnd-001.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "2.0.0",
+    "better-sqlite3": "13.0.3"
+  },
+  "devDependencies": {
+    "typescript": "7.0.2"
+  }
+}
