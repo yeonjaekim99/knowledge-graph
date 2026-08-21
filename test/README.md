@@ -27,6 +27,7 @@
 | `pnpm test:contract` | MCP contract |
 | `pnpm test:e2e` | process e2e |
 | `pnpm test:performance` | 명시적 performance |
+| `pnpm test:prj-001` | scope full replay와 canonical projection 계약 |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -60,3 +61,7 @@ test가 거부한다.
 
 증분/full replay parity는 공통 harness만 제공한다. 실제 journal, SQLite projection과
 reducer는 PRJ 작업에서 별도로 구현하며 Python spike는 독립 oracle로 남는다.
+
+PRJ-001은 production SQLite에서 reducer의 scope·seq·rules 입력, 한 writer transaction의
+scope 교체, meta replay 판정과 canonical dump를 구현했다. 아직 사건별 reducer와 증분
+dispatcher가 없으므로 S02/S24 target은 `planned`이며 PRJ-009/010에서만 전환한다.

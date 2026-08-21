@@ -1,9 +1,10 @@
 # SQLite 저장 경로와 startup 운영 계약
 
-- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`, `STO-008`
-- 규범 근거: ADR-001, ADR-005
+- 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`, `STO-008`, `PRJ-001`
+- 규범 근거: ADR-001, ADR-005, ADR-007, ADR-017
 - 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate,
-  v1 physical schema, append-only journal storage primitive와 process/WAL recovery gate
+  v1 physical schema, append-only journal storage primitive, process/WAL recovery gate와 scope
+  full replay primitive
 
 ## 필수 설정
 
@@ -114,6 +115,32 @@ logical writer는 같은 managed factory의 FIFO writer 하나를 공유하고 �
 않는다. fixture와 fault matrix는
 [구현 결정](../implementation/sto-008-storage-recovery-concurrency.md)에 고정한다.
 
+## projection full replay 운영 계약
+
+PRJ-001의 replay service는 projector 전용 내부 경로다. 호출자는 canonical scope,
+`rules_version`, 주입한 UTC epoch 초 `rebuiltAt`과 pure reducer를 제공한다. reducer는 현재
+시각이나 git/network/LLM을 읽지 않고 transaction 안에서 `seq` 순으로 snapshot된 한 scope의
+journal과 rules version만 받는다. `rebuiltAt`은 의미 입력이 아니라 `projection_meta`의
+운영 시각에만 기록된다.
+
+replay는 기존 writer queue를 점유하고 worker에서 `BEGIN IMMEDIATE`를 연 뒤 reducer가 끝날
+때까지 같은 transaction을 유지한다. 다른 writer는 대기하며 WAL reader는 commit 전의 온전한
+이전 projection을 계속 본다. 대상 scope의 여섯 projection table과 그 canonical target을 향한
+redirect만 교체하며 다른 scope, journal과 FTS는 변경하지 않는다. commit 전 scope 마지막
+journal seq, FK와 scope/reference 불변식을 다시 검사한다. 어느 단계든 실패하면 기존
+projection과 `projection_meta`가 함께 복구된다.
+
+meta가 없거나 `last_seq` 또는 `rules_version`이 다르면 full replay한다. 둘 다 현재 journal과
+일치하면 reducer를 호출하지 않고 쓰기 없는 `current` 결과를 반환한다. 이 primitive를 startup,
+journal append 또는 MCP handler에 직접 연결하지 않는다. 동기 catch-up과 증분/full dispatcher,
+journal+projection 단일 commit은 PRJ-009와 MCP-001이 소유한다.
+
+canonical dump는 한 reader snapshot에서 scope의 `statements`, `entities`, `surface_forms`,
+`claims`, `claim_support`, `id_redirects`만 PK와 JSON key 순서로 직렬화한다. format은
+`recall-projection-v1`이며 SHA-256 checksum을 제공한다. `projection_meta.rebuilt_at`, migration,
+TEMP와 FTS는 실행 의미가 아니므로 제외한다. 상세 contract와 table별 PK는
+[PRJ-001 구현 결정](../implementation/prj-001-replay-contract.md)에 고정한다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -131,7 +158,7 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- Phase 03: projection reducer, journal+projection crash parity와 replay
+- Phase 03: normalize·ID·pre-scan·사건 상태 reducer, 증분 dispatcher와 journal+projection crash parity
 - Phase 08: 실제 MCP 8-client load, kill/restart와 처리량·지연 판정
 
 user/project 설정, local/remote identity binding과 fail-closed 규칙은 별도
@@ -152,6 +179,7 @@ pnpm test:sto-003
 pnpm test:sto-004
 pnpm test:sto-007
 pnpm test:sto-008
+pnpm test:prj-001
 pnpm verify:local
 python3 docs/roadmap/validate.py
 ```
@@ -176,3 +204,8 @@ recovery/concurrency test는 IPC barrier hard exit 세 지점, migration checksu
 재개방과 후속 append, writer lock 중 네 WAL reader의 old snapshot, 4 writer+4 reader의 scope별
 단조 snapshot과 최종 무결성을 검증한다. S20 target은 구현됐지만 projection fault point가 남은
 S24 target은 `planned`다.
+
+projection replay test는 scope journal/meta snapshot과 writer lock, WAL reader의 이전 projection,
+scope 단위 교체, meta mismatch, trigger·reducer 실패 rollback, queue 복구와 독립 canonical dump
+parity를 검증한다. 사건별 reducer 의미와 append/project dispatcher가 남아 있으므로 S02/S24는
+여전히 `planned`다.
