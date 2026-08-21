@@ -1,6 +1,6 @@
 # Phase 01 — 개발 기반과 구현 결정
 
-- 상태: `TODO`
+- 상태: `IN_PROGRESS`
 - 진행률: 0/7
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| FND-001 | production 기술 스택 결정 | `TODO` | `unassigned` | RDY-007 | — |
+| FND-001 | production 기술 스택 결정 | `IN_PROGRESS` | `log0629` | RDY-007 | 작업 branch `fnd-001-production-stack` |
 | FND-002 | 제품 모듈과 의존 방향 설계 | `TODO` | `unassigned` | FND-001 | — |
 | FND-003 | 결정적 runtime 경계 추상화 | `TODO` | `unassigned` | FND-002 | — |
 | FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
@@ -27,8 +27,8 @@
 
 ### FND-001 — production 기술 스택 결정
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
 - 근거: ADR-005, ADR-016과 spike의 implementation decision
 - 선행 작업: RDY-007
 - 결과물: runtime, package manager, SQLite driver, MCP SDK와 지원 버전을 기록한 결정 문서
