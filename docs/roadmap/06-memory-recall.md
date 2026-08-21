@@ -4,8 +4,12 @@
 - 진행률: 0/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
+- 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
 - 종료 조건: search/overview가 고정 snapshot·scope·now에서 유효 claim만 탐색하고 결정적
   path/ranking/응답을 만들며 영구 product state를 전혀 쓰지 않음
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 

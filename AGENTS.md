@@ -14,6 +14,9 @@
   우선한다.
 - [behavior spike](spikes/adr-behavior/README.md)는 상태 전이의 executable oracle이다.
   production 코드에 import하거나 production 구조의 출발점으로 복사하지 않는다.
+- [evidence-gap audit](docs/roadmap/evidence-audit.md)는 각 제품 작업에서 이미 검증된
+  baseline과 production에 남은 gate를 구분한다. `[x]`는 감사 완료이지 제품 구현 완료가
+  아니다.
 - 현재 작업 상태나 다음 작업 ID를 이 파일에 고정하지 않는다. 항상 roadmap에서 읽는다.
 
 ## 모든 작업을 시작할 때
@@ -23,14 +26,20 @@
 2. [구현 로드맵](docs/roadmap/README.md)에서 현재 phase와 안정적인 작업 ID를 찾는다.
 3. 해당 phase 문서에서 작업의 상태, 단일 owner, 선행 작업, 결과물, 완료 체크와 증거를
    읽는다.
-4. 작업에 연결된 Accepted ADR의 Decision과 Validation을 읽는다. 상태 전이를 바꾸는
-   작업이면 traceability와 관련 spike scenario도 확인한다.
-5. 제품 구현 작업은 선행 항목이 모두 `DONE`이고 해당 작업이 owner와 branch를 가진
+4. 작업에 연결된 Accepted ADR의 Decision과 Validation, evidence-gap audit의 해당 행,
+   traceability와 관련 spike scenario를 확인한다.
+5. 완료 조건마다 `이미 증거가 있는 baseline`, `production에서 새로 닫을 gate`, `증거가
+   불명확한 항목`으로 분류한다. baseline을 신규 작업으로 제안하거나 반복하지 않는다.
+6. 제품 구현 작업은 선행 항목이 모두 `DONE`이고 해당 작업이 owner와 branch를 가진
    `IN_PROGRESS` 상태일 때만 시작한다.
 
 작업 ID가 없거나 선행 작업이 끝나지 않았다면 제품 코드를 먼저 만들지 않는다. 새 범위는
 기존 ID에 조용히 합치지 말고 roadmap 작업으로 추가하며, 진행 불가능한 경우 원인·필요한
 결정·해제 책임자를 적어 `BLOCKED`로 남긴다.
+
+spike나 ADR review의 `[x]`를 근거로 production 작업을 `DONE` 처리하지 않는다. 반대로 이미
+확인한 feasibility나 상태 의미를 production 선택처럼 다시 조사하지도 않는다. 기존 증거의
+적용 범위가 불명확하면 구현보다 roadmap evidence audit 정정을 먼저 한다.
 
 ## 구현 불변식
 

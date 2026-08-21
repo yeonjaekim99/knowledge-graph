@@ -4,8 +4,12 @@
 - 진행률: 0/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
+- 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
 - 종료 조건: 모든 사건 prefix에서 증분 적용과 scope 전체 replay의 canonical 결과가 같고,
   ID·상태·redirect·FK 불변식이 실제 SQLite에서 유지됨
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 

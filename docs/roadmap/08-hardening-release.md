@@ -4,8 +4,12 @@
 - 진행률: 0/10
 - 선행 phase: Phase 07 `DONE`
 - 주요 근거: 전체 ADR의 Validation과 [ADR 전체 리뷰](../adr/review.md)
+- 선행 증거 감사: [Phase 08 baseline과 production gap](evidence-audit.md#phase-08-release)
 - 종료 조건: 10만 규모 성능, 동시성, 보안, replay/reinterpret 운영, backup/restore와 전체
   추적성 gate가 재현 가능한 증거로 통과해 v1 release 후보가 승인됨
+
+> evidence audit의 `[x]`는 기존 증거 대조 완료다. 아래 작업의 `TODO/DONE`과 production
+> 완료 체크를 대신하지 않는다.
 
 ## 작업 현황
 
