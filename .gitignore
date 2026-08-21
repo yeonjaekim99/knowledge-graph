@@ -1,2 +1,5 @@
 node_modules/
 dist/
+
+# Contributor-local Recall state. The production path contract belongs to STO-001.
+/.recall/
