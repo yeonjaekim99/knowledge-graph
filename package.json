@@ -31,6 +31,7 @@
     "test:fnd-004": "node --test test/foundation/schema-source.test.mjs",
     "test:fnd-007": "node --test test/foundation/contributor-bootstrap.test.mjs",
     "test:sto-001": "pnpm run build && node --test test/integration/sqlite/sto-001-startup-gate.test.mjs",
+    "test:sto-002": "pnpm run build && node --test test/integration/sqlite/sto-002-connection-factory.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
@@ -40,7 +41,8 @@
     "verify:fnd-005": "pnpm run verify:fnd-001 && pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:fnd-004 && pnpm test",
     "verify:fnd-007": "pnpm run verify:fnd-005",
     "verify:sto-001": "pnpm run verify:fnd-007",
-    "verify:local": "pnpm run verify:fnd-007"
+    "verify:sto-002": "pnpm run verify:fnd-007",
+    "verify:local": "pnpm run verify:sto-002"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
