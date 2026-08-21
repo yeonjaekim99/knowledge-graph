@@ -85,9 +85,9 @@ test("the immutable relation registry fixes all five meanings, cardinalities, an
   assert.equal(Object.isFrozen(RELATION_REGISTRY), true);
 
   const expected = {
-    uses: ["의존·사용·요구", "multiple", "사용"],
-    rejects: ["배제·거부·탈락한 선택지", "multiple", "거부"],
-    contains: ["포함·위치·소속", "multiple", "포함"],
+    uses: ["의존, 사용, 요구", "multiple", "사용"],
+    rejects: ["배제, 거부, 탈락한 선택지", "multiple", "거부"],
+    contains: ["포함, 위치, 소속", "multiple", "포함"],
     describes: ["속성 슬롯의 값 또는 상태", "single", "="],
     relates_to: ["다른 네 관계로 안전하게 분류할 수 없는 연결", "multiple", "관련"],
   };

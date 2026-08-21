@@ -72,20 +72,17 @@ export function normalizeLiteralIdentity(value: unknown): string {
   return normalized;
 }
 
-export type CanonicalRelation =
-  | "uses"
-  | "rejects"
-  | "contains"
-  | "describes"
-  | "relates_to";
-
-export const CANONICAL_RELATIONS: readonly CanonicalRelation[] = Object.freeze([
+const CANONICAL_RELATION_VALUES = [
   "uses",
   "rejects",
   "contains",
   "describes",
   "relates_to",
-]);
+] as const;
+export type CanonicalRelation = (typeof CANONICAL_RELATION_VALUES)[number];
+export const CANONICAL_RELATIONS: readonly CanonicalRelation[] = Object.freeze(
+  CANONICAL_RELATION_VALUES,
+);
 export type RelationCardinality = "single" | "multiple";
 
 export interface CanonicalRelationDefinition {
@@ -112,16 +109,16 @@ function relationDefinition(
 export const RELATION_REGISTRY: Readonly<
   Record<CanonicalRelation, CanonicalRelationDefinition>
 > = Object.freeze({
-  uses: relationDefinition("uses", "의존·사용·요구", "multiple", "사용"),
+  uses: relationDefinition("uses", "의존, 사용, 요구", "multiple", "사용"),
   rejects: relationDefinition(
     "rejects",
-    "배제·거부·탈락한 선택지",
+    "배제, 거부, 탈락한 선택지",
     "multiple",
     "거부",
   ),
   contains: relationDefinition(
     "contains",
-    "포함·위치·소속",
+    "포함, 위치, 소속",
     "multiple",
     "포함",
   ),

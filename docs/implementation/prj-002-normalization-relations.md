@@ -66,9 +66,9 @@ process test가 `LANG`/`LC_ALL`을 `C`와 `tr_TR.UTF-8`로 바꾸어도 고정 f
 
 | relation | 의미 | 카디널리티 | 기본 표시 |
 |---|---|---|---|
-| `uses` | 의존·사용·요구 | `multiple` | 사용 |
-| `rejects` | 배제·거부·탈락한 선택지 | `multiple` | 거부 |
-| `contains` | 포함·위치·소속 | `multiple` | 포함 |
+| `uses` | 의존, 사용, 요구 | `multiple` | 사용 |
+| `rejects` | 배제, 거부, 탈락한 선택지 | `multiple` | 거부 |
+| `contains` | 포함, 위치, 소속 | `multiple` | 포함 |
 | `describes` | 속성 슬롯의 값 또는 상태 | `single` | = |
 | `relates_to` | 다른 네 관계로 안전하게 분류할 수 없는 연결 | `multiple` | 관련 |
 
