@@ -44,3 +44,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [STO-006 trusted runtime metadata](docs/implementation/sto-006-runtime-metadata.md)
 - [STO-007 append-only journal repository](docs/implementation/sto-007-append-only-journal.md)
 - [STO-008 storage recovery와 concurrency 검증](docs/implementation/sto-008-storage-recovery-concurrency.md)
+- [PRJ-001 scope replay와 canonical projection 계약](docs/implementation/prj-001-replay-contract.md)

@@ -49,6 +49,15 @@ export {
   JournalAppendError,
   createSqliteJournalRepository,
 } from "./journal-repository.js";
+
+export { createSqliteProjectionReplayService } from "./projection-replay.js";
+export type {
+  ProjectionReplayReason,
+  SqliteProjectionCanonicalDump,
+  SqliteProjectionReplayRequest,
+  SqliteProjectionReplayResult,
+  SqliteProjectionReplayService,
+} from "./projection-replay.js";
 export type {
   AppendOnlyJournalRepository,
   JournalAppendErrorCode,
