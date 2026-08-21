@@ -28,6 +28,7 @@
 | `pnpm test:e2e` | process e2e |
 | `pnpm test:performance` | 명시적 performance |
 | `pnpm test:prj-001` | scope full replay와 canonical projection 계약 |
+| `pnpm test:prj-002` | 정규화·리터럴 identity·relation registry와 locale fixture |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -65,3 +66,8 @@ reducer는 PRJ 작업에서 별도로 구현하며 Python spike는 독립 oracle
 PRJ-001은 production SQLite에서 reducer의 scope·seq·rules 입력, 한 writer transaction의
 scope 교체, meta replay 판정과 canonical dump를 구현했다. 아직 사건별 reducer와 증분
 dispatcher가 없으므로 S02/S24 target은 `planned`이며 PRJ-009/010에서만 전환한다.
+
+PRJ-002는 domain의 `normalize_v1`, literal identity와 immutable relation registry를
+구현하고 C/Turkish locale process fixture로 결정성을 확인했다. 아직 entity/claim reducer가
+이 primitive를 소비하지 않으므로 S01/S03 target은 `planned`이며 PRJ-005/006/010에서만
+전환한다.
