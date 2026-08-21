@@ -1,5 +1,14 @@
 import type { UseCase } from "../../application/index.js";
 
+export {
+  JsonSchemaValidationError,
+  createMcpJsonSchemaContract,
+} from "./json-schema-contract.js";
+export type {
+  McpJsonSchemaContract,
+  SchemaValidationBoundary,
+} from "./json-schema-contract.js";
+
 /**
  * Inbound MCP wiring depends on application use cases only. FND-004 and MCP-003
  * replace these generic slots with the normative request and result schemas.

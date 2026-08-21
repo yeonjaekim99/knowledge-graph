@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedDeclarations": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "sourceMap": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/foundation/schema-types.type-test.ts",
+    "test/support/schema-capability-fixture.mjs"
+  ]
+}

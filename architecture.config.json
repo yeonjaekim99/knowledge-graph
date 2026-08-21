@@ -11,7 +11,8 @@
     "src/adapters",
     "src/composition",
     "src/domain",
-    "src/maintenance"
+    "src/maintenance",
+    "src/schema"
   ],
   "forbiddenImportFragments": [
     "spikes/adr-behavior"
@@ -28,10 +29,13 @@
     "src/application/ports/runtime-provider.ts",
     "src/adapters/sqlite/index.ts",
     "src/adapters/mcp/index.ts",
+    "src/adapters/mcp/json-schema-contract.ts",
     "src/adapters/runtime/index.ts",
     "src/adapters/runtime/node-runtime-provider.ts",
     "src/maintenance/index.ts",
-    "src/composition/index.ts"
+    "src/composition/index.ts",
+    "src/schema/index.ts",
+    "src/schema/json-schema.ts"
   ],
   "atomicWritePort": {
     "file": "src/application/ports/journal-commit-port.ts",
@@ -63,9 +67,15 @@
       "forbiddenMemberAccess": ["Math.random"]
     },
     {
+      "name": "schema",
+      "root": "src/schema",
+      "mayImport": ["schema"],
+      "externalPackages": ["json-schema-to-ts"]
+    },
+    {
       "name": "application",
       "root": "src/application",
-      "mayImport": ["application", "domain"],
+      "mayImport": ["application", "domain", "schema"],
       "externalPackages": []
     },
     {
@@ -77,7 +87,7 @@
     {
       "name": "mcp-adapter",
       "root": "src/adapters/mcp",
-      "mayImport": ["mcp-adapter", "application"],
+      "mayImport": ["mcp-adapter", "application", "schema"],
       "externalPackages": ["@modelcontextprotocol/server"]
     },
     {
@@ -102,7 +112,8 @@
         "sqlite-adapter",
         "mcp-adapter",
         "runtime-adapter",
-        "maintenance"
+        "maintenance",
+        "schema"
       ],
       "externalPackages": [
         "@modelcontextprotocol/server",

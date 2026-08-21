@@ -21,10 +21,13 @@
     "check:architecture": "node scripts/check-module-boundaries.mjs",
     "test:fnd-002": "node --test test/foundation/module-boundaries.test.mjs",
     "test:fnd-003": "node --test test/foundation/runtime-boundaries.test.mjs",
+    "test:fnd-004": "node --test test/foundation/schema-source.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
+    "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
     "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002",
-    "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003"
+    "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003",
+    "verify:fnd-004": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:fnd-004 && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003 && pnpm run test:fnd-004"
   },
   "dependencies": {
     "@modelcontextprotocol/server": "2.0.0",
@@ -32,6 +35,7 @@
   },
   "devDependencies": {
     "@types/node": "24.13.3",
+    "json-schema-to-ts": "3.1.1",
     "typescript": "7.0.2"
   }
 }

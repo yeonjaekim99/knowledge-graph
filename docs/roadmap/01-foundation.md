@@ -1,7 +1,7 @@
 # Phase 01 — 개발 기반과 구현 결정
 
 - 상태: `IN_PROGRESS`
-- 진행률: 3/7
+- 진행률: 4/7
 - 선행 phase: Phase 00 `DONE`
 - 주요 근거: 전체 ADR, 특히 ADR-001, ADR-003, ADR-005, ADR-016
 - 선행 증거 감사: [Phase 01 baseline과 production gap](evidence-audit.md#phase-01-foundation)
@@ -18,7 +18,7 @@
 | FND-001 | production 기술 스택 결정 | `DONE` | `log0629` | RDY-007 | [결정·검증](../implementation/fnd-001-production-stack.md), [PR #6](https://github.com/yeonjaekim99/knowledge-graph/pull/6) |
 | FND-002 | 제품 모듈과 의존 방향 설계 | `DONE` | `log0629` | FND-001 | [결정·검증](../implementation/fnd-002-module-boundaries.md), [PR #7](https://github.com/yeonjaekim99/knowledge-graph/pull/7) |
 | FND-003 | 결정적 runtime 경계 추상화 | `DONE` | `log0629` | FND-002 | [결정·검증](../implementation/fnd-003-runtime-boundaries.md), [PR #8](https://github.com/yeonjaekim99/knowledge-graph/pull/8) |
-| FND-004 | public/domain schema 단일 출처 결정 | `TODO` | `unassigned` | FND-001, FND-002 | — |
+| FND-004 | public/domain schema 단일 출처 결정 | `DONE` | `log0629` | FND-001, FND-002 | [결정·검증](../implementation/fnd-004-schema-source.md), [PR #9](https://github.com/yeonjaekim99/knowledge-graph/pull/9) |
 | FND-005 | 테스트 계층과 oracle 전략 구축 | `TODO` | `unassigned` | FND-002 | — |
 | FND-006 | CI와 repository 품질 gate 구축 | `TODO` | `unassigned` | FND-001, FND-005 | — |
 | FND-007 | 개발자 bootstrap과 기여 문서 | `TODO` | `unassigned` | FND-001~006 | — |
@@ -98,18 +98,28 @@
 
 ### FND-004 — public/domain schema 단일 출처 결정
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `fnd-004-schema-source`
 - 근거: ADR-013~016
 - 선행 작업: FND-001, FND-002
 - 결과물: 타입과 JSON Schema 생성·검증 정책
 
 완료 체크:
 
-- [ ] JSON Schema가 규범이며 runtime type과 drift를 검사한다.
-- [ ] 모든 object의 `additionalProperties:false`, union `oneOf`와 min/max를 표현할 수 있다.
-- [ ] outputSchema와 structured result를 같은 source에서 검증할 수 있다.
-- [ ] schema serialization이 결정적이다.
+- [x] JSON Schema가 규범이며 runtime type과 drift를 검사한다.
+- [x] 모든 object의 `additionalProperties:false`, union `oneOf`와 min/max를 표현할 수 있다.
+- [x] outputSchema와 structured result를 같은 source에서 검증할 수 있다.
+- [x] schema serialization이 결정적이다.
+
+증거:
+
+- 결정: [public/domain schema 단일 출처](../implementation/fnd-004-schema-source.md)
+- PR: [#9](https://github.com/yeonjaekim99/knowledge-graph/pull/9)
+- 검증: `pnpm verify:fnd-004`, `pnpm verify:fnd-001`,
+  `python3 docs/roadmap/validate.py`, behavior spike 25 tests
+- 범위 경계: 실제 record/recall/revise schema는 REC-001/RCL-001/REV-001, catalog와
+  structuredContent wiring은 MCP-003, 전체 test/CI 구조는 FND-005/006이 소유한다.
 
 ### FND-005 — 테스트 계층과 oracle 전략 구축
 
