@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-21
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#14 누적 게시·로컬 검증과 2026-08-21 scope 재검토
-- 결과: **Phase 01 종료 · Phase 02 2/8 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#16 누적 게시·로컬 검증과 2026-08-21 scope 재검토
+- 결과: **Phase 01 종료 · Phase 02 4/8 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 8/66, Phase 01 `DONE`, Phase 02 2/8, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 10/66, Phase 01 `DONE`, Phase 02 4/8, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -55,6 +55,12 @@
     factory 하나와 FIFO `BEGIN IMMEDIATE` queue를 구현했다. 실제 5초 lock 중에도 reader와
     main event loop가 진행하며 오류에는 path·SQL·binding·driver cause가 남지 않는다.
     migration/schema와 journal/projector atomicity, S20의 8-client 범위는 후속 owner에 남겼다.
+13. STO-003은 exact-byte checksum과 immutable version history를 같은 managed writer
+    transaction에 두고 정상·hard-exit reopen을 검증했다. 최초 schema, 실제 MCP startup과
+    journal/projector recovery는 STO-004, MCP-001과 STO-007~008에 남겼다.
+14. STO-004는 규범 v1 DDL을 별도 SQL asset으로 bundle하고 contentless trigram FTS, 한국어
+    3글자/2글자 경계, rebuild와 partial unique/XOR/CHECK/FK를 실제 file DB에서 검증했다.
+    normalize, append/recovery, projector/recall 의미와 startup 조립은 후속 owner에 남겼다.
 
 ## 의도적으로 남은 상태
 
@@ -67,8 +73,8 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6으로 종료됐고 Phase 02는 2/8이다. 다음 dependency-ready 작업은
-  `STO-003`과 독립적인 `STO-005`이며, 각각 별도 owner/branch에서 진행할 수 있다.
+- Phase 01은 6/6으로 종료됐고 Phase 02는 4/8이다. 다음 dependency-ready 작업은
+  trusted scope seam을 구현하는 `STO-005`이며 완료 뒤 `STO-006`이 열린다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -79,11 +85,11 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~002 로컬 gate | PASS — startup 9/9, connection/queue 5/5, architecture/type/build와 Node test 59/59 |
+| STO-001~004 로컬 gate | PASS — schema 4/4, migration 6/6, architecture/type/build와 Node test 69/69 |
 | 깨끗한 source archive | PASS — frozen lockfile 설치, STO-001/전체 local gate 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — SQLite connection worker/queue·integration test·storage 운영 문서만 추가, migration/schema/journal/scope/MCP·자동 CI 추가 없음 |
+| 변경 범위 | PASS — immutable migration runner·v1 schema/FTS와 실제 integration test만 추가, scope/journal/replay/recall/MCP·자동 CI 추가 없음 |
 
 ## 게시 전 재현 검사
 
