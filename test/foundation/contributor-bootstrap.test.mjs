@@ -121,5 +121,6 @@ test("local state policy isolates SQLite artifacts without hiding arbitrary fixt
     requireText(contributing, value, "CONTRIBUTING.md");
   }
 
-  assert.doesNotMatch(contributing, /\b(?:RECALL_DB_PATH|DATABASE_URL)\b/);
+  requireText(contributing, "`RECALL_DB_PATH`", "CONTRIBUTING.md");
+  assert.doesNotMatch(contributing, /\bDATABASE_URL\b/);
 });
