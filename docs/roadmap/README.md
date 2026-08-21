@@ -2,7 +2,7 @@
 
 > 기준일: 2026-08-21
 > 범위: Recall v1 production 구현
-> 현재 상태: **Phase 01 완료 · Phase 02 planning 대상 STO-001, STO-005**
+> 현재 상태: **Phase 02 진행 중 · STO-001 구현 중, STO-005 착수 가능**
 
 이 디렉터리는 [Accepted ADR](../adr/README.md)을 팀이 실행할 수 있는 작업 순서와
 체크리스트로 바꾼다. ADR은 **왜와 무엇을**, 이 로드맵은 **순서·담당·완료 증거를**
@@ -39,7 +39,7 @@ service가 모두 준비된 뒤 시작한다.
 |---:|---|---|---:|---|---|
 | 00 | [구현 준비](00-readiness.md) | `DONE` | 7/7 | 없음 | ADR·spike·로드맵·작업 계약·증거 gap 합의 |
 | 01 | [개발 기반](01-foundation.md) | `DONE` | 6/6 | Phase 00 `DONE` | 기술 선택, 모듈 경계, 로컬 검증 기반 |
-| 02 | [SQLite·저널](02-storage.md) | `TODO` | 0/8 | Phase 01 `DONE` | migration, scope, writer, journal |
+| 02 | [SQLite·저널](02-storage.md) | `IN_PROGRESS` | 0/8 | Phase 01 `DONE` | migration, scope, writer, journal |
 | 03 | [투영·재생](03-projection.md) | `TODO` | 0/10 | Phase 02 `DONE` | 증분/전체 replay parity |
 | 04 | [`memory_record`](04-memory-record.md) | `TODO` | 0/8 | Phase 03 `DONE` | 안전한 기록 수직 경로 |
 | 05 | [`memory_revise`](05-memory-revise.md) | `TODO` | 0/7 | Phase 04 `DONE` | 철회·교정·병합·별칭 |

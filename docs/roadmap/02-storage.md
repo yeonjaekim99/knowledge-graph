@@ -1,6 +1,6 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
-- 상태: `TODO`
+- 상태: `IN_PROGRESS`
 - 진행률: 0/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| STO-001 | DB 경로·SQLite capability startup gate | `TODO` | `unassigned` | FND-001, FND-003 | — |
+| STO-001 | DB 경로·SQLite capability startup gate | `IN_PROGRESS` | `log0629` | FND-001, FND-003 | 작업 branch `sto-001-sqlite-startup-gate` |
 | STO-002 | connection factory와 writer 직렬화 | `TODO` | `unassigned` | STO-001 | — |
 | STO-003 | migration runner와 checksum 검증 | `TODO` | `unassigned` | STO-001 | — |
 | STO-004 | v1 journal·projection·FTS schema | `TODO` | `unassigned` | STO-003 | — |
@@ -28,8 +28,9 @@
 
 ### STO-001 — DB 경로·SQLite capability startup gate
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `sto-001-sqlite-startup-gate`
 - 근거: ADR-005
 - 선행 작업: FND-001, FND-003
 - 결과물: database path validator와 capability smoke test
