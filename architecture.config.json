@@ -82,7 +82,7 @@
       "name": "sqlite-adapter",
       "root": "src/adapters/sqlite",
       "mayImport": ["sqlite-adapter", "application", "domain"],
-      "externalPackages": ["better-sqlite3"]
+      "externalPackages": ["better-sqlite3", "node:"]
     },
     {
       "name": "mcp-adapter",

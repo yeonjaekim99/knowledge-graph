@@ -6,6 +6,7 @@ import {
   mkdtempSync,
   readFileSync,
   rmSync,
+  symlinkSync,
   writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
@@ -142,6 +143,15 @@ test(
     assert.throws(
       () => runSqliteStartupGate({ databasePath: unsafeDatabase.databasePath }),
       startupError("DATABASE_FILE_PERMISSIONS_UNSAFE"),
+    );
+
+    const symlinkDatabase = createStateDirectory();
+    const targetPath = join(symlinkDatabase.stateDirectory, "target.sqlite3");
+    writeFileSync(targetPath, "", { mode: 0o600 });
+    symlinkSync(targetPath, symlinkDatabase.databasePath);
+    assert.throws(
+      () => runSqliteStartupGate({ databasePath: symlinkDatabase.databasePath }),
+      startupError("DATABASE_FILE_UNSUPPORTED"),
     );
   },
 );
