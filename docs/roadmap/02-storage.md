@@ -1,7 +1,7 @@
 # Phase 02 — SQLite, scope와 사건 저널
 
-- 상태: `IN_PROGRESS`
-- 진행률: 7/8
+- 상태: `DONE`
+- 진행률: 8/8
 - 선행 phase: Phase 01 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-003, ADR-005, ADR-011
 - 선행 증거 감사: [Phase 02 baseline과 production gap](evidence-audit.md#phase-02-storage)
@@ -22,7 +22,7 @@
 | STO-005 | scope resolver와 deployment config | `DONE` | `log0629` | FND-003 | [구현 결정](../implementation/sto-005-scope-resolver.md), [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17) |
 | STO-006 | actor·branch·session metadata provider | `DONE` | `log0629` | STO-005 | [구현 결정](../implementation/sto-006-runtime-metadata.md), [PR #18](https://github.com/yeonjaekim99/knowledge-graph/pull/18) |
 | STO-007 | event ID와 append-only journal repository | `DONE` | `log0629` | STO-002, STO-004~006 | [구현 결정](../implementation/sto-007-append-only-journal.md), [PR #19](https://github.com/yeonjaekim99/knowledge-graph/pull/19) |
-| STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
+| STO-008 | storage recovery·concurrency integration | `DONE` | `log0629` | STO-001~007 | [구현 결정](../implementation/sto-008-storage-recovery-concurrency.md), [PR #20](https://github.com/yeonjaekim99/knowledge-graph/pull/20) |
 
 ## 상세 체크리스트
 
@@ -254,22 +254,48 @@
 
 ### STO-008 — storage recovery·concurrency integration
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `sto-008-storage-recovery-concurrency`
+- PR: [#20](https://github.com/yeonjaekim99/knowledge-graph/pull/20)
 - 근거: ADR-001, ADR-005와 spike S20/S24
 - 선행 작업: STO-001~007
 - 결과물: file-backed process/concurrency integration suite
 
 완료 체크:
 
-- [ ] journal INSERT 전후와 commit 경계 process exit가 이전/새 완전 상태만 남긴다.
-- [ ] 여러 WAL reader가 writer commit 전 일관된 snapshot을 읽는다.
-- [ ] 8-client 혼합 부하는 Phase 08에서 재사용 가능한 fixture로 준비된다.
-- [ ] 재개방 후 seq/ID, FTS rowid와 migration checksum이 일관되고 계속 쓸 수 있다.
+- [x] journal INSERT 전후와 commit 경계 process exit가 이전/새 완전 상태만 남긴다.
+- [x] 여러 WAL reader가 writer commit 전 일관된 snapshot을 읽는다.
+- [x] 8-client 혼합 부하는 Phase 08에서 재사용 가능한 fixture로 준비된다.
+- [x] 재개방 후 seq/ID, FTS rowid와 migration checksum이 일관되고 계속 쓸 수 있다.
+
+증거:
+
+- 구현: [recovery/concurrency 결정](../implementation/sto-008-storage-recovery-concurrency.md),
+  [S20 production target](../../test/e2e/process/s20-wal-concurrent-clients.test.mjs),
+  [journal crash/reopen test](../../test/e2e/process/sto-008-journal-crash-reopen.test.mjs),
+  [8-client fixture](../../test/support/sqlite-mixed-client-fixture.mjs)
+- TDD: S20 manifest를 `implemented`로 요구하자 canonical target 부재로 foundation RED가
+  발생했고, target 추가 뒤 `pnpm test:sto-008` 6/6 GREEN과 세 번 연속 6/6을 확인했다.
+- crash: IPC barrier로 INSERT 전, journal+FTS INSERT 후·commit 전, commit 후를 hard-exit했다.
+  production reopen 뒤 old/complete-new 상태, migration checksum, FK, seq/ID, FTS rowid와 후속
+  append를 확인했다.
+- 동시성: production writer lock 중 네 WAL reader가 old snapshot을 보고 commit 뒤 new
+  snapshot을 봤다. 4 logical writer와 4 reader는 journal/FTS parity, scope 합, 연속 seq와
+  유일 ID를 유지했다.
+- 검증: `pnpm verify:local` 93/93, `python3 docs/roadmap/validate.py`, behavior spike 25/25,
+  `pnpm audit --prod` 알려진 production 취약점 0개와 깨끗한 `git archive` frozen install·전체 gate
+- 범위 경계: S20 target만 `implemented`다. projection·correct·full replay fault point가 남은
+  S24는 `planned`이며 PRJ-009/010과 REL-004가 소유한다. 실제 MCP load, 다중 writer process,
+  10만 규모 성능과 자동 CI는 추가하지 않았다.
 
 ## Phase 종료 체크
 
-- [ ] 깨끗한 DB와 기존 DB startup이 모두 검증됐다.
-- [ ] scope 없이 또는 잘못된 SQLite 환경에서 server가 fail-closed한다.
-- [ ] journal append 성공/실패와 FTS가 원자적이다.
-- [ ] Phase 03 reducer가 사용할 transaction·schema interface가 고정됐다.
+- [x] 깨끗한 DB와 기존 DB startup이 모두 검증됐다.
+- [x] scope 없이 또는 잘못된 SQLite 환경에서 server가 fail-closed한다.
+- [x] journal append 성공/실패와 FTS가 원자적이다.
+- [x] Phase 03 reducer가 사용할 transaction·schema interface가 고정됐다.
+
+Phase 종료 판정은 STO-001~008의 누적 production 증거다. Phase 03은 v1 bundled schema,
+managed `BEGIN IMMEDIATE` writer와 append-only journal을 입력으로 사용하되 projection 의미와
+journal+projection atomic application path는 새 phase에서 구현한다.

@@ -43,3 +43,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [STO-005 trusted scope resolver](docs/implementation/sto-005-scope-resolver.md)
 - [STO-006 trusted runtime metadata](docs/implementation/sto-006-runtime-metadata.md)
 - [STO-007 append-only journal repository](docs/implementation/sto-007-append-only-journal.md)
+- [STO-008 storage recovery와 concurrency 검증](docs/implementation/sto-008-storage-recovery-concurrency.md)
