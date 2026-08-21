@@ -17,7 +17,7 @@
   },
   "packageManager": "pnpm@11.22.0",
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && node scripts/copy-sqlite-migrations.mjs",
     "check:architecture": "node scripts/check-module-boundaries.mjs",
     "test": "pnpm run build && node scripts/run-test-layers.mjs fast",
     "test:foundation": "pnpm run build && node scripts/run-test-layers.mjs foundation",

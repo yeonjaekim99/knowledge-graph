@@ -83,6 +83,16 @@ function columnNames(tableInfo) {
   return tableInfo.map(({ name }) => name);
 }
 
+function foreignKeyTargets(foreignKeys) {
+  return foreignKeys
+    .map((foreignKey) => ({
+      from: foreignKey.from,
+      table: foreignKey.table,
+      to: foreignKey.to,
+    }))
+    .sort((left, right) => left.from.localeCompare(right.from));
+}
+
 test("the exact bundled v1 migration creates the complete ADR schema and reopens idempotently", async () => {
   const sourceBytes = readFileSync(fileURLToPath(sourceMigrationUrl));
   const builtBytes = readFileSync(fileURLToPath(builtMigrationUrl));
@@ -167,6 +177,26 @@ test("the exact bundled v1 migration creates the complete ADR schema and reopens
   for (const [table, expected] of Object.entries(expectedColumns)) {
     assert.deepEqual(
       columnNames(await rows(factory, `PRAGMA table_info(${table})`)),
+      expected,
+      table,
+    );
+  }
+  const expectedForeignKeys = {
+    statements: [{ from: "event_id", table: "journal", to: "id" }],
+    entities: [{ from: "merged_into", table: "entities", to: "id" }],
+    surface_forms: [{ from: "entity_id", table: "entities", to: "id" }],
+    claims: [
+      { from: "object_id", table: "entities", to: "id" },
+      { from: "subject_id", table: "entities", to: "id" },
+    ],
+    claim_support: [
+      { from: "claim_id", table: "claims", to: "id" },
+      { from: "event_id", table: "statements", to: "event_id" },
+    ],
+  };
+  for (const [table, expected] of Object.entries(expectedForeignKeys)) {
+    assert.deepEqual(
+      foreignKeyTargets(await rows(factory, `PRAGMA foreign_key_list(${table})`)),
       expected,
       table,
     );
@@ -428,6 +458,11 @@ test("CHECK and foreign-key constraints reject malformed journal and projection 
       },
       {
         kind: "run",
+        sql: "INSERT INTO claims(id, scope_key, subject_id, relation, object_value, state, origin_seq, first_seen_at, last_seen_at) VALUES (?, ?, ?, 'relates_to', ?, 'active', ?, ?, ?)",
+        parameters: ["c1.1", "u:user/p:project", "e1.0", "second", 1, NOW_SECONDS, NOW_SECONDS],
+      },
+      {
+        kind: "run",
         sql: "INSERT INTO claim_support(claim_id, event_id, draft_index) VALUES (?, ?, ?)",
         parameters: ["c1.0", "ev_statement", 0],
       },
@@ -465,6 +500,10 @@ test("CHECK and foreign-key constraints reject malformed journal and projection 
       [
         "INSERT INTO claim_support(claim_id, event_id, draft_index, live) VALUES (?, ?, ?, ?)",
         ["c1.0", "ev_statement", 1, 2],
+      ],
+      [
+        "INSERT INTO claim_support(claim_id, event_id, draft_index) VALUES (?, ?, ?)",
+        ["c1.1", "ev_statement", 0],
       ],
       [
         "INSERT INTO id_redirects(old_id, new_id, kind, reason) VALUES (?, ?, ?, ?)",

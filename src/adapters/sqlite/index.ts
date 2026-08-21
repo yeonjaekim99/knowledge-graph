@@ -42,6 +42,7 @@ export type {
   SqliteMigrationOptions,
   SqliteMigrationResult,
 } from "./migration.js";
+export { runBundledSqliteMigrations } from "./bundled-migrations.js";
 
 export {
   RECALL_DB_PATH_ENV,
