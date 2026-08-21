@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 0/10
+- 진행률: 1/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| PRJ-001 | replay 입력·출력과 rules version 기반 | `IN_PROGRESS` | `log0629` | STO-003, STO-004, FND-003 | `prj-001-replay-contract` |
+| PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `TODO` | `unassigned` | PRJ-001 | — |
 | PRJ-003 | occurrence ID와 redirect registry | `TODO` | `unassigned` | PRJ-001, PRJ-002 | — |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
@@ -30,20 +30,33 @@
 
 ### PRJ-001 — replay 입력·출력과 rules version 기반
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `prj-001-replay-contract`
+- PR: [#21](https://github.com/yeonjaekim99/knowledge-graph/pull/21)
 - 근거: ADR-001, ADR-007, ADR-017
 - 선행 작업: STO-003, STO-004, FND-003
 - 결과물: 결정적 reducer 계약, projection_meta와 canonical dump
 
 완료 체크:
 
-- [ ] reducer 입력은 정렬된 journal event, scope, rules version과 주입된 clock뿐이다.
-- [ ] full replay가 한 scope의 projection을 `BEGIN IMMEDIATE` 하나에서 교체한다.
-- [ ] `projection_meta.last_seq`와 rules version 불일치가 replay를 강제한다.
-- [ ] canonical dump가 row와 JSON key를 명시적으로 정렬하고 TEMP/물리 시각을 제외한다.
-- [ ] reducer가 git, network, LLM과 wall clock을 직접 호출하지 않는다.
+- [x] reducer 입력은 정렬된 journal event, scope와 rules version뿐이고 운영 `rebuiltAt`은 제외한다.
+- [x] full replay가 한 scope의 projection을 `BEGIN IMMEDIATE` 하나에서 교체한다.
+- [x] `projection_meta.last_seq`와 rules version 불일치가 replay를 강제한다.
+- [x] canonical dump가 row와 JSON key를 명시적으로 정렬하고 TEMP/물리 시각을 제외한다.
+- [x] reducer가 git, network, LLM과 wall clock을 직접 호출하지 않는다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-001-replay-contract.md)에 pure reducer 입력, worker-held
+  replay session, meta 판정, canonical format과 후속 owner 경계를 고정했다.
+- TDD RED는 target 2개 file이 아직 없는 domain/adapter export 때문에 실패했고, GREEN은
+  `pnpm verify:prj-001` 8/8과 전체 `pnpm verify:local` 101/101이다.
+- 실제 file DB에서 WAL reader old snapshot, 외부 writer `SQLITE_BUSY`, 다른 scope·journal·FTS
+  보존, trigger/reducer 실패 rollback과 queue 재사용을 검증했다.
+- production encoder와 독립 reference encoder의 `recall-projection-v1` byte/checksum parity를
+  검증했으며 meta·FTS·다른 scope 변화가 dump를 바꾸지 않는다.
+- S02/S24와 증분 dispatcher·사건 의미는 완료로 과장하지 않고 PRJ-002~010에 남겼다.
 
 ### PRJ-002 — 정규화·관계·리터럴 동일성 규칙
 
