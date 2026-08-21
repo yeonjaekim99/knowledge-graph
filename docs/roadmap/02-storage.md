@@ -21,7 +21,7 @@
 | STO-004 | v1 journal·projection·FTS schema | `DONE` | `log0629` | STO-003 | [구현 결정](../implementation/sto-004-v1-sqlite-schema.md), [PR #16](https://github.com/yeonjaekim99/knowledge-graph/pull/16) |
 | STO-005 | scope resolver와 deployment config | `DONE` | `log0629` | FND-003 | [구현 결정](../implementation/sto-005-scope-resolver.md), [PR #17](https://github.com/yeonjaekim99/knowledge-graph/pull/17) |
 | STO-006 | actor·branch·session metadata provider | `DONE` | `log0629` | STO-005 | [구현 결정](../implementation/sto-006-runtime-metadata.md), [PR #18](https://github.com/yeonjaekim99/knowledge-graph/pull/18) |
-| STO-007 | event ID와 append-only journal repository | `TODO` | `unassigned` | STO-002, STO-004~006 | — |
+| STO-007 | event ID와 append-only journal repository | `IN_PROGRESS` | `log0629` | STO-002, STO-004~006 | `sto-007-append-only-journal` |
 | STO-008 | storage recovery·concurrency integration | `TODO` | `unassigned` | STO-001~007 | — |
 
 ## 상세 체크리스트
@@ -219,8 +219,9 @@
 
 ### STO-007 — event ID와 append-only journal repository
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `sto-007-append-only-journal`
 - 근거: ADR-001, ADR-002, ADR-005
 - 선행 작업: STO-002, STO-004~006
 - 결과물: validated event append API
