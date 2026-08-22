@@ -23,6 +23,13 @@ const OTHER_SCOPE = "u:other-user/p:recall";
 const temporaryDirectories = [];
 const openFactories = new Set();
 
+const RESOLUTION_ERROR_MESSAGES = Object.freeze({
+  INVALID_WRITE_ENTITY_RESOLUTION_INPUT:
+    "write entity resolution requires canonical transaction-bound drafts",
+  INVALID_WRITE_ENTITY_RESOLUTION_RESULT:
+    "write entity resolution returned an invalid transaction result",
+});
+
 afterEach(async () => {
   await Promise.allSettled([...openFactories].map((factory) => factory.close()));
   openFactories.clear();
@@ -95,6 +102,57 @@ function appendEvent(suffix, value) {
     session: null,
     createdAt: NOW,
   };
+}
+
+function payloadBearingError(label, ErrorType = Error) {
+  const error =
+    ErrorType === WriteEntityResolutionError
+      ? new WriteEntityResolutionError("INVALID_WRITE_ENTITY_RESOLUTION_INPUT")
+      : new Error("synthetic fixture failure");
+  Object.defineProperties(error, {
+    message: {
+      configurable: true,
+      value: `${label}:synthetic-payload`,
+      writable: true,
+    },
+    cause: {
+      configurable: true,
+      enumerable: true,
+      value: Object.freeze({ token: `${label}:cause-payload` }),
+    },
+    prefix: {
+      configurable: true,
+      enumerable: true,
+      value: `${label}:prefix-payload`,
+    },
+    suffix: {
+      configurable: true,
+      enumerable: true,
+      value: `${label}:suffix-payload`,
+    },
+  });
+  return error;
+}
+
+async function captureRejection(operation) {
+  try {
+    await operation();
+  } catch (error) {
+    return error;
+  }
+  assert.fail("expected operation to reject");
+}
+
+async function assertFreshResolutionError(operation, code, original, label) {
+  const error = await captureRejection(operation);
+  assert.ok(error instanceof WriteEntityResolutionError);
+  assert.notStrictEqual(error, original);
+  assert.equal(error.code, code);
+  assert.equal(error.message, RESOLUTION_ERROR_MESSAGES[code]);
+  assert.equal(Object.hasOwn(error, "cause"), false);
+  assert.equal(Object.hasOwn(error, "prefix"), false);
+  assert.equal(Object.hasOwn(error, "suffix"), false);
+  assert.equal(String(error.stack).includes(label), false);
 }
 
 async function seedStatements(factory, scope, values) {
@@ -330,6 +388,346 @@ test("rejects duplicate, out-of-order, and malformed ambiguity candidates at the
       },
     );
   }
+});
+
+test("replaces input reflection failures with fresh payload-redacted input errors", async (context) => {
+  await context.test("top-level input object prototype trap", async () => {
+    const original = payloadBearingError("input-object");
+    const input = new Proxy(
+      { dispatchId: 1, drafts: [] },
+      {
+        getPrototypeOf() {
+          throw original;
+        },
+      },
+    );
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: async () => [] },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+      original,
+      "input-object",
+    );
+  });
+
+  await context.test("draft array length and descriptor traps", async () => {
+    const original = payloadBearingError(
+      "input-drafts",
+      WriteEntityResolutionError,
+    );
+    const drafts = new Proxy([], {
+      get(target, property, receiver) {
+        if (property === "length") {
+          throw original;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "length") {
+          throw original;
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: async () => [] },
+          { dispatchId: 1, drafts },
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+      original,
+      "input-drafts",
+    );
+  });
+
+  await context.test("session method accessor trap", async () => {
+    const original = payloadBearingError("input-session-method");
+    const session = new Proxy(
+      {},
+      {
+        get(_target, property) {
+          if (property === "resolveEntities") {
+            throw original;
+          }
+          return undefined;
+        },
+      },
+    );
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(session, {
+          dispatchId: 1,
+          drafts: [],
+        }),
+      "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+      original,
+      "input-session-method",
+    );
+  });
+});
+
+test("replaces session and result inspection failures with fresh payload-redacted result errors", async (context) => {
+  const input = {
+    dispatchId: 1,
+    drafts: [draft(0, reference("Safe subject"))],
+  };
+
+  await context.test("result array reflection trap", async () => {
+    const original = payloadBearingError("result-array");
+    const result = new Proxy([], {
+      get(target, property, receiver) {
+        if (property === "length") {
+          throw original;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+      getOwnPropertyDescriptor(target, property) {
+        if (property === "length") {
+          throw original;
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    });
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: async () => result },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "result-array",
+    );
+  });
+
+  await context.test("result array index accessor", async () => {
+    const original = payloadBearingError("result-index-accessor");
+    let accessorCalls = 0;
+    const result = [];
+    Object.defineProperty(result, "0", {
+      configurable: true,
+      enumerable: true,
+      get() {
+        accessorCalls += 1;
+        throw original;
+      },
+    });
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: async () => result },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "result-index-accessor",
+    );
+    assert.equal(accessorCalls, 0);
+  });
+
+  await context.test("result object descriptor trap", async () => {
+    const original = payloadBearingError("result-object");
+    const result = new Proxy(
+      {
+        draftIndex: 0,
+        status: "resolved",
+        subjectId: "e1.0",
+        objectId: null,
+      },
+      {
+        getOwnPropertyDescriptor() {
+          throw original;
+        },
+      },
+    );
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: async () => [result] },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "result-object",
+    );
+  });
+
+  await context.test("synchronous session call failure", async () => {
+    const original = payloadBearingError("session-call");
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities() {
+              throw original;
+            },
+          },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "session-call",
+    );
+  });
+
+  await context.test("asynchronous session rejection", async () => {
+    const original = payloadBearingError(
+      "session-rejection",
+      WriteEntityResolutionError,
+    );
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: async () => Promise.reject(original) },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "session-rejection",
+    );
+  });
+
+  await context.test("session thenable accessor failure", async () => {
+    const original = payloadBearingError("session-thenable");
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: () => ({
+              get then() {
+                throw original;
+              },
+            }),
+          },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "session-thenable",
+    );
+  });
+
+  await context.test("session Promise then accessor failure", async () => {
+    const original = payloadBearingError("session-promise-then");
+    const result = new Proxy(Promise.resolve([]), {
+      get(target, property, receiver) {
+        if (property === "then") {
+          throw original;
+        }
+        return Reflect.get(target, property, receiver);
+      },
+    });
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          { resolveEntities: () => result },
+          input,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "session-promise-then",
+    );
+  });
+
+  await context.test("finalization result reflection trap", async () => {
+    const original = payloadBearingError("finalization-result");
+    const result = new Proxy(
+      { expectedJournalSeq: 1, drafts: [] },
+      {
+        ownKeys() {
+          throw original;
+        },
+      },
+    );
+    await assertFreshResolutionError(
+      () =>
+        finalizeSqliteWriteEntityDrafts(
+          { finalizeEntities: async () => result },
+          {
+            dispatchId: 1,
+            survivorDraftIndexes: [],
+            statementBodyJson: "{}",
+          },
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "finalization-result",
+    );
+  });
+
+  await context.test("finalization session rejection", async () => {
+    const original = payloadBearingError(
+      "finalization-rejection",
+      WriteEntityResolutionError,
+    );
+    await assertFreshResolutionError(
+      () =>
+        finalizeSqliteWriteEntityDrafts(
+          { finalizeEntities: async () => Promise.reject(original) },
+          {
+            dispatchId: 1,
+            survivorDraftIndexes: [],
+            statementBodyJson: "{}",
+          },
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "finalization-rejection",
+    );
+  });
+});
+
+test("preserves factory-redacted SQLite connection errors across the adapter boundary", async () => {
+  const original = new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+  const error = await captureRejection(() =>
+    resolveSqliteWriteEntityDrafts(
+      { resolveEntities: async () => Promise.reject(original) },
+      { dispatchId: 1, drafts: [] },
+    ),
+  );
+  assert.strictEqual(error, original);
+  assert.equal(error.message, "SQLite write transaction failed and was rolled back");
+  assert.equal(Object.hasOwn(error, "cause"), false);
+});
+
+test("replaces mutated SQLite errors that are no longer payload-redacted", async () => {
+  const original = new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+  Object.defineProperties(original, {
+    message: {
+      configurable: true,
+      value: "sqlite-mutated:synthetic-payload",
+      writable: true,
+    },
+    cause: {
+      configurable: true,
+      enumerable: true,
+      value: Object.freeze({ token: "sqlite-mutated:cause-payload" }),
+    },
+    prefix: {
+      configurable: true,
+      enumerable: true,
+      value: "sqlite-mutated:prefix-payload",
+    },
+    suffix: {
+      configurable: true,
+      enumerable: true,
+      value: "sqlite-mutated:suffix-payload",
+    },
+  });
+  await assertFreshResolutionError(
+    () =>
+      resolveSqliteWriteEntityDrafts(
+        { resolveEntities: async () => Promise.reject(original) },
+        { dispatchId: 1, drafts: [] },
+      ),
+    "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+    original,
+    "sqlite-mutated",
+  );
 });
 
 test("fails closed on journal sequence drift and on finalized body mismatch", async () => {
