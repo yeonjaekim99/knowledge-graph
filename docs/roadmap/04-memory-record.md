@@ -18,7 +18,7 @@
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | — |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
-| REC-004 | write entity 해석과 모호성 처리 | `TODO` | `unassigned` | REC-001, PRJ-005 | — |
+| REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
 | REC-006 | statement append·project·결과 원자성 | `TODO` | `unassigned` | REC-005, STO-007, PRJ-009 | — |
 | REC-007 | raw-only·기본값·재시도 의미 | `TODO` | `unassigned` | REC-006, PRJ-008 | — |
@@ -100,8 +100,9 @@
 
 ### REC-004 — write entity 해석과 모호성 처리
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rec-004-write-entity-resolver`
 - 근거: ADR-003, ADR-008, ADR-013
 - 선행 작업: REC-001, PRJ-005
 - 결과물: transaction-bound draft entity resolver
