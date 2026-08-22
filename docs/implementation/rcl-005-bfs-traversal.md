@@ -76,10 +76,16 @@ endpoint가 다른 scope인 손상도 빈 결과로 숨기지 않는다. 잘못�
 entity/name/DB path/driver cause를 보유하지 않는
 `RecallReadError(INVALID_RECALL_TRAVERSAL_STATE)`를 반환한다.
 
+raw traversal envelope·row·array는 bounded descriptor snapshot으로 한 번 복제한 값만
+decode한다. accessor는 실행하지 않고 Proxy trap이나 payload를 덧붙인 typed error도 원본을
+재사용하지 않아, 고정 code/name/message 외의 cause·임의 필드가 오류 경계를 넘지 않는다.
+
 domain traversal contract도 exact plain data, well-formed Unicode scalar display/name,
 origin-seq와 claim ID의 일치, root incident/link 방향, 최대 31개, 중복 없는 규범 정렬을 다시
-검증한다. fake 또는 다른 adapter가 typed port를 흉내 내도 malformed neighborhood가 BFS에
-들어오지 않는다.
+검증한다. input과 neighborhood도 descriptor-only bounded snapshot을 통과하며, source가
+payload-bearing `RecallGraphTraversalError`를 reject해도 fresh
+`INVALID_TRAVERSAL_STATE`로 바꾼다. fake 또는 다른 adapter가 typed port를 흉내 내도
+malformed neighborhood가 BFS에 들어오거나 공격자 payload가 오류에 남지 않는다.
 
 ## BFS, reached와 parent
 
@@ -124,6 +130,12 @@ TEMP source, snapshot protocol/adapter, domain validation과 BFS를 연결했고
 `A→B→C→D→B`, 4 hops로 요구해 8/9와 실제 `A→B→C→D`를 포착했다. fix `0303829`는
 self-loop 또는 anchor의 정확한 parent claim만 append에서 제외해 다시 9/9로 만들었다.
 
+독립 review remediation의 tests-only RED `71ca202`는 payload-bearing source/proxy 오류,
+SQLite raw envelope·row·array/accessor와 canonical name과 byte-identical한 81-code-point
+surface 표시를 추가해 13개 중 4개 실패를 포착했다. fix `6a59954`는 raw 경계를 bounded
+descriptor snapshot으로 고정하고 typed 오류를 fresh fixed error로 교체하며, truncation 전에
+raw surface와 canonical name을 비교해 진짜 별칭만 prepend한다. focused target은 13/13이다.
+
 fixture는 다음을 고정한다.
 
 - incoming 방향 시작, literal collection, 별칭·FTS·overview path와 실제 hops
@@ -133,6 +145,8 @@ fixture는 다음을 고정한다.
 - 실제 file SQLite의 scope·expiry 제외, callback capability 종료와 repeat 결과
 - 같은 WAL snapshot 중 concurrent commit 비가시성, 다음 호출 가시성
 - cross-scope endpoint 손상의 payload-redacted fail-closed와 실패 뒤 snapshot 재사용
+- domain/SQLite의 envelope·row·array/accessor trap과 source typed-error payload 비보존
+- 81-code-point surface가 canonical name과 같을 때 truncation으로 중복 표시되지 않음
 - 성공/실패 전후 permanent dump와 외부 reader `data_version` 불변
 
 S12/S13 production target 파일이 생겼으므로 scenario manifest는 `implemented`로 전환한다.
@@ -157,10 +171,10 @@ pnpm audit --prod
 
 최신 `main` `3e2eedb` 위 semantic rebase에서 RCL-003의 FTS protocol/factory/worker/read-port
 facet과 RCL-004의 `IN_PROGRESS` 계획을 보존했다. 현재 branch의 로컬 통합 검증은 RCL-005
-9/9, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
+13/13, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11, PRJ-007 19/19, PRJ-008 8/8,
 REC-001 13/13, REC-002 13/13과 REC-003 17/17이다. 빠른 전체 suite는 47개 파일
-332/332, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
+336/336, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
 validator는 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고
 production dependency 알려진 취약점은 0개다.
 

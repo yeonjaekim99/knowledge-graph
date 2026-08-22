@@ -199,6 +199,9 @@ incident view로 확장하고, typed source 위에서 depth 1~3 BFS를 수행한
 canonical one-visit, multi-seed 최단/seed/숫자 edge order, cycle, 별칭·FTS·overview path와
 실제 hops, 31→30 독립 절단을 고정한다. S12/S13 file SQLite target은 scope·expiry 제외,
 한 WAL snapshot, callback 종료 capability, read-only permanent dump/`data_version`과 손상
-redaction을 검증하므로 manifest 상태가 `implemented`다. 이 상태는 RCL-005 traversal seam의
+redaction을 검증한다. domain/SQLite raw envelope·row·array/accessor는 descriptor-only
+bounded snapshot 뒤 fresh fixed error로 닫히고, source가 던진 typed error payload도 보존하지
+않는다. canonical name과 동일한 81-code-point surface는 truncation 전에 raw equality를 비교해
+한 번만 표시한다. 따라서 manifest 상태가 `implemented`다. 이 상태는 RCL-005 traversal seam의
 production target이 존재한다는 뜻이며 ranking·public Answer/note와 완성 recall vertical은
 RCL-006~008, 성능은 RCL-009/REL-003에 남는다.
