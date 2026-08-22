@@ -112,6 +112,8 @@ test("input validation rejects missing query, mode leaks, closed fields, and Uni
     { mode: "search", query: "ok", terms: Array(11).fill("term") },
     { mode: "search", query: "ok", terms: [""] },
     { mode: "search", query: "ok", terms: ["x".repeat(257)] },
+    { mode: "search", query: `safe-${"\ud800"}-payload` },
+    { mode: "search", query: "ok", terms: [`safe-${"\udfff"}-payload`] },
     { mode: "search", query: "ok", scope_key: "u:attacker/p:other" },
     { mode: "search", query: "ok", actor: "attacker" },
     { mode: "search", query: "😀".repeat(4_097) },
@@ -147,6 +149,15 @@ test("input validation rejects missing query, mode leaks, closed fields, and Uni
     "~standard"
   ].validate({ query: ` ${"😀".repeat(4_097)} ` });
   assert.ok(advertisedTooLong.issues?.length > 0);
+  for (const malformed of [
+    { query: `safe-${"\ud800"}-payload` },
+    { query: "ok", terms: [`safe-${"\udfff"}-payload`] },
+  ]) {
+    const malformedResult = await advertisedContract.standardSchema[
+      "~standard"
+    ].validate(malformed);
+    assert.ok(malformedResult.issues?.length > 0);
+  }
 
   const advertisedQuerySchema =
     memoryRecallInputDefinition.schema.oneOf[0].properties.query;

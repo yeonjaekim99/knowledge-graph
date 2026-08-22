@@ -51,10 +51,11 @@
 | `E-PROJECTION-VALIDITY` | [PR #28](https://github.com/yeonjaekim99/knowledge-graph/pull/28), [TTL·aggregate 구현 결정](../implementation/prj-008-ttl-claim-aggregate.md), [domain test](../../test/unit/domain/prj-008-ttl-validity.test.mjs), [SQLite test](../../test/integration/sqlite/prj-008-claim-aggregate.test.mjs) | effective statement/support expiry, 공통 valid-support CTE, scope/fixed-now aggregate·label·contested와 expiry/scope invariant | SQLite publish·prefix parity는 PRJ-009/010; 실제 read transaction·TEMP materialization과 search/overview 응답은 RCL owner |
 | `E-PROJECTION-DISPATCH` | [PR #29](https://github.com/yeonjaekim99/knowledge-graph/pull/29), [dispatcher 구현 결정](../implementation/prj-009-projection-dispatcher.md), [domain test](../../test/unit/domain/prj-009-projection-dispatcher.test.mjs), [SQLite test](../../test/integration/projection/prj-009-atomic-dispatcher.test.mjs) | PRJ-004~008 canonical reducer 조립, 안전 suffix 증분·과거 변경 replay 분기, journal/FTS/projection/meta 단일 transaction, commit gate와 read-your-writes | 전체 prefix/metamorphic/process crash parity는 `E-PROJECTION-PARITY`; public record/revise/recall 연결과 10만 규모는 후속 owner |
 | `E-PROJECTION-PARITY` | [PR #30](https://github.com/yeonjaekim99/knowledge-graph/pull/30), [parity 구현 결정](../implementation/prj-010-prefix-metamorphic-crash-parity.md), [S01~S24 prefix test](../../test/integration/projection/prj-010-scenario-prefix-parity.test.mjs), [S23 metamorphic test](../../test/integration/projection/s23-seeded-state-machine.test.mjs), [S24 crash test](../../test/e2e/process/s24-crash-reopen.test.mjs) | journal로 환원 가능한 S01~S24의 98 operation prefix, 8×36 seeded prefix, batch/scope/time/undo metamorphic 관계와 실제 child `SIGKILL` 8지점의 production/full replay byte parity·불변식 | S01~S22의 public record/revise/recall vertical target, 실제 MCP mixed load와 10만 규모 성능은 REC/REV/RCL/REL owner |
-| `E-RECORD-CONTRACT` | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [record 계약 결정](../implementation/rec-001-record-contract.md), [runtime contract test](../../test/contract/mcp/rec-001-record-schema.test.mjs), [type fixture](../../test/unit/application/rec-001-record-contract.type-test.ts) | frozen Record/ClaimDraft/Result source와 추론 DTO, trim 후 Unicode bounds, closed XOR·재해석 pair, schema/rejected 경계, result index coverage와 accepted status precedence | 비밀 탐지·마스킹, entity 해석·dedupe, journal/project application path와 실제 MCP wiring은 REC-002~008/MCP owner |
+| `E-RECORD-CONTRACT` | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [record 계약 결정](../implementation/rec-001-record-contract.md), [runtime contract test](../../test/contract/mcp/rec-001-record-schema.test.mjs), [type fixture](../../test/unit/application/rec-001-record-contract.type-test.ts) | frozen Record/ClaimDraft/Result source와 추론 DTO, 모든 free-form input의 well-formed Unicode scalar·trim 후 bounds, closed XOR·재해석 pair, schema/rejected 경계, result index coverage와 accepted status precedence | 비밀 탐지·마스킹, entity 해석·dedupe, journal/project application path와 실제 MCP wiring은 REC-002~008/MCP owner |
 | `E-RECALL-FOUNDATION` | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [RCL-001 구현 결정](../implementation/rcl-001-recall-contract-snapshot.md), [contract test](../../test/contract/mcp/rcl-001-memory-recall-contract.test.mjs), [application test](../../test/unit/application/rcl-001-recall-snapshot-service.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-001-recall-snapshot.test.mjs) | 실제 MemoryRecall/RecallResult schema·type·SDK validation, trusted scope/fixed-now capture, 한 readonly WAL transaction의 scope TEMP aggregate와 explicit alias, cleanup·손상 방어·영구 state 불변 | term/surface/FTS/overview/BFS/ranking/Answer assembly와 public recall golden·MCP wiring·성능은 RCL-002~009/MCP owner |
 | `E-SECRET-DETECTOR` | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [detector 구현 결정](../implementation/rec-002-secret-detector.md), [domain test](../../test/unit/domain/rec-002-secret-detector.test.mjs) | versioned provider signature·Unicode entropy·context allowlist, ASCII 경계, UTF-16 위치 전용 frozen result와 payload-redacted typed failure를 제공하는 IO·writer 없는 pure detector | application scan-before-write·raw 마스킹·draft 거부·write rollback은 REC-003, log/DB/FTS 전체 scan과 확장 공식 provider corpus는 REC-008/MCP-005/REL-005 |
 | `E-RECORD-SANITIZER` | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [sanitizer 구현 결정](../implementation/rec-003-record-sanitizer.md), [application test](../../test/unit/application/rec-003-record-sanitizer.test.mjs), [type fixture](../../test/unit/application/rec-003-record-sanitizer.type-test.ts) | positional raw class 마스킹·불명확 위치 전체 fallback, 모든 draft 저장 문자열의 부분 거부, immutable original-index plan과 payload-redacted fail-closed·재해석 전체 실패 | journal/FTS append·projection 원자성은 REC-006, 전체 DB/WAL/log/MCP 누출 scan은 REC-008/MCP-005, revise 문자열 처리는 Phase 05 owner |
+| `E-RECALL-SURFACE` | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [RCL-002 구현 결정](../implementation/rcl-002-query-surface.md), [domain test](../../test/unit/domain/rcl-002-query-surface.test.mjs), [application test](../../test/unit/application/rcl-002-query-surface.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-002-query-surface.test.mjs) | PRJ-002 normalize를 재사용하되 distinct display/NFKC·구두점 후보와 cap-before-dedupe를 보존한 term, ill-formed UTF-16 거부, PRJ-003/007 terminal redirect 검증, scoped polysemy·surface pair first-occurrence dedupe, 50+1과 같은 RCL-001 snapshot의 typed read-only seam | 보존된 표시 phrase의 FTS/surface-no-answer fallback은 RCL-003, BFS/path는 RCL-005, note/Answer와 public golden은 RCL-007/008 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -117,7 +118,7 @@
 ## Phase 06 Recall
 
 - [x] `RCL-001` | baseline: S09/S10/S19가 scope/now snapshot aggregate와 read-only 의미를 확인했고 `E-RUNTIME`이 고정 `evaluationNow`, `E-SCHEMA`가 output 계약 seam을 제공한다. | production: `E-RECALL-FOUNDATION`에서 같은 readonly snapshot의 scope/fixed-now TEMP aggregate와 실제 MemoryRecall/RecallResult schema·typed runtime 계약을 완료했다.
-- [x] `RCL-002` | baseline: S01/S09/S21이 normalize·surface·alias seed 의미를 확인했다. | production: query term 후보와 surface seed cap·결정적 dedupe를 구현한다.
+- [x] `RCL-002` | baseline: S01/S09/S21이 normalize·surface·alias seed 의미를 확인했다. | production: `E-RECALL-SURFACE`에서 query term 후보, canonical surface seed, scope·50+1·결정적 dedupe와 typed snapshot seam을 구현하고 PR review·merge 증거를 고정했다.
 - [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: quoted query, 3글자 경계, FTS 21개와 raw-only 반환을 구현한다.
 - [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: overview seed cap·정렬·빈 결과 계약을 구현한다.
 - [x] `RCL-005` | baseline: S12/S13이 양방향 BFS·literal 수집·최단 path·fanout 신호를 확인했다. | production: TEMP reached와 bounded traversal/collection을 구현한다.
@@ -152,15 +153,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 28/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
-  `PRJ-001`~`010`, `REC-001`~`REC-003`과 `RCL-001`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 29/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
+  `PRJ-001`~`010`, `REC-001`~`REC-003`과 `RCL-001`~`RCL-002`가 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
 - Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-003`과
-  `RCL-001`은 완료됐고 `REC-004`, `RCL-002`, `RCL-003`은 owner와 격리
+  `RCL-001`~`RCL-002`는 완료됐고 `REC-004`, `RCL-003`은 owner와 격리
   branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

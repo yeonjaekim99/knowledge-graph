@@ -11,6 +11,7 @@ import {
 import {
   JsonSchemaValidationError,
   claimDraftContract,
+  createMcpJsonSchemaContract,
   memoryRecordInputContract,
   recordResultContract,
   validateRecordResultForInput,
@@ -49,6 +50,66 @@ function recordInput(overrides = {}) {
     claims: [entityDraft()],
     ...overrides,
   };
+}
+
+function freeFormInputCases(value) {
+  const draftCases = [
+    ["subject", entityDraft({ subject: value })],
+    ["object", entityDraft({ object: value })],
+    ["object_value", literalDraft({ object_value: value })],
+    ["subject_kind", entityDraft({ subject_kind: value })],
+    ["object_kind", entityDraft({ object_kind: value })],
+    ["relation_label", entityDraft({ relation_label: value })],
+    ["subject_aliases", entityDraft({ subject_aliases: [value] })],
+    ["object_aliases", entityDraft({ object_aliases: [value] })],
+  ];
+  return [
+    { name: "raw_text", draft: null, input: recordInput({ raw_text: value }) },
+    ...draftCases.map(([name, draft]) => ({
+      name,
+      draft,
+      input: recordInput({ claims: [draft] }),
+    })),
+  ];
+}
+
+function assertRedactedIssues(result, marker) {
+  assert.ok(result.issues?.length > 0);
+  assert.equal(JSON.stringify(result.issues).includes(marker), false);
+}
+
+function assertRedactedSchemaError(error, marker) {
+  assert.ok(error instanceof JsonSchemaValidationError);
+  assert.equal(error.code, "SCHEMA_VALIDATION_FAILED");
+  assert.equal(error.boundary, "input");
+  assert.ok(error.issueCount > 0);
+  assert.equal("cause" in error, false);
+  assert.equal(error.message.includes(marker), false);
+  assert.equal(JSON.stringify(error).includes(marker), false);
+  return true;
+}
+
+async function observeMalformedContractSurface({
+  label,
+  contract,
+  value,
+  marker,
+  accepted,
+}) {
+  const standardResult = await contract.standardSchema["~standard"].validate(
+    value,
+  );
+  if (standardResult.issues === undefined) {
+    accepted.push(`${label}:standard`);
+  } else {
+    assertRedactedIssues(standardResult, marker);
+  }
+  try {
+    await contract.validate(value, "input");
+    accepted.push(`${label}:helper`);
+  } catch (error) {
+    assertRedactedSchemaError(error, marker);
+  }
 }
 
 async function rejectsSchema(contract, value, boundary = "input") {
@@ -188,6 +249,108 @@ test("record input preserves raw strings and accepts every Unicode code-point bo
       "input",
     ),
     { raw_text: "원문만 기록", claims: [] },
+  );
+});
+
+test("every free-form record input keeps valid astral pairs across advertised, Standard Schema, and helper paths", async () => {
+  const value = "valid-astral-😀-pair";
+  assert.equal(value.isWellFormed(), true);
+  const advertisedClaimDraftContract = createMcpJsonSchemaContract(
+    claimDraftSchemaDefinition,
+  );
+  const advertisedMemoryRecordContract = createMcpJsonSchemaContract(
+    memoryRecordInputSchemaDefinition,
+  );
+
+  for (const { name, draft, input } of freeFormInputCases(value)) {
+    const advertisedInput = await advertisedMemoryRecordContract.standardSchema[
+      "~standard"
+    ].validate(input);
+    assert.equal(advertisedInput.issues, undefined, `${name}:advertised`);
+    const standardInput = await memoryRecordInputContract.standardSchema[
+      "~standard"
+    ].validate(input);
+    assert.equal(standardInput.issues, undefined, `${name}:standard`);
+    assert.deepEqual(await memoryRecordInputContract.validate(input, "input"), input);
+
+    if (draft !== null) {
+      const advertisedDraft = await advertisedClaimDraftContract.standardSchema[
+        "~standard"
+      ].validate(draft);
+      assert.equal(advertisedDraft.issues, undefined, `${name}:draft-advertised`);
+      const standardDraft = await claimDraftContract.standardSchema[
+        "~standard"
+      ].validate(draft);
+      assert.equal(standardDraft.issues, undefined, `${name}:draft-standard`);
+      assert.deepEqual(await claimDraftContract.validate(draft, "input"), draft);
+    }
+  }
+});
+
+test("every free-form record input rejects ill-formed UTF-16 across advertised, Standard Schema, and helper paths", async () => {
+  const malformedShapes = [
+    ["lone-high", "\ud800"],
+    ["lone-low", "\udfff"],
+    ["high-high", "\ud800\ud800"],
+    ["low-high", "\udfff\ud800"],
+  ];
+  const advertisedClaimDraftContract = createMcpJsonSchemaContract(
+    claimDraftSchemaDefinition,
+  );
+  const advertisedMemoryRecordContract = createMcpJsonSchemaContract(
+    memoryRecordInputSchemaDefinition,
+  );
+  const accepted = [];
+
+  for (const [shape, malformed] of malformedShapes) {
+    const marker = `scalar-probe-${shape}`;
+    const value = `${marker}-${malformed}-payload`;
+    assert.equal(value.isWellFormed(), false);
+    for (const { name, draft, input } of freeFormInputCases(value)) {
+      const advertisedInput =
+        await advertisedMemoryRecordContract.standardSchema["~standard"].validate(
+          input,
+        );
+      if (advertisedInput.issues === undefined) {
+        accepted.push(`${shape}:${name}:record-advertised`);
+      } else {
+        assertRedactedIssues(advertisedInput, marker);
+      }
+      await observeMalformedContractSurface({
+        label: `${shape}:${name}:record`,
+        contract: memoryRecordInputContract,
+        value: input,
+        marker,
+        accepted,
+      });
+
+      if (draft !== null) {
+        const advertisedDraft =
+          await advertisedClaimDraftContract.standardSchema["~standard"].validate(
+            draft,
+          );
+        if (advertisedDraft.issues === undefined) {
+          accepted.push(`${shape}:${name}:draft-advertised`);
+        } else {
+          assertRedactedIssues(advertisedDraft, marker);
+        }
+        await observeMalformedContractSurface({
+          label: `${shape}:${name}:draft`,
+          contract: claimDraftContract,
+          value: draft,
+          marker,
+          accepted,
+        });
+      }
+    }
+  }
+
+  assert.equal(
+    accepted.length,
+    0,
+    `ill-formed values were accepted by ${accepted.length} contract paths: ${accepted
+      .slice(0, 12)
+      .join(", ")}`,
   );
 });
 

@@ -38,7 +38,8 @@
 
 완료 체크:
 
-- [x] raw 1~32,768자, claims 0~100개와 모든 문자열·배열 상한을 Unicode 문자 기준으로 검사한다.
+- [x] raw 1~32,768자, claims 0~100개와 모든 free-form 문자열의 well-formed Unicode scalar·배열
+  상한을 검사한다.
 - [x] object/object_value XOR, object 전용 kind/aliases와 relates_to label 조건을 표현한다.
 - [x] 모든 object에 `additionalProperties:false`를 적용한다.
 - [x] schema 오류는 사건 없는 tool error, 의미 오류는 draft별 rejected로 구분한다.
@@ -52,6 +53,10 @@
   GREEN은 `pnpm verify:rec-001`의 FND-004 7/7과 REC-001 11/11이다.
 - exact-bound astral-plane emoji와 앞뒤 공백 원문 보존, 한 code point 초과·whitespace-only,
   claims 100/101과 aliases 20/21 경계를 검증했다.
+- RCL-002 review 후속 RED `138c914`은 모든 free-form input의 malformed UTF-16 acceptance
+  204개를 REC-001 12/13으로 재현했다. fix `02b7d10` 뒤 advertised source, Standard Schema와
+  helper가 payload를 echo하지 않고 거부하며 valid astral pair를 유지해 REC-001 13/13과
+  최신 `main`의 REC-003을 포함한 전체 빠른 suite 42개 파일 302/302를 통과했다.
 - 목적어 XOR, object-only field, 다섯 relation/label, 재해석 pair와 ID/token pattern, trusted
   scope/metadata 금지를 모두 사건 전 schema contract 오류로 분리했다.
 - accepted/rejected result branch, original input index의 전단사 coverage와

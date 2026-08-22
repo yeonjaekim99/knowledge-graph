@@ -1603,6 +1603,137 @@ function readRecallSnapshotAggregates(
   });
 }
 
+function readRecallSnapshotSurfaceState(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  surfaceNorms: readonly string[],
+): Readonly<{
+  candidateRows: readonly Readonly<Record<string, unknown>>[];
+  entityRows: readonly Readonly<Record<string, unknown>>[];
+  redirectRows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction ||
+    !Array.isArray(surfaceNorms) ||
+    surfaceNorms.length > 10 ||
+    surfaceNorms.some(
+      (surfaceNorm) =>
+        typeof surfaceNorm !== "string" ||
+        surfaceNorm.length === 0,
+    )
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+
+  if (surfaceNorms.length === 0) {
+    return Object.freeze({
+      candidateRows: Object.freeze([]),
+      entityRows: Object.freeze([]),
+      redirectRows: Object.freeze([]),
+    });
+  }
+
+  const requestedValues = surfaceNorms.map(() => "(?, ?)").join(", ");
+  const parameters: SqliteBinding[] = [];
+  for (let termOrder = 0; termOrder < surfaceNorms.length; termOrder += 1) {
+    parameters.push(termOrder, surfaceNorms[termOrder] ?? "");
+  }
+  parameters.push(state.active.scopeKey);
+  const candidateRows = rows(
+    database
+      .prepare(
+        [
+          `WITH requested(term_order, surface_norm) AS (VALUES ${requestedValues})`,
+          "SELECT",
+          "  requested.term_order AS recall_surface_term_order,",
+          "  matched.scope_key AS recall_surface_scope_key,",
+          "  matched.surface_norm AS recall_surface_norm,",
+          "  matched.entity_id AS recall_surface_entity_id",
+          "FROM requested",
+          "JOIN surface_forms AS matched",
+          "  ON matched.scope_key = ?",
+          " AND matched.surface_norm = requested.surface_norm",
+          "ORDER BY requested.term_order ASC, matched.entity_id COLLATE BINARY ASC",
+        ].join("\n"),
+      )
+      .all(...parameters),
+  );
+
+  const entityStatement = database.prepare(
+    [
+      "SELECT",
+      "  id AS recall_surface_entity_id,",
+      "  scope_key AS recall_surface_entity_scope_key,",
+      "  merged_into AS recall_surface_entity_merged_into",
+      "FROM entities WHERE id = ?",
+    ].join("\n"),
+  );
+  const redirectStatement = database.prepare(
+    [
+      "SELECT",
+      "  old_id AS recall_surface_redirect_old_id,",
+      "  new_id AS recall_surface_redirect_new_id,",
+      "  kind AS recall_surface_redirect_kind,",
+      "  reason AS recall_surface_redirect_reason",
+      "FROM id_redirects WHERE old_id = ?",
+    ].join("\n"),
+  );
+  const pending: string[] = [];
+  for (const candidate of candidateRows) {
+    const entityId = candidate["recall_surface_entity_id"];
+    if (typeof entityId === "string") {
+      pending.push(entityId);
+    }
+  }
+  const visited = new Set<string>();
+  const entityRows = new Map<string, Readonly<Record<string, unknown>>>();
+  const redirectRows = new Map<string, Readonly<Record<string, unknown>>>();
+  for (let cursor = 0; cursor < pending.length; cursor += 1) {
+    const identifier = pending[cursor];
+    if (identifier === undefined || visited.has(identifier)) {
+      continue;
+    }
+    visited.add(identifier);
+    const entity = rowOrNull(entityStatement.get(identifier));
+    if (entity !== null) {
+      entityRows.set(identifier, entity);
+      const mergedInto = entity["recall_surface_entity_merged_into"];
+      if (typeof mergedInto === "string") {
+        pending.push(mergedInto);
+      }
+    }
+    const redirect = rowOrNull(redirectStatement.get(identifier));
+    if (redirect !== null) {
+      redirectRows.set(identifier, redirect);
+      const newId = redirect["recall_surface_redirect_new_id"];
+      if (typeof newId === "string") {
+        pending.push(newId);
+      }
+    }
+  }
+
+  return Object.freeze({
+    candidateRows,
+    entityRows: Object.freeze(
+      [...entityRows.values()].sort((left, right) => {
+        const leftId = String(left["recall_surface_entity_id"]);
+        const rightId = String(right["recall_surface_entity_id"]);
+        return leftId === rightId ? 0 : leftId < rightId ? -1 : 1;
+      }),
+    ),
+    redirectRows: Object.freeze(
+      [...redirectRows.values()].sort((left, right) => {
+        const leftId = String(left["recall_surface_redirect_old_id"]);
+        const rightId = String(right["recall_surface_redirect_old_id"]);
+        return leftId === rightId ? 0 : leftId < rightId ? -1 : 1;
+      }),
+    ),
+  });
+}
+
 function endRecallSnapshot(
   database: SqliteDatabaseConnection,
   state: WorkerRecallSnapshotState,
@@ -1750,6 +1881,33 @@ function handleRequest(
         database,
         recallState,
         request.snapshotId,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-surface") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = readRecallSnapshotSurfaceState(
+        database,
+        recallState,
+        request.snapshotId,
+        request.surfaceNorms,
       );
       post({ type: "success", requestId: request.requestId, result });
     } catch (error) {

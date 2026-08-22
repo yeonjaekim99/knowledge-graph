@@ -79,7 +79,7 @@ const RAW_TEXT_SCHEMA: TrimmedTextSchema<32_768> = {
   type: "string",
   minLength: 1,
   pattern:
-    "^\\s*\\S(?:[\\s\\S]{0,32766}\\S)?\\s*$",
+    "^(?![\\s\\S]*[\\uD800-\\uDFFF])\\s*\\S(?:[\\s\\S]{0,32766}\\S)?\\s*$",
   "x-recall-trimmedCodePointMinLength": 1,
   "x-recall-trimmedCodePointMaxLength": 32_768,
 };
@@ -88,7 +88,7 @@ const CLAIM_TEXT_SCHEMA: TrimmedTextSchema<1_024> = {
   type: "string",
   minLength: 1,
   pattern:
-    "^\\s*\\S(?:[\\s\\S]{0,1022}\\S)?\\s*$",
+    "^(?![\\s\\S]*[\\uD800-\\uDFFF])\\s*\\S(?:[\\s\\S]{0,1022}\\S)?\\s*$",
   "x-recall-trimmedCodePointMinLength": 1,
   "x-recall-trimmedCodePointMaxLength": 1_024,
 };
@@ -97,7 +97,7 @@ const LABEL_OR_ALIAS_SCHEMA: TrimmedTextSchema<256> = {
   type: "string",
   minLength: 1,
   pattern:
-    "^\\s*\\S(?:[\\s\\S]{0,254}\\S)?\\s*$",
+    "^(?![\\s\\S]*[\\uD800-\\uDFFF])\\s*\\S(?:[\\s\\S]{0,254}\\S)?\\s*$",
   "x-recall-trimmedCodePointMinLength": 1,
   "x-recall-trimmedCodePointMaxLength": 256,
 };
@@ -106,7 +106,7 @@ const ENTITY_KIND_SCHEMA: TrimmedTextSchema<64> = {
   type: "string",
   minLength: 1,
   pattern:
-    "^\\s*\\S(?:[\\s\\S]{0,62}\\S)?\\s*$",
+    "^(?![\\s\\S]*[\\uD800-\\uDFFF])\\s*\\S(?:[\\s\\S]{0,62}\\S)?\\s*$",
   "x-recall-trimmedCodePointMinLength": 1,
   "x-recall-trimmedCodePointMaxLength": 64,
 };
@@ -523,35 +523,42 @@ function assertTrimmedCodePointBound(value: string, maximum: number): void {
   }
 }
 
+function assertInputTextCodePointBound(value: string, maximum: number): void {
+  if (!value.isWellFormed()) {
+    reject("TRIMMED_TEXT_BOUNDS");
+  }
+  assertTrimmedCodePointBound(value, maximum);
+}
+
 export function assertClaimDraftStructuralContract(draft: ClaimDraft): void {
-  assertTrimmedCodePointBound(draft.subject, 1_024);
+  assertInputTextCodePointBound(draft.subject, 1_024);
   if (draft.subject_kind !== undefined) {
-    assertTrimmedCodePointBound(draft.subject_kind, 64);
+    assertInputTextCodePointBound(draft.subject_kind, 64);
   }
   if (draft.relation_label !== undefined) {
-    assertTrimmedCodePointBound(draft.relation_label, 256);
+    assertInputTextCodePointBound(draft.relation_label, 256);
   }
   for (const alias of draft.subject_aliases ?? []) {
-    assertTrimmedCodePointBound(alias, 256);
+    assertInputTextCodePointBound(alias, 256);
   }
 
   if ("object" in draft) {
-    assertTrimmedCodePointBound(draft.object, 1_024);
+    assertInputTextCodePointBound(draft.object, 1_024);
     if (draft.object_kind !== undefined) {
-      assertTrimmedCodePointBound(draft.object_kind, 64);
+      assertInputTextCodePointBound(draft.object_kind, 64);
     }
     for (const alias of draft.object_aliases ?? []) {
-      assertTrimmedCodePointBound(alias, 256);
+      assertInputTextCodePointBound(alias, 256);
     }
   } else {
-    assertTrimmedCodePointBound(draft.object_value, 1_024);
+    assertInputTextCodePointBound(draft.object_value, 1_024);
   }
 }
 
 export function assertMemoryRecordInputStructuralContract(
   input: MemoryRecordInput,
 ): void {
-  assertTrimmedCodePointBound(input.raw_text, 32_768);
+  assertInputTextCodePointBound(input.raw_text, 32_768);
   for (const draft of input.claims) {
     assertClaimDraftStructuralContract(draft);
   }

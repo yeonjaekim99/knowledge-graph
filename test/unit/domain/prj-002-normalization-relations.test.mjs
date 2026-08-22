@@ -51,6 +51,11 @@ test("normalize_v1 rejects non-text and empty normalized values without echoing 
     () => normalizeV1(" \t-__\u2003 "),
     ruleFailure("EMPTY_NORMALIZED_VALUE", "-__"),
   );
+  const malformed = `safe-${"\ud800"}-payload`;
+  assert.throws(
+    () => normalizeV1(malformed),
+    ruleFailure("INVALID_NORMALIZATION_INPUT", malformed),
+  );
 });
 
 test("literal identity applies trim plus NFKC while preserving case, internal whitespace, and punctuation", () => {

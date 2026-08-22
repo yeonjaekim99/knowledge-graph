@@ -18,3 +18,10 @@ readonly WAL connection 하나에서 `BEGIN DEFERRED`와 scope/fixed-now
 고정 snapshot, explicit aggregate alias, 두 scope 격리, exact expiry, callback 실패 cleanup,
 journal/projection/FTS dump와 외부 `data_version` 불변 및 손상 row의 payload-redacted 거부를
 검증한다.
+
+RCL-002의 [`rcl-002-query-surface.test.mjs`](rcl-002-query-surface.test.mjs)는 같은 reader
+transaction에서 parameterized scope/surface exact lookup과 필요한 entity/redirect closure만
+읽어 canonical seed를 만드는지 검증한다. 다의 surface, 다른 scope 동명 row 제외, chain,
+같은 normalized lookup을 가진 distinct display term의 first-pair dedupe, 51→50 절단,
+concurrent WAL commit 전후 snapshot, persistent dump/`data_version` 불변과 cycle 오류 cleanup을
+포함한다.

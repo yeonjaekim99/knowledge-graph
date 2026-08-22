@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/9
+- 진행률: 2/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | RCL-001 | recall 계약·snapshot·유효 aggregate | `DONE` | `log0629` | FND-004, PRJ-008 | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md) |
-| RCL-002 | query term과 surface seed | `IN_PROGRESS` | `log0629` | RCL-001, PRJ-005 | — |
+| RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `IN_PROGRESS` | `log0629` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
 | RCL-005 | BFS 이동·수집·경로 복원 | `TODO` | `unassigned` | RCL-001, RCL-002 | — |
@@ -71,20 +71,46 @@
 
 ### RCL-002 — query term과 surface seed
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-002-query-surface`
+- PR: [#39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)
 - 근거: ADR-006, ADR-008, ADR-012
 - 선행 작업: RCL-001, PRJ-005
 - 결과물: deterministic term extractor와 surface seed resolver
 
 완료 체크:
 
-- [ ] 명시 terms는 입력 순서를, 미지정 query는 전체+문자/숫자 run을 긴 순서로 최대 10개 쓴다.
-- [ ] 두 글자 미만 normalized 후보를 제외하고 형태소/LLM 의미 추출을 하지 않는다.
-- [ ] surface 행을 전부 canonicalize하고 term 순서·entity ID 순으로 중복 제거한다.
-- [ ] 최대 50개 seed를 쓰고 51번째로 surface 절단을 감지한다.
-- [ ] 다의 surface를 모두 seed로 쓰되 cross-scope entity는 한 건도 포함하지 않는다.
+- [x] 명시 terms는 입력 순서를, 미지정 query는 전체+문자/숫자 run을 긴 순서로 최대 10개 쓴다.
+- [x] 두 글자 미만 normalized 후보를 제외하고 형태소/LLM 의미 추출을 하지 않는다.
+- [x] surface 행을 전부 canonicalize하고 term 순서·entity ID 순으로 중복 제거한다.
+- [x] 최대 50개 seed를 쓰고 51번째로 surface 절단을 감지한다.
+- [x] 다의 surface를 모두 seed로 쓰되 cross-scope entity는 한 건도 포함하지 않는다.
+
+완료 증거:
+
+- [구현 결정](../implementation/rcl-002-query-surface.md)에 PRJ-002 normalize와 PRJ-003/007
+  canonical redirect 재사용, RCL-001 typed snapshot seam, read-only/손상 경계를 고정했다.
+- tests-only RED commit `faf79ec`에서 기존 build 성공 뒤 application/domain 제품 관찰점 부재로
+  0/3 실패했고, 최소 구현 뒤 focused target이 GREEN이었다. 독립 review RED `9fc2c54`는
+  표시 후보 손실·cap 순서·ill-formed UTF-16 허용을 24개 중 8개 실패로 재현했고 fix 뒤
+  `pnpm test:rcl-002`는 domain/application/SQLite 15/15 GREEN이다. 후속 RED `138c914`은
+  REC-001의 모든 free-form input을 세 계약 경로에서 검사해 13개 중 1개 실패와 malformed
+  acceptance 204개를 고정했고, fix `02b7d10` 뒤 REC-001은 13/13 GREEN이다.
+- Unicode code-point 길이·정렬, explicit precedence/빈 배열/<2/max10, 같은 norm의 구두점·NFKC
+  표시 후보와 반복 run cap-before-dedupe, 다의 surface, redirect chain/cycle/33-hop/kind/scope
+  손상, 51 seed와 repeat 결정성을 검증했다.
+- 실제 WAL snapshot에서 cross-scope 동명 surface가 제외되고 concurrent commit은 다음 recall에서만
+  보였다. 성공/실패 뒤 persistent dump와 `data_version`은 같고 error는 payload를 echo하지 않았다.
+- record/recall public input과 query·projection normalization의 Unicode scalar 경계가 일치하고
+  valid astral pair는 보존되는지 advertised source, Standard Schema와 helper에서 검증했다.
+- 최신 `main`의 REC-003 17/17을 포함한 전체 fast suite 42개 파일 302/302, PRJ-010 39/39,
+  behavior spike 25/25, roadmap
+  evidence 67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
+- FTS, BFS, ranking, Answer/note와 public S09/S21 golden은 RCL-003/RCL-005~008에 남겼다.
+- 독립 review에서 HIGH/MEDIUM/LOW finding 0건을 확인했다. [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)가
+  구현·review remediation·최신 `main` 재베이스·전체 회귀와 이 상태 증거를 함께 게시해
+  RCL-002의 영속적인 완료 근거가 된다.
 
 ### RCL-003 — 안전한 FTS와 raw fallback
 

@@ -25,7 +25,7 @@ function readError(code) {
   };
 }
 
-test("the service captures trusted scope and UTC epoch now once and exposes only typed TEMP reads", async () => {
+test("the service captures trusted scope and UTC epoch now once and exposes only typed snapshot reads", async () => {
   let captures = 0;
   let contexts = 0;
   const aggregate = Object.freeze({
@@ -58,8 +58,13 @@ test("the service captures trusted scope and UTC epoch now once and exposes only
       assert.equal(Object.isFrozen(context), true);
       const source = Object.freeze({
         listValidClaimAggregates: async () => Object.freeze([aggregate]),
+        resolveSurfaceSeeds: async (terms) =>
+          Object.freeze({ terms, seeds: Object.freeze([]), truncated: false }),
       });
-      assert.deepEqual(Object.keys(source), ["listValidClaimAggregates"]);
+      assert.deepEqual(Object.keys(source), [
+        "listValidClaimAggregates",
+        "resolveSurfaceSeeds",
+      ]);
       return operation(source);
     },
   };

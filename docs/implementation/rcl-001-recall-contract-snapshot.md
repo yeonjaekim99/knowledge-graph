@@ -58,7 +58,7 @@ entity-object claim은 path 끝에 아직 없는 반대 entity를 한 번 덧붙
 호출한다. 그 결과에서만 `scopeKey`와 `evaluationNow`를 만들고 scope format과 non-negative
 safe integer epoch를 다시 검사한다. tool input에는 scope, actor, branch와 session field가 없다.
 
-application callback이 받는 capability는 다음 하나뿐이다.
+RCL-001 병합 시점에 application callback이 받은 초기 capability는 다음 하나였다.
 
 ```text
 RecallValidClaimSource
@@ -66,8 +66,10 @@ RecallValidClaimSource
 ```
 
 raw SQLite connection, SQL string, factory와 persistent-table query method를 application에
-노출하지 않는다. 후속 RCL seam은 이 port에 TEMP valid set에서 시작하는 typed method만
-추가해야 하므로 active-only나 wall clock query로 유효성 정의를 우회할 수 없다.
+노출하지 않는다. RCL-002는 같은 callback에 typed `resolveSurfaceSeeds()`를 추가하되 raw
+row/SQL/connection은 계속 숨기고 같은 snapshot의 scope-bound projection만 읽는다. 후속 claim
+read method는 TEMP valid set에서 시작해야 하므로 active-only나 wall clock query로 유효성
+정의를 우회할 수 없다.
 
 ## 한 read transaction과 TEMP lifecycle
 

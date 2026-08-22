@@ -29,7 +29,8 @@ DTO가 relation enum, trusted input과 accepted/rejected result branch drift를 
 거부하는지 확인한다. 비판별 XOR와 재해석 pair의 최종 판정은 runtime contract fixture가
 소유한다.
 
-RCL-001의 [`application/rcl-001-recall-snapshot-service.test.mjs`](application/rcl-001-recall-snapshot-service.test.mjs)는
+RCL-001의
+[`application/rcl-001-recall-snapshot-service.test.mjs`](application/rcl-001-recall-snapshot-service.test.mjs)는
 request-scoped runtime을 정확히 한 번 캡처하고 application이 raw SQL/connection 대신 TEMP
 유효 claim 전용 typed capability만 받는지 검증한다. 잘못된 scope/epoch는 DB를 열기 전에
 payload를 보관하지 않는 typed error로 닫는다.
@@ -48,3 +49,11 @@ detector의 UTF-16 위치를 raw class marker로 치환하고 모든 draft 문�
 위치·결과 손상과 detector 예외 fail-closed, 재해석의 부분 성공 금지를 검증한다.
 `application/rec-003-record-sanitizer.type-test.ts`는 이 중간 plan의 readonly/type-only package
 경계를 확인한다. SQLite append/project와 public tool 응답 조립은 이 unit의 범위가 아니다.
+
+RCL-002의 [`domain/rcl-002-query-surface.test.mjs`](domain/rcl-002-query-surface.test.mjs)는
+explicit/query-derived term의 Unicode code-point 순서, distinct display phrase와
+cap-before-dedupe, PRJ-002 normalize/ill-formed UTF-16 경계, canonical redirect chain·다의
+surface·50+1·손상 fail-closed를 검증한다.
+[`application/rcl-002-query-surface.test.mjs`](application/rcl-002-query-surface.test.mjs)와
+compile fixture는 같은 정책이 RCL-001 snapshot callback의 typed `resolveSurfaceSeeds`만 쓰고
+raw SQL/connection capability를 얻지 못하는지 검증한다.

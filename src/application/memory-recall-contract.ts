@@ -21,6 +21,7 @@ type SearchInputSchema = Readonly<{
         type: "string";
         minLength: 1;
         maxLength: 256;
+        pattern: string;
       }>;
       maxItems: 10;
     }>;
@@ -92,13 +93,19 @@ const memoryRecallInputSchema: MemoryRecallInputSchema = {
         query: {
           type: "string",
           minLength: 1,
-          pattern: "^\\s*\\S(?:[\\s\\S]{0,4094}\\S)?\\s*$",
+          pattern:
+            "^(?![\\s\\S]*[\\uD800-\\uDFFF])\\s*\\S(?:[\\s\\S]{0,4094}\\S)?\\s*$",
           "x-recall-trimmedCodePointMinLength": 1,
           "x-recall-trimmedCodePointMaxLength": 4_096,
         },
         terms: {
           type: "array",
-          items: { type: "string", minLength: 1, maxLength: 256 },
+          items: {
+            type: "string",
+            minLength: 1,
+            maxLength: 256,
+            pattern: "^(?![\\s\\S]*[\\uD800-\\uDFFF])[\\s\\S]+$",
+          },
           maxItems: 10,
         },
         depth: { type: "integer", enum: [1, 2, 3], default: 2 },

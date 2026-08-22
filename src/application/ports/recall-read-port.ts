@@ -1,11 +1,16 @@
 import type { ScopeKey, UnixEpochSeconds } from "./runtime-provider.js";
+import type {
+  RecallQuerySurfaceSelection,
+  RecallQueryTerm,
+} from "../../domain/recall-query-surface.js";
 
 const SCOPE_KEY_PATTERN =
   /^u:[A-Za-z0-9._-]{1,64}\/p:[A-Za-z0-9._-]{1,64}$/u;
 
 export type RecallReadErrorCode =
   | "INVALID_RECALL_CONTEXT"
-  | "INVALID_RECALL_AGGREGATE";
+  | "INVALID_RECALL_AGGREGATE"
+  | "INVALID_RECALL_SURFACE_STATE";
 
 const RECALL_READ_ERROR_MESSAGES: Readonly<
   Record<RecallReadErrorCode, string>
@@ -14,6 +19,8 @@ const RECALL_READ_ERROR_MESSAGES: Readonly<
     "recall requires a validated request scope and UTC epoch snapshot",
   INVALID_RECALL_AGGREGATE:
     "recall aggregate state does not satisfy the read contract",
+  INVALID_RECALL_SURFACE_STATE:
+    "recall surface state does not satisfy the read contract",
 });
 
 export class RecallReadError extends Error {
@@ -42,11 +49,14 @@ export interface RecallClaimAggregate {
 
 /**
  * This is the only capability application recall stages receive. Concrete
- * adapters may read projection rows only through methods rooted in the
- * request-local TEMP valid-claim set.
+ * adapters keep every typed lookup in the request-local snapshot; claim reads
+ * remain rooted in the request-local TEMP valid-claim set.
  */
 export interface RecallValidClaimSource {
   listValidClaimAggregates(): Promise<readonly RecallClaimAggregate[]>;
+  resolveSurfaceSeeds(
+    terms: readonly RecallQueryTerm[],
+  ): Promise<RecallQuerySurfaceSelection>;
 }
 
 export type RecallSnapshotOperation<Result> = (
