@@ -109,7 +109,7 @@
       "layer": "integration-projection",
       "target": "test/integration/projection/s10-ttl-aggregate-contested.test.mjs",
       "owner_tasks": ["PRJ-008", "RCL-006", "RCL-008"],
-      "status": "planned"
+      "status": "implemented"
     },
     {
       "id": "S11",
