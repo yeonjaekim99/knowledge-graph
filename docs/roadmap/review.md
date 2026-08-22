@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#38 누적 게시·로컬 검증과 2026-08-23 scope 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001 완료 · REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#39 누적 게시·로컬 검증과 2026-08-23 scope 재검토
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~002 완료 · REC-004/RCL-003 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 28/66, Phase 01·02·03과 REC-001~003/RCL-001 `DONE`, REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 29/66, Phase 01·02·03과 REC-001~003/RCL-001~002 `DONE`, REC-004/RCL-003 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -187,6 +187,16 @@
     duplicate/stored index·occurrence와 projection 원자성 및 전체 log/DB leak scan은 REC-005~008에
     남겨 unit sanitizer 증거를 수직 경로 완료로 과장하지 않는다. 최종 독립 재검증과
     285/285 회귀를 통과한 [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38)을 완료 증거로 고정해 제품 roll-up을 28/66으로 올렸다.
+33. RCL-002는 명시 terms 또는 query 전체·문자/숫자 run을 원문 표시형과 source order로
+    보존한 뒤 cap을 적용하고, surface 단계에서만 `(surface_norm, entity_id)`와 canonical
+    entity를 first-occurrence로 정리한다. 이 순서로 같은 normalize 결과의 구두점·NFKC
+    phrase를 FTS에 넘길 수 있고 반복 후보가 cap 밖 seed를 끌어오는 refill도 막는다. 같은
+    RCL-001 snapshot 안에서 scope-local polysemy, redirect terminal과 50+1 절단을 읽기
+    전용으로 해석한다. 독립 review에서 발견한 표시 후보 소실·cap 순서와 malformed UTF-16
+    SQLite 변환을 tests-only RED로 고정하고, recall과 record의 모든 자유 문자열을 Unicode
+    scalar 경계로 맞췄다. 최신 main 재베이스 뒤 302/302 전체 회귀와 미해결 finding 0건을
+    확인한 [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)을 완료 증거로
+    고정해 제품 roll-up을 29/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -200,11 +210,12 @@
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
 - Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001~REC-003과
-  RCL-001은 각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32),
+  RCL-001~RCL-002는 각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32),
   [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36),
   [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38),
-  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로 완료했고, REC-004,
-  RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
+  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34),
+  [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)로 완료했고, REC-004와
+  RCL-003은 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -222,6 +233,7 @@
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
 | REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 17/17, 전체 fast 39개 파일 285/285, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16·typed detector error 16/17 RED를 닫았고 독립 review finding HIGH 0/MEDIUM 0 |
+| RCL-002 branch gate | PASS — architecture/type/build, RCL-002 15/15·REC-001 13/13·REC-002 13/13·REC-003 17/17·RCL-001 10/10, 전체 fast 42개 파일 302/302, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure application sanitation plan·unit/type fixture·검증 script와 결정/evidence 문서를 추가했다. writer/SQLite/MCP/schema/journal/log·Phase 08 corpus는 변경하지 않았다. |
 
 ## 게시 전 재현 검사

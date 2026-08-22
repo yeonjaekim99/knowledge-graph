@@ -1,12 +1,13 @@
 # RCL-002: query term과 surface seed
 
-- 상태: 로컬 구현·검증 완료, PR review와 `main` 병합 전 `IN_PROGRESS`
+- 상태: 구현·독립 review·검증 완료, [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)
 - 결정일: 2026-08-23
 - 작업: RCL-002
 - Owner: `log0629`
 - 규범 근거: ADR-006, ADR-008, ADR-012
 - 선행 구현: PRJ-002, PRJ-003, PRJ-005, PRJ-007, RCL-001
 - 구현 branch: `rcl-002-query-surface`
+- 완료 PR: [#39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)
 
 ## 목적과 범위
 

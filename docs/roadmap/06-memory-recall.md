@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/9
+- 진행률: 2/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | RCL-001 | recall 계약·snapshot·유효 aggregate | `DONE` | `log0629` | FND-004, PRJ-008 | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md) |
-| RCL-002 | query term과 surface seed | `IN_PROGRESS` | `log0629` | RCL-001, PRJ-005 | — |
+| RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `IN_PROGRESS` | `log0629` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
 | RCL-005 | BFS 이동·수집·경로 복원 | `TODO` | `unassigned` | RCL-001, RCL-002 | — |
@@ -71,9 +71,10 @@
 
 ### RCL-002 — query term과 surface seed
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-002-query-surface`
+- PR: [#39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)
 - 근거: ADR-006, ADR-008, ADR-012
 - 선행 작업: RCL-001, PRJ-005
 - 결과물: deterministic term extractor와 surface seed resolver
@@ -86,7 +87,7 @@
 - [x] 최대 50개 seed를 쓰고 51번째로 surface 절단을 감지한다.
 - [x] 다의 surface를 모두 seed로 쓰되 cross-scope entity는 한 건도 포함하지 않는다.
 
-로컬 완료 증거:
+완료 증거:
 
 - [구현 결정](../implementation/rcl-002-query-surface.md)에 PRJ-002 normalize와 PRJ-003/007
   canonical redirect 재사용, RCL-001 typed snapshot seam, read-only/손상 경계를 고정했다.
@@ -107,8 +108,9 @@
   behavior spike 25/25, roadmap
   evidence 67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - FTS, BFS, ranking, Answer/note와 public S09/S21 golden은 RCL-003/RCL-005~008에 남겼다.
-- PR review와 `main` merge 증거가 없으므로 task/phase/master 상태와 완료 수는 `IN_PROGRESS`,
-  1/9, 28/66을 유지한다.
+- 독립 review에서 HIGH/MEDIUM/LOW finding 0건을 확인했다. [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39)가
+  구현·review remediation·최신 `main` 재베이스·전체 회귀와 이 상태 증거를 함께 게시해
+  RCL-002의 영속적인 완료 근거가 된다.
 
 ### RCL-003 — 안전한 FTS와 raw fallback
 
