@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 7/10
+- 진행률: 8/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -22,7 +22,7 @@
 | PRJ-005 | entity·surface·kind 투영 | `DONE` | `log0629` | PRJ-002~004 | [PR #25](https://github.com/yeonjaekim99/knowledge-graph/pull/25) |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `DONE` | `log0629` | PRJ-002~005 | [PR #26](https://github.com/yeonjaekim99/knowledge-graph/pull/26) |
 | PRJ-007 | merge·alias와 claim rewrite | `DONE` | `log0629` | PRJ-005, PRJ-006 | [PR #27](https://github.com/yeonjaekim99/knowledge-graph/pull/27) |
-| PRJ-008 | TTL·aggregate와 조회용 유효성 source | `IN_PROGRESS` | `log0629` | PRJ-004, PRJ-006 | — |
+| PRJ-008 | TTL·aggregate와 조회용 유효성 source | `DONE` | `log0629` | PRJ-004, PRJ-006 | [PR #28](https://github.com/yeonjaekim99/knowledge-graph/pull/28) |
 | PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `TODO` | `unassigned` | PRJ-003~008 | — |
 | PRJ-010 | prefix oracle·metamorphic·crash parity | `TODO` | `unassigned` | PRJ-009, STO-008 | — |
 
@@ -270,20 +270,37 @@
 
 ### PRJ-008 — TTL·aggregate와 조회용 유효성 source
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `prj-008-ttl-claim-aggregate`
+- PR: [#28](https://github.com/yeonjaekim99/knowledge-graph/pull/28)
 - 근거: ADR-010
 - 선행 작업: PRJ-004, PRJ-006
 - 결과물: claim_agg source template과 invariant query
 
 완료 체크:
 
-- [ ] provenance 기본 TTL과 session 43,200초, weeks 2,592,000초를 effective 시각에서 계산한다.
-- [ ] statement/support expiry가 같고 raw-only statement도 TTL을 우회하지 않는다.
-- [ ] count·strongest·last_seen·relation_label이 같은 유효 support 집합에서 나온다.
-- [ ] 최신 label이 만료/철회되면 이전 유효 label로 돌아가고 permanent 하나면 expiry는 NULL이다.
-- [ ] view와 scope/now parameterized TEMP query가 같은 source template에서 생성된다.
+- [x] provenance 기본 TTL과 session 43,200초, weeks 2,592,000초를 effective 시각에서 계산한다.
+- [x] statement/support expiry가 같고 raw-only statement도 TTL을 우회하지 않는다.
+- [x] count·strongest·last_seen·relation_label이 같은 유효 support 집합에서 나온다.
+- [x] 최신 label이 만료/철회되면 이전 유효 label로 돌아가고 permanent 하나면 expiry는 NULL이다.
+- [x] view와 scope/now parameterized TEMP query가 같은 source template에서 생성된다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-008-ttl-claim-aggregate.md)에 effective lifetime, PRJ-004/006/007
+  compatible expiry reducer, 공통 valid-support CTE와 후속 PRJ/RCL 경계를 고정했다.
+- TDD RED는 새 domain/SQLite export 부재에서 실패했고 `pnpm verify:prj-008` GREEN은 8/8이다.
+  strict expiry 경계, 강한 support 만료, empty·철회 label fallback, finite/permanent expiry와
+  aggregate-backed contested를 실제 file SQLite에서 검증했다.
+- raw-only statement expiry, reinterpret root 시각, merge-deduplicated support, recursive freeze,
+  결정성, forged seam과 payload-redacted failure를 domain fixture로 검증했다.
+- 두 scope와 손상된 cross-scope support fixture에서 TEMP 누출 0건과 invariant 탐지를 확인했고,
+  TEMP 조회 전후 영구 row count와 별도 reader `data_version`이 변하지 않았다.
+- PRJ-004 14/14, PRJ-006 15/15, PRJ-007 19/19, 전체 local gate 184/184, 독립 behavior
+  spike 25/25, roadmap audit, clean archive와 production dependency audit를 통과했다.
+- S09~S11/S19/S23 의미는 독립 대조했지만 SQLite publish·전체 prefix·공개 recall이 남아
+  production manifest는 `planned`로 유지하고 PRJ-009/010과 RCL owner에게 넘겼다.
 
 ### PRJ-009 — 증분 dispatcher·전체 replay·무결성 검사
 

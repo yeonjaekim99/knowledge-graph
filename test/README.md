@@ -32,6 +32,9 @@
 | `pnpm test:prj-003` | occurrence ID·canonical 선택·redirect와 rules dry-run |
 | `pnpm test:prj-004` | 사건 효력 pre-scan·supersedes·retraction과 effective stream |
 | `pnpm test:prj-005` | entity anchor·surface 해석·kind 선택과 ambiguity fixture |
+| `pnpm test:prj-006` | claim/support·카디널리티·철회와 structural 시각 |
+| `pnpm test:prj-007` | merge·alias·claim rewrite와 decision undo |
+| `pnpm test:prj-008` | effective TTL과 실제 SQLite aggregate·scope/invariant |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -89,3 +92,8 @@ PRJ-005는 모든 실제 statement의 entity anchor를 유지하면서 live stat
 kind에 기여시키고, redirected surface 전체 canonicalization·exact-name tie-break·ambiguity를
 순수 reducer fixture로 검증한다. 실제 merge/alias 사건, record preflight, claim rewrite와
 SQLite prefix parity가 남아 있어 S08/S21 target은 `planned`를 유지한다.
+
+PRJ-006/007은 claim/support 구조 상태와 merge·alias rewrite를 순수 reducer로 검증한다.
+PRJ-008은 그 structural output에 effective expiry를 붙이는 domain fixture와 실제 file SQLite의
+공통 aggregate SQL fixture를 함께 둔다. 아직 dispatcher/publish와 공개 recall 경로가 없으므로
+S09~S11/S19/S23 manifest는 PRJ-009/010과 RCL owner가 끝낼 때까지 `planned`다.
