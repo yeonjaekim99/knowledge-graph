@@ -20,7 +20,7 @@
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
 | RCL-005 | BFS 이동·수집·경로 복원 | `DONE` | `log0629` | RCL-001, RCL-002 | [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md) |
-| RCL-006 | ranking·상충·문장 조합 | `IN_PROGRESS` | `log0629` | RCL-005, PRJ-008 | [Planning PR #47](https://github.com/yeonjaekim99/knowledge-graph/pull/47), [구현 결정](../implementation/rcl-006-ranking-brief.md), branch `rcl-006-ranking-format` |
+| RCL-006 | ranking·상충·문장 조합 | `IN_PROGRESS` | `log0629` | RCL-005, PRJ-008 | [Planning PR #47](https://github.com/yeonjaekim99/knowledge-graph/pull/47), [Draft PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49), [구현 결정](../implementation/rcl-006-ranking-brief.md), branch `rcl-006-ranking-format` |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
 | RCL-009 | 대표 fixture 성능 baseline | `TODO` | `unassigned` | RCL-008, STO-008 | — |
@@ -298,16 +298,20 @@
 - tests-only `d958335`은 기존 build 성공 뒤 missing ranking module로 0/2 RED였고 product
   `80a8a93` 뒤 5/5 GREEN이었다. self-review `0660373`은 output/adapter accessor payload를
   9/11 RED로 재현했고 `40aa429`가 descriptor-only snapshot으로 11/11 GREEN을 만들었다.
+- Draft PR #49 독립 review의 MEDIUM 4건은 non-canonical literal, relation-contested 불변식,
+  unguarded `assertActive`, factory candidate accessor/Proxy payload였다. tests-only `97bd7bb`이
+  11/20·9 failure RED를 고정했고 `4401f73`이 canonical identity·contested domain/adapter 검증과
+  lifecycle/request/read/decode·descriptor factory fresh-error 경계로 20/20 GREEN을 만들었다.
 - S10 file SQLite fixture는 30일 inclusive boundary, exact expiry, 철회·만료 label fallback,
   entity/literal null-safe contested, 모든 score/tie 신호, limit+1, fixed WAL snapshot,
   scope·future/corrupt row와 read-only dump/data_version을 검증한다. source/adapter의 Proxy,
   accessor, typed error, Promise rejection과 hostile thenable은 payload 없는 fresh error로 닫힌다.
 - RCL-001~005 10/10·15/15·21/21·15/15·21/21, PRJ-008 8/8과 REC-004 통합 70/70을
-  회귀했다. 전체 fast 53개 파일 420/420, PRJ-010 39/39, behavior spike 25/25와 공통
+  회귀했다. 전체 fast 53개 파일 429/429, PRJ-010 39/39, behavior spike 25/25와 공통
   architecture/type/build/roadmap/audit gate를 통과했다.
 - public RecallResult/Answer, detail/raw/payload budget, `more_available`와 note는 만들지 않았고
-  RCL-007/008에 남겼다. 모든 로컬 체크가 끝났어도 PR 게시·독립 review·`main` 병합 전이므로
-  상태는 `IN_PROGRESS`를 유지한다.
+  RCL-007/008에 남겼다. 독립 review blocker를 로컬 remediation했어도 Draft PR #49 재확인과
+  `main` 병합 전이므로 상태는 `IN_PROGRESS`를 유지한다.
 
 ### RCL-007 — Answer 구성·detail·payload budget
 

@@ -6,6 +6,7 @@
 - Owner: `log0629`
 - 구현 branch: `rcl-006-ranking-format`
 - Planning PR: [#47](https://github.com/yeonjaekim99/knowledge-graph/pull/47)
+- 구현 PR: [#49](https://github.com/yeonjaekim99/knowledge-graph/pull/49) (`Draft`)
 - 규범 근거: ADR-004, ADR-010, ADR-012
 - 선행 구현: PRJ-002, PRJ-003, PRJ-008, RCL-001, RCL-005
 - 규범 관계: Accepted ADR을 대체하지 않는 implementation decision
@@ -140,6 +141,25 @@ descriptor-only exact snapshot으로 바꿔 11/11 GREEN으로 닫았다. 기존 
 assertion도 integration-only `98bea8c`에서 새 ranking facet을 고정해 RCL-002를 14/15에서
 15/15로 복원했다.
 
+Draft PR #49의 독립 review는 추가 finding 없이 다음 MEDIUM 4건을 merge blocker로 확정했다.
+
+1. formatter와 ranked state가 ADR-009 NFKC canonical literal이 아닌
+   `ｐｎｐｍ　ｔｅｓｔ`를 그대로 허용했다.
+2. fake source/adapter row가 `uses`/`rejects` 외 relation에 `contested=true`를 붙여도 score만
+   맞으면 통과했다.
+3. adapter의 `snapshot.assertActive()`가 guarded read/decode 밖에 있어 payload-bearing typed
+   error identity·message·cause가 그대로 빠져나왔다.
+4. connection factory가 candidate 배열을 iteration/property access로 복사해 array/row accessor와
+   Proxy trap payload를 실행·재사용했다.
+
+tests-only `97bd7bb`은 변경 전 build 성공 뒤 위 경계를 각각 독립 실행해 정확히 11/20,
+9 failure RED를 만들었다. fix `4401f73`은 literal에
+`normalizeLiteralIdentity(value) === value`를 요구하고 relation-contested invariant를 domain과
+adapter decode에 함께 적용했다. snapshot lifecycle/request/read/decode는 단계별 fresh fixed error로
+번역하며, factory candidate는 bounded exact own data descriptor만 plain 배열로 복사해 iterator,
+getter, constructor/array species를 호출하지 않는다. 같은 focused target은 20/20 GREEN이고 기존
+valid literal, limit+1, fixed snapshot과 전체 ranking tie fixture도 그대로 통과한다.
+
 최종 로컬 검증은 다음을 재현한다.
 
 ```bash
@@ -165,10 +185,10 @@ python3 docs/roadmap/validate.py
 pnpm audit --prod
 ```
 
-focused RCL-006은 11/11이고 RCL-001~005는 10/10, 15/15, 21/21, 15/15,
+focused RCL-006은 20/20이고 RCL-001~005는 10/10, 15/15, 21/21, 15/15,
 21/21이다. PRJ-002/003/005/007/008은 7/7, 9/9, 11/11, 19/19, 8/8이고
 REC-001/002/003은 13/13, 13/13, 17/17, REC-004 통합 gate는 70/70이다. 전체 fast suite는
-53개 파일 420/420, PRJ-010은 39/39, behavior spike는 25/25다. roadmap validator와
+53개 파일 429/429, PRJ-010은 39/39, behavior spike는 25/25다. roadmap validator와
 production dependency audit도 통과한다.
 
 ## 후속 통합 경계
@@ -181,5 +201,5 @@ production dependency audit도 통과한다.
 - RCL-009/REL-003은 representative fixture query plan과 p95를 측정한다. 성능 증거 없이
   aggregate cache나 별도 ranking cache를 추가하지 않는다.
 
-모든 로컬 구현 체크를 닫았어도 독립 reviewer 확인, PR 게시와 `main` 병합 전이므로 roadmap
-상태는 `IN_PROGRESS`를 유지한다.
+독립 review MEDIUM 4건을 로컬 remediation했어도 PR #49는 draft이고 재확인·`main` 병합 전이므로
+roadmap 상태는 `IN_PROGRESS`를 유지한다.

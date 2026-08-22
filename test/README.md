@@ -219,5 +219,8 @@ fallback, entity/literal null-safe identity, limit+1 및 fixed WAL/read-only를 
 검증한다. application은 canonical entity/literal과 aggregate label 또는 ADR-004 default
 predicate를 공백으로만 연결하고 한국어 조사를 보정하지 않는다. descriptor-only input/output,
 raw envelope/array/row와 source/adapter Proxy·accessor·typed-error·Promise/thenable failure는
-payload 없는 fresh error로 닫힌다. 따라서 S10 internal target은 `implemented`다. public
+payload 없는 fresh error로 닫힌다. Draft PR #49 독립 review의 MEDIUM 4건은 canonical literal
+equality, uses/rejects 전용 contested, guarded `assertActive`, connection-factory candidate
+array/row/Proxy descriptor snapshot으로 회귀를 추가해 11/20 RED에서 20/20 GREEN으로 닫았다.
+따라서 S10 internal target은 `implemented`다. public
 RecallResult/Answer, detail/raw payload, more_available/note와 완성 golden은 RCL-007/008에 남는다.
