@@ -3,7 +3,7 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#43 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
+- 성격: 작성자 자체 교차 검토, PR #3~#44 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
   REC-004 독립 review·Promise species 보완·최종 재검토·최신 main 결합 재검증
 - 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~003 완료 · REC-005/RCL-004/RCL-005 진행**
 
