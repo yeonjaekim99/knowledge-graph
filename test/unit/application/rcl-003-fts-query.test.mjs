@@ -139,9 +139,22 @@ test("only normalized candidates with at least three Unicode code points reach t
 
 test("the internal capability rejects malformed or over-cap candidate collections without echoing them", () => {
   const privateMarker = "do-not-echo-rcl-003";
+  const sparse = new Array(1);
+  let accessorRead = false;
+  const accessor = [];
+  Object.defineProperty(accessor, "0", {
+    enumerable: true,
+    get() {
+      accessorRead = true;
+      return privateMarker;
+    },
+  });
+  accessor.length = 1;
   for (const value of [
     privateMarker,
     [privateMarker, 3],
+    sparse,
+    accessor,
     Array.from({ length: 11 }, (_, index) => `${privateMarker}-${index}`),
     [`${privateMarker}${"x".repeat(4_097)}`],
   ]) {
@@ -155,4 +168,5 @@ test("the internal capability rejects malformed or over-cap candidate collection
       },
     );
   }
+  assert.equal(accessorRead, false);
 });

@@ -1,4 +1,7 @@
-import { normalizeV1 } from "../domain/projection-rules.js";
+import {
+  ProjectionRuleError,
+  normalizeV1,
+} from "../domain/projection-rules.js";
 import {
   RecallReadError,
   type RecallFtsNote,
@@ -55,8 +58,39 @@ function quotedPhraseLiteral(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
-function codePointLength(value: string): number {
-  return [...value].length;
+function hasAtMostCodePoints(value: string, maximum: number): boolean {
+  let length = 0;
+  for (const _codePoint of value) {
+    length += 1;
+    if (length > maximum) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function snapshotCandidateStrings(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length > FTS_CANDIDATE_LIMIT) {
+    return invalidRequest();
+  }
+  const candidates: string[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+    if (
+      descriptor === undefined ||
+      descriptor.enumerable !== true ||
+      !("value" in descriptor) ||
+      typeof descriptor.value !== "string" ||
+      !hasAtMostCodePoints(
+        descriptor.value,
+        FTS_CANDIDATE_MAX_CODE_POINTS,
+      )
+    ) {
+      return invalidRequest();
+    }
+    candidates.push(descriptor.value);
+  }
+  return Object.freeze(candidates);
 }
 
 /**
@@ -66,26 +100,22 @@ function codePointLength(value: string): number {
  * distinct because SQLite's trigram tokenizer does not apply normalize_v1.
  */
 export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
-  if (
-    !Array.isArray(value) ||
-    value.length > FTS_CANDIDATE_LIMIT ||
-    !value.every(
-      (candidate) =>
-        typeof candidate === "string" &&
-        codePointLength(candidate) <= FTS_CANDIDATE_MAX_CODE_POINTS,
-    )
-  ) {
-    return invalidRequest();
-  }
+  const candidates = snapshotCandidateStrings(value);
 
   const terms: RecallFtsTerm[] = [];
-  for (const candidate of value as readonly string[]) {
+  for (const candidate of candidates) {
     const display = sanitizeDisplay(candidate);
     let normalized: string;
     try {
       normalized = normalizeV1(display);
-    } catch {
-      continue;
+    } catch (error: unknown) {
+      if (
+        error instanceof ProjectionRuleError &&
+        error.code === "EMPTY_NORMALIZED_VALUE"
+      ) {
+        continue;
+      }
+      throw error;
     }
     if (
       Array.from(normalized).length < FTS_MINIMUM_NORMALIZED_CODE_POINTS
