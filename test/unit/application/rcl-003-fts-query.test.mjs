@@ -16,6 +16,34 @@ function readError(code) {
   };
 }
 
+function smuggledReadError(code, marker) {
+  const error = new RecallReadError(code);
+  error.name = `Smuggled${marker}`;
+  error.message = `smuggled-message-${marker}`;
+  error.cause = { token: marker };
+  error.prefix = marker;
+  error.suffix = marker;
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshFixedError(error, injected, code, marker) {
+  const expected = new RecallReadError(code);
+  assert.ok(error instanceof RecallReadError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, code);
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("prefix" in error, false);
+  assert.equal("suffix" in error, false);
+  assert.equal("secret" in error, false);
+  assert.doesNotMatch(error.message, new RegExp(marker, "u"));
+  assert.equal(JSON.stringify(error), JSON.stringify(expected));
+  return true;
+}
+
 test("user strings become at most ten ordered quoted phrase literals", () => {
   const plan = prepareRecallFtsQuery([
     "  alpha OR beta  ",
@@ -188,4 +216,39 @@ test("the internal capability rejects malformed or over-cap candidate collection
       return true;
     },
   );
+});
+
+test("payload-bearing typed Proxy traps are replaced by a fresh fixed request error", () => {
+  for (const trap of ["ownKeys", "getOwnPropertyDescriptor"]) {
+    const marker = `do-not-smuggle-rcl-003-request-${trap}`;
+    const injected = smuggledReadError(
+      "INVALID_RECALL_FTS_REQUEST",
+      marker,
+    );
+    const candidates = new Proxy(
+      [],
+      trap === "ownKeys"
+        ? {
+            ownKeys() {
+              throw injected;
+            },
+          }
+        : {
+            getOwnPropertyDescriptor() {
+              throw injected;
+            },
+          },
+    );
+
+    assert.throws(
+      () => prepareRecallFtsQuery(candidates),
+      (error) =>
+        assertFreshFixedError(
+          error,
+          injected,
+          "INVALID_RECALL_FTS_REQUEST",
+          marker,
+        ),
+    );
+  }
 });

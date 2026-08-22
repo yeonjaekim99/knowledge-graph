@@ -251,6 +251,34 @@ function validCandidateRow(overrides = {}) {
   };
 }
 
+function smuggledReadError(code, marker) {
+  const error = new RecallReadError(code);
+  error.name = `Smuggled${marker}`;
+  error.message = `smuggled-message-${marker}`;
+  error.cause = { token: marker };
+  error.prefix = marker;
+  error.suffix = marker;
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshFixedError(error, injected, code, marker) {
+  const expected = new RecallReadError(code);
+  assert.ok(error instanceof RecallReadError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, code);
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("prefix" in error, false);
+  assert.equal("suffix" in error, false);
+  assert.equal("secret" in error, false);
+  assert.doesNotMatch(error.message, new RegExp(marker, "u"));
+  assert.equal(JSON.stringify(error), JSON.stringify(expected));
+  return true;
+}
+
 function permanentDump(database) {
   const tables = [
     "journal",
@@ -664,6 +692,100 @@ test("dead parsed statements do not consume the eligible FTS candidate cap", asy
   assert.deepEqual(result.truncation, { reasons: [] });
 });
 
+test("an aggregate-backed out-of-range draft index fails closed while dead, expired, and cross-scope supports remain ineligible", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  await factory.enqueueWriteTransaction([
+    ...rawStatementCommands({
+      seq: 1,
+      rawText: "invalid draft active search",
+    }),
+    ...graphStatementCommands({
+      seq: 2,
+      rawText: "invalid draft active search",
+      claimId: "c2.0",
+      subjectId: "e2.0",
+      objectId: "e2.1",
+    }),
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET draft_index=1 WHERE claim_id='c2.0'",
+    },
+    ...rawStatementCommands({
+      seq: 3,
+      rawText: "invalid draft expired search",
+    }),
+    ...graphStatementCommands({
+      seq: 4,
+      rawText: "invalid draft expired search",
+      claimId: "c4.0",
+      subjectId: "e4.0",
+      objectId: "e4.1",
+      expiresAt: NOW,
+    }),
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET draft_index=1 WHERE claim_id='c4.0'",
+    },
+    ...rawStatementCommands({
+      seq: 5,
+      rawText: "invalid draft cross scope search",
+    }),
+    ...graphStatementCommands({
+      seq: 6,
+      rawText: "invalid draft cross scope search",
+      claimId: "c6.0",
+      subjectId: "e6.0",
+      objectId: "e6.1",
+    }),
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET draft_index=1 WHERE claim_id='c6.0'",
+    },
+    {
+      kind: "run",
+      sql: "UPDATE claims SET scope_key=? WHERE id='c6.0'",
+      parameters: [OTHER_SCOPE],
+    },
+  ]);
+
+  await assert.rejects(
+    search(factory, ["invalid draft active search"]),
+    (error) => {
+      assert.ok(error instanceof RecallReadError);
+      assert.equal(error.code, "INVALID_RECALL_FTS_CANDIDATE");
+      assert.equal("cause" in error, false);
+      assert.doesNotMatch(error.message, /invalid draft active search/u);
+      return true;
+    },
+  );
+
+  await factory.enqueueWriteTransaction([
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET live=0 WHERE claim_id='c2.0'",
+    },
+    {
+      kind: "run",
+      sql: "UPDATE claims SET state='retracted' WHERE id='c2.0'",
+    },
+  ]);
+  for (const [term, rawEvent] of [
+    ["invalid draft active search", eventId(1)],
+    ["invalid draft expired search", eventId(3)],
+    ["invalid draft cross scope search", eventId(5)],
+  ]) {
+    const result = await search(factory, [term]);
+    assert.deepEqual(
+      result.rawCandidates.map((candidate) => candidate.eventId),
+      [rawEvent],
+      term,
+    );
+    assert.deepEqual(result.seeds, [], term);
+    assert.deepEqual(result.reachedClaims, [], term);
+  }
+});
+
 test("all sub-trigram candidates skip FTS with an actionable none-note seam", async (t) => {
   const { factory } = await fixture();
   t.after(() => factory.close());
@@ -771,4 +893,65 @@ test("malformed candidate proxies and accessors fail with a payload-redacted typ
     );
   }
   assert.equal(accessorRead, false);
+});
+
+test("payload-bearing typed Proxy traps are replaced across envelope, row, and array boundaries", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+
+  for (const boundary of ["envelope", "row", "array"]) {
+    const marker = `do-not-smuggle-rcl-003-candidate-${boundary}`;
+    const injected = smuggledReadError(
+      "INVALID_RECALL_FTS_CANDIDATE",
+      marker,
+    );
+    let rawResult;
+    if (boundary === "envelope") {
+      rawResult = new Proxy(
+        {
+          queryUnavailable: false,
+          candidateRows: [],
+          supportRows: [],
+        },
+        {
+          ownKeys() {
+            throw injected;
+          },
+        },
+      );
+    } else if (boundary === "row") {
+      rawResult = {
+        queryUnavailable: false,
+        candidateRows: [
+          new Proxy(validCandidateRow(), {
+            ownKeys() {
+              throw injected;
+            },
+          }),
+        ],
+        supportRows: [],
+      };
+    } else {
+      rawResult = {
+        queryUnavailable: false,
+        candidateRows: new Proxy([], {
+          getOwnPropertyDescriptor() {
+            throw injected;
+          },
+        }),
+        supportRows: [],
+      };
+    }
+
+    await assert.rejects(
+      searchInjectedFtsResult(factory, rawResult),
+      (error) =>
+        assertFreshFixedError(
+          error,
+          injected,
+          "INVALID_RECALL_FTS_CANDIDATE",
+          marker,
+        ),
+    );
+  }
 });
