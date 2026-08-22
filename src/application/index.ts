@@ -29,3 +29,14 @@ export type {
   RecordContractErrorCode,
   RecordResult,
 } from "./memory-record-contract.js";
+export {
+  RecordSecretSanitizationError,
+  sanitizeMemoryRecordSecrets,
+} from "./memory-record-sanitizer.js";
+export type {
+  ApprovedRecordDraft,
+  RecordSecretDetection,
+  RecordSecretSanitizationErrorCode,
+  RecordSecretSanitizationResult,
+  RejectedRecordClaim,
+} from "./memory-record-sanitizer.js";
