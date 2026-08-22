@@ -244,6 +244,25 @@ test("describes supersedes before activation and reuses a prior claim in A to B 
   );
 });
 
+test("draft index orders two describes values inside one statement", () => {
+  const result = projectClaimSupportState(
+    replayInput([
+      statementEvent(1, {
+        parsed: [
+          literalDraft("테스트 명령", "describes", "pnpm test"),
+          literalDraft("테스트 명령", "describes", "pnpm test:unit"),
+        ],
+      }),
+    ]),
+  );
+
+  assert.deepEqual(statesByValue(result), {
+    "pnpm test": "superseded",
+    "pnpm test:unit": "active",
+  });
+  assert.deepEqual(result.claimSupport.map(({ live }) => live), [1, 1]);
+});
+
 test("claim and event retractions preserve different describes histories", () => {
   const first = statementEvent(1, {
     parsed: [literalDraft("테스트 명령", "describes", "pnpm test")],
@@ -442,6 +461,19 @@ test("TTL changes do not mutate structural claim or support state", () => {
   );
 
   assert.deepEqual(session, permanent);
+});
+
+test("a raw-only statement creates no claim or support rows", () => {
+  const result = projectClaimSupportState(
+    replayInput([statementEvent(1, { parsed: [] })]),
+  );
+
+  assert.deepEqual(result.claimAnchors, []);
+  assert.deepEqual(result.claims, []);
+  assert.deepEqual(result.claimSupport, []);
+  assert.deepEqual(result.idRedirects, []);
+  assert.deepEqual(result.occurrences, []);
+  assertDeepFrozen(result);
 });
 
 test("multiple relations coexist without implicit conflict resolution", () => {

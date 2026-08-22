@@ -132,8 +132,8 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~008·PRJ-001~006 로컬 gate | PASS — PRJ-006 13/13, PRJ-005 11/11, PRJ-004 14/14, architecture/type/build와 Node test 155/155 |
-| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 155/155와 roadmap audit 재현 |
+| STO-001~008·PRJ-001~006 로컬 gate | PASS — PRJ-006 15/15, PRJ-005 11/11, PRJ-004 14/14, architecture/type/build와 Node test 157/157 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 157/157과 roadmap audit 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | 변경 범위 | PASS — domain claim/support/cardinality reducer·PRJ-004/005 seam·unit fixture·문서만 추가, DB mutation·merge/alias·expiry aggregate·public memory/MCP wiring·자동 CI 변경 없음 |

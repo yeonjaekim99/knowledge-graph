@@ -218,13 +218,16 @@
   anchor와 numeric-earliest claim identity, structural support 출력 및 PRJ-008 expiry 경계를
   고정했다.
 - TDD RED는 아직 없는 claim reducer export에서 실패했고 GREEN은 `pnpm verify:prj-006`
-  13/13이다. PRJ-004 14/14, PRJ-005 11/11과 전체 `pnpm verify:local` 155/155도 통과했다.
+  15/15이다. PRJ-004 14/14, PRJ-005 11/11과 전체 `pnpm verify:local` 157/157도 통과했다.
 - 강화, entity/literal identity, `describes A→B→A`, claim/event 철회 복구 차이, multi-claim
-  격리, future support 재활성화와 numeric `c2<c10`을 정상·경계 fixture로 검증했다.
+  격리, future support 재활성화, same-statement draft 순서, raw-only statement와 numeric
+  `c2<c10`을 정상·경계 fixture로 검증했다.
 - backdated reinterpret의 claim cutoff·later describes 우선순위·event undo와 effective
   first/last seen을 S04/S15 spike 의미와 독립 대조했다. TTL만 바꾼 출력은 동일하다.
 - stored duplicate, invalid relation/label, missing/future target와 forged PRJ-005 seam은
   payload·scope·target·cause를 노출하지 않는 typed error로 fail closed한다.
+- 최종 diff 리뷰에서 대량 support의 first/last seen 집계를 단일 순회로 바꿔 JS 함수 인자
+  한도에 의존하지 않게 했다.
 - 독립 behavior spike 25/25, roadmap audit, dependency audit 취약점 0개와 clean source gate를
   통과했다. 실제 merge/alias, expiry aggregate, SQLite dispatcher와 full prefix parity가 남아
   S03/S04/S10/S15 target은 `planned`를 유지하며 PRJ-007~010과 REC/REV/RCL owner가 이어받는다.

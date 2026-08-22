@@ -142,12 +142,17 @@ instantiation에서 실패했다. GREEN fixture는 다음 정상·경계·실패
 - entity/literal object kind와 literal case·내부 공백 identity
 - 반복 statement 강화, 모든 candidate anchor와 numeric `c2 < c10` redirect
 - `describes A → B → A`의 선 supersede·후 activation과 과거 ID 재사용
+- 한 statement 안의 두 `describes` draft가 배열 순서대로 supersede·activation되는 경계
 - claim/event retraction의 이전 값 복구 차이와 multi-claim 철회 격리
 - 과거 claim 철회 뒤 backdated reinterpret support cutoff와 이후 일반 statement 재활성화
 - reinterpret effective first/last seen, later describes 우선순위와 event undo
 - TTL 변화의 구조 상태 불변성과 다중 relation 공존
+- `parsed: []` raw-only statement가 claim/support를 만들지 않는 경계
 - stored duplicate, invalid relation/label, missing/future target와 forged entity seam의 안전한 실패
 - 원본 입력 불변성, recursive freeze, wrapper/reducer parity와 반복 실행 결정성
+
+최종 diff 리뷰에서는 support 수가 매우 커져도 함수 인자 한도에 의존하지 않도록
+`Math.min(...values)`/`Math.max(...values)` 집계를 단일 순회 방식으로 바꿨다.
 
 검증 명령은 다음과 같다.
 
@@ -160,8 +165,8 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 python3 docs/roadmap/validate.py
 ```
 
-완료 시점 기준 PRJ-006 target은 13/13, PRJ-004 회귀는 14/14, PRJ-005 회귀는 11/11,
-빠른 전체 suite는 155/155다. S03/S04/S15의 domain 상태 primitive는 고정했지만 실제
+완료 시점 기준 PRJ-006 target은 15/15, PRJ-004 회귀는 14/14, PRJ-005 회귀는 11/11,
+빠른 전체 suite는 157/157이다. S03/S04/S15의 domain 상태 primitive는 고정했지만 실제
 record/revise·SQLite prefix/full replay 경로가 남아 production scenario manifest는
 `planned`를 유지한다. S10의 TTL aggregate·label·contested 범위는 PRJ-008이 소유한다.
 

@@ -776,12 +776,16 @@ export function reduceClaimSupportState(
       }
     }
     if (liveSupports.length > 0) {
-      const seenAt = liveSupports.map((support) => {
+      let firstSeenAt = Number.POSITIVE_INFINITY;
+      let lastSeenAt = Number.NEGATIVE_INFINITY;
+      for (const support of liveSupports) {
         const statement = metadata.get(support.eventId);
-        return statement?.createdAt ?? reject("INVALID_CLAIM_STATE");
-      });
-      claim.firstSeenAt = Math.min(...seenAt);
-      claim.lastSeenAt = Math.max(...seenAt);
+        const createdAt = statement?.createdAt ?? reject("INVALID_CLAIM_STATE");
+        firstSeenAt = Math.min(firstSeenAt, createdAt);
+        lastSeenAt = Math.max(lastSeenAt, createdAt);
+      }
+      claim.firstSeenAt = firstSeenAt;
+      claim.lastSeenAt = lastSeenAt;
     }
   }
 
