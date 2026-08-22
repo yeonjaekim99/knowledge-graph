@@ -185,5 +185,8 @@ aggregate 최근성, 숫자 entity ID 순서의 canonical depth-0 seed와 `min(l
 effective created_at·journal seq 순서의 live·unexpired parsed=[] raw `limit+1` 후보를 확인한다.
 raw-only scope, same-raw valid graph 우선, expired/retracted graph history 비부활, fixed scope/now와
 persistent dump/data_version 불변, sentinel까지의 fail-closed·payload redaction도 실제 file
-SQLite에서 고정한다. claim ranking·남는 칸 조립·public `entry: "overview"`와 final Answer는
+SQLite에서 고정한다. capability와 snapshot reader의 동기 throw, Promise rejection, throwing
+then getter와 thenable rejection에 payload-bearing typed/ordinary error를 주입해 항상 새 고정
+application/adapter 오류가 되고 원 identity·message·cause·extra field가 남지 않는 것도 확인한다.
+claim ranking·남는 칸 조립·public `entry: "overview"`와 final Answer는
 RCL-006~008 소유이므로 S19/S22 manifest는 계속 `planned`다.

@@ -192,10 +192,13 @@ branch-local 증거 (독립 review 대기):
   실제 file SQLite에서 검증했다. 이 배열은 RCL-007이 ranked claim 뒤 남는 칸에만 쓰는 후보
   pool이고 RCL-004가 final Answer를 조립하지 않는다.
 - test-only `c4cfb7b`은 기존 build 성공 뒤 missing overview production module로 0/2 RED였고,
-  product `9c7c767` 뒤 focused 13/13 GREEN이다. RCL-001 10/10, RCL-002 15/15,
-  RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, 전체 46개 파일 336/336,
+  product `9c7c767` 뒤 최초 focused 13/13 GREEN이다. 독립 review가 async error payload 누출을
+  발견한 뒤 test-only `12eb3bc`에서 13/15 RED를 재현했고 fix `5a28f1b`가 sync throw,
+  Promise rejection과 hostile thenable의 typed/ordinary error를 fresh fixed error로 바꿔
+  focused 15/15 GREEN이다. RCL-001 10/10, RCL-002 15/15,
+  RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, 전체 46개 파일 338/338,
   PRJ-010 39/39와 behavior spike 25/25도 통과했다.
-- 독립 review와 PR/main merge 전이므로 상태와 완료 체크는 유지한다. claim ranking, 남는 칸
+- 독립 재review와 PR/main merge 전이므로 상태와 완료 체크는 유지한다. claim ranking, 남는 칸
   조립, `entry: "overview"`, public S19/S22 golden은 RCL-006~008의 남은 gate다.
 
 ### RCL-005 — BFS 이동·수집·경로 복원

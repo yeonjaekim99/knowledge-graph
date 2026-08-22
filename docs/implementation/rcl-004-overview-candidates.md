@@ -1,6 +1,6 @@
 # RCL-004: 결정적 overview 후보
 
-- 상태: 구현·자체 review·로컬 검증 완료, 독립 review 대기
+- 상태: 구현·독립 review remediation·로컬 검증 완료, 독립 재review 대기
 - 결정일: 2026-08-23
 - 작업: RCL-004
 - Owner: `log0629`
@@ -120,9 +120,20 @@ fixed snapshot·read-only, stale capability와 hostile payload redaction을 먼�
 제품 구현 commit `9c7c767` 뒤 `pnpm run verify:rcl-004`는 architecture/type/build와 application
 3개, file-backed SQLite 10개, 총 13/13 GREEN이다. 관련 회귀는 RCL-001 10/10, RCL-002 15/15,
 RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8을 통과했다. 전체 fast suite는
-46개 파일 336/336, PRJ-010 독립 reference parity는 39/39, behavior spike는 25/25다.
+최초 46개 파일 336/336, PRJ-010 독립 reference parity는 39/39, behavior spike는 25/25다.
 
-문서 상태는 독립 review와 PR/main merge가 끝나기 전까지 `IN_PROGRESS`와 미체크 완료 항목을
+독립 review는 application의 `selectOverviewCandidates` 호출과 adapter의
+`readRawOverviewState` await가 보호 경계 밖에 있어, 동기 throw나 Promise/thenable rejection의
+원 error identity·message·cause·추가 payload가 그대로 노출되는 MEDIUM 결함을 발견했다.
+test-only `12eb3bc`는 두 경계 각각에서 sync throw, Promise rejection, throwing `then` getter를
+payload-bearing typed/ordinary error로 주입해 focused 13/15 RED를 재현했다. fix `5a28f1b`는
+호출과 await를 각 safe boundary 안으로 옮기고 application이 허용된 candidate code만 own data
+descriptor로 분류한 뒤에도 항상 새 고정 오류를 만들도록 했다. hostile thenable이 `then`에서
+직접 reject하는 경우까지 추가해 focused 15/15 GREEN이며 원 identity, name, message, cause와
+extra field를 보존하지 않는다. remediation 뒤 최종 전체 fast suite는 46개 파일 338/338이고
+관련 RCL/STO/PRJ 회귀, PRJ-010 39/39와 behavior spike 25/25도 다시 통과했다.
+
+문서 상태는 독립 재review와 PR/main merge가 끝나기 전까지 `IN_PROGRESS`와 미체크 완료 항목을
 유지한다. S19/S22 public scenario도 final claim/raw Answer와 golden이 아직 없으므로 `planned`다.
 
 최종 재현 명령은 다음과 같다.
