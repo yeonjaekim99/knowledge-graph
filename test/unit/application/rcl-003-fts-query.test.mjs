@@ -4,6 +4,7 @@ import { test } from "node:test";
 import {
   RECALL_FTS_NOTE_TEXT,
   prepareRecallFtsQuery,
+  searchRecallFtsFallback,
 } from "../../../dist/application/recall-fts-query.js";
 import { RecallReadError } from "../../../dist/application/ports/recall-read-port.js";
 
@@ -126,6 +127,31 @@ test("user strings become at most ten ordered quoted phrase literals", () => {
   const fullQuery = prepareRecallFtsQuery(["😀".repeat(4_096)]);
   assert.equal(fullQuery.kind, "query");
   assert.equal(Array.from(fullQuery.terms[0].display).length, 4_096);
+});
+
+test("surface selection hands ordered display text, not normalized lookup keys, to FTS", async () => {
+  const observedCandidates = [];
+  const expected = Object.freeze({ kind: "searched" });
+  const source = Object.freeze({
+    async searchFtsCandidates(candidates) {
+      observedCandidates.push([...candidates]);
+      return expected;
+    },
+  });
+  const selection = Object.freeze({
+    terms: Object.freeze([
+      Object.freeze({ text: "ＡＢＣ", surfaceNorm: "abc" }),
+      Object.freeze({ text: "ABC", surfaceNorm: "abc" }),
+      Object.freeze({ text: "로-그_인", surfaceNorm: "로그인" }),
+    ]),
+    seeds: Object.freeze([]),
+    truncated: false,
+  });
+
+  const result = await searchRecallFtsFallback(source, selection);
+
+  assert.strictEqual(result, expected);
+  assert.deepEqual(observedCandidates, [["ＡＢＣ", "ABC", "로-그_인"]]);
 });
 
 test("only sanitized bound phrases with at least three Unicode code points reach trigram FTS", () => {

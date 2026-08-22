@@ -4,6 +4,8 @@ import type {
   RecallRawCandidate,
   RecallSnapshotSource,
 } from "../../../src/application/ports/recall-read-port.js";
+import { searchRecallFtsFallback } from "../../../src/application/recall-fts-query.js";
+import type { RecallQuerySurfaceSelection } from "../../../src/domain/recall-query-surface.js";
 
 declare const source: RecallSnapshotSource;
 
@@ -16,6 +18,13 @@ const overviewReusableRaw: RecallRawCandidate = ftsRaw;
 void overviewReusableRaw;
 
 source.searchFtsCandidates(Object.freeze(["quoted \" phrase"]));
+
+declare const selection: RecallQuerySurfaceSelection;
+const fallback: Promise<RecallFtsCandidateResult> = searchRecallFtsFallback(
+  source,
+  selection,
+);
+void fallback;
 
 // @ts-expect-error candidates are text, never caller-supplied SQL/query objects
 source.searchFtsCandidates([{ phraseLiteral: "*" }]);
