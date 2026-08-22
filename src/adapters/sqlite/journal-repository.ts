@@ -86,7 +86,7 @@ export class JournalAppendError extends Error {
   }
 }
 
-interface PreparedJournalAppendIntent {
+export interface PreparedJournalAppendIntent {
   readonly kind: JournalEventKind;
   readonly bodyJson: string;
 }
@@ -184,6 +184,21 @@ function checkedEventIds(
     unique.add(eventId);
   }
   return unique.size === ids.length ? Object.freeze(ids) : null;
+}
+
+/** Internal shared boundary used by the atomic projection dispatcher. */
+export function prepareJournalAppendIntents(
+  events: readonly JournalAppendIntent[],
+): readonly PreparedJournalAppendIntent[] {
+  return snapshotIntents(events);
+}
+
+/** Internal shared ID gate used before entering a managed write transaction. */
+export function generateJournalEventIds(
+  runtime: RuntimeProvider,
+  count: number,
+): readonly EventId[] | null {
+  return checkedEventIds(runtime, count);
 }
 
 function appendSql(eventCount: number): string {

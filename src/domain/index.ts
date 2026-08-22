@@ -126,6 +126,22 @@ export type {
   StatementTtl,
   StatementTtlSeconds,
 } from "./projection-validity.js";
+export {
+  ProjectionDispatchError,
+  planProjectionDispatch,
+  projectProjectionSnapshot,
+} from "./projection-dispatch.js";
+export type {
+  ProjectionDispatchErrorCode,
+  ProjectionDispatchMode,
+  ProjectionDispatchPlan,
+  ProjectionDispatchReason,
+} from "./projection-dispatch.js";
+export {
+  ProjectionIncrementalError,
+  reduceIncrementalProjection,
+} from "./projection-incremental.js";
+export type { ProjectionIncrementalErrorCode } from "./projection-incremental.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,

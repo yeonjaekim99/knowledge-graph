@@ -12,6 +12,10 @@ import {
   type SqliteConnectionPolicy,
   type SqliteMigrationExecutionResult,
   type SqlitePreparedMigration,
+  type SqliteProjectionDispatchAppendEvent,
+  type SqliteProjectionDispatchBeginResult,
+  type SqliteProjectionDispatchCommitResult,
+  type SqliteProjectionPublishMode,
   type SqliteProjectionReplayBeginResult,
   type SqliteProjectionReplayCommitResult,
   type SqliteReadQuery,
@@ -202,6 +206,34 @@ class SqliteWorkerClient {
     }) as Promise<void>;
   }
 
+  public beginProjectionDispatch(
+    scopeKey: string,
+    events: readonly SqliteProjectionDispatchAppendEvent[],
+  ): Promise<SqliteProjectionDispatchBeginResult> {
+    return this.#request({
+      type: "projection-dispatch-begin",
+      scopeKey,
+      events,
+    }) as Promise<SqliteProjectionDispatchBeginResult>;
+  }
+
+  public commitProjectionDispatch(
+    dispatchId: number,
+    mode: SqliteProjectionPublishMode,
+    rulesVersion: string,
+    rebuiltAt: number,
+    snapshot: ProjectionSnapshot,
+  ): Promise<SqliteProjectionDispatchCommitResult> {
+    return this.#request({
+      type: "projection-dispatch-commit",
+      dispatchId,
+      mode,
+      rulesVersion,
+      rebuiltAt,
+      snapshot,
+    }) as Promise<SqliteProjectionDispatchCommitResult>;
+  }
+
   public close(): Promise<void> {
     if (this.#closePromise !== null) {
       return this.#closePromise;
@@ -247,6 +279,19 @@ class SqliteWorkerClient {
       | {
           readonly type: "projection-replay-rollback";
           readonly replayId: number;
+        }
+      | {
+          readonly type: "projection-dispatch-begin";
+          readonly scopeKey: string;
+          readonly events: readonly SqliteProjectionDispatchAppendEvent[];
+        }
+      | {
+          readonly type: "projection-dispatch-commit";
+          readonly dispatchId: number;
+          readonly mode: SqliteProjectionPublishMode;
+          readonly rulesVersion: string;
+          readonly rebuiltAt: number;
+          readonly snapshot: ProjectionSnapshot;
         }
       | { readonly type: "query"; readonly query: SqliteReadQuery }
       | { readonly type: "close" },
@@ -377,6 +422,25 @@ export interface SqliteProjectionReplaySession {
   ): Promise<SqliteProjectionReplayCommitResult>;
   rollback(replayId: number): Promise<void>;
 }
+
+export interface SqliteProjectionDispatchSession {
+  begin(
+    scopeKey: string,
+    events: readonly SqliteProjectionDispatchAppendEvent[],
+  ): Promise<SqliteProjectionDispatchBeginResult>;
+  commit(
+    dispatchId: number,
+    mode: SqliteProjectionPublishMode,
+    rulesVersion: string,
+    rebuiltAt: number,
+    snapshot: ProjectionSnapshot,
+  ): Promise<SqliteProjectionDispatchCommitResult>;
+  rollback(dispatchId: number): Promise<void>;
+}
+
+export type SqliteProjectionDispatchSessionOperation<Result> = (
+  session: SqliteProjectionDispatchSession,
+) => Promise<Result>;
 
 export type SqliteProjectionReplaySessionOperation<Result> = (
   session: SqliteProjectionReplaySession,
@@ -539,6 +603,86 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
     return queued;
   }
 
+  public enqueueProjectionDispatchSession<Result>(
+    operation: SqliteProjectionDispatchSessionOperation<Result>,
+  ): Promise<Result> {
+    if (!this.#accepting) {
+      return Promise.reject(
+        new SqliteConnectionError("CONNECTION_FACTORY_CLOSED"),
+      );
+    }
+    if (typeof operation !== "function") {
+      return Promise.reject(
+        new SqliteConnectionError("INVALID_TRANSACTION_PROGRAM"),
+      );
+    }
+
+    const queued = this.#writeTail.then(async (): Promise<Result> => {
+      let activeDispatchId: number | null = null;
+      const session: SqliteProjectionDispatchSession = Object.freeze({
+        begin: async (
+          scopeKey: string,
+          events: readonly SqliteProjectionDispatchAppendEvent[],
+        ) => {
+          if (activeDispatchId !== null) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          const result = await this.#writer.beginProjectionDispatch(
+            scopeKey,
+            events,
+          );
+          activeDispatchId = result.dispatchId;
+          return result;
+        },
+        commit: async (
+          dispatchId: number,
+          mode: SqliteProjectionPublishMode,
+          rulesVersion: string,
+          rebuiltAt: number,
+          snapshot: ProjectionSnapshot,
+        ) => {
+          if (activeDispatchId !== dispatchId) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          const result = await this.#writer.commitProjectionDispatch(
+            dispatchId,
+            mode,
+            rulesVersion,
+            rebuiltAt,
+            snapshot,
+          );
+          activeDispatchId = null;
+          return result;
+        },
+        rollback: async (dispatchId: number) => {
+          if (activeDispatchId !== dispatchId) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          await this.#writer.rollbackProjectionReplay(dispatchId);
+          activeDispatchId = null;
+        },
+      });
+      try {
+        return await operation(session);
+      } finally {
+        if (activeDispatchId !== null) {
+          const dispatchId = activeDispatchId;
+          activeDispatchId = null;
+          try {
+            await this.#writer.rollbackProjectionReplay(dispatchId);
+          } catch {
+            // The primary operation error remains safe; the worker owns rollback.
+          }
+        }
+      }
+    });
+    this.#writeTail = queued.then(
+      () => undefined,
+      () => undefined,
+    );
+    return queued;
+  }
+
   public async openReader(): Promise<SqliteReaderConnection> {
     if (!this.#accepting) {
       throw new SqliteConnectionError("CONNECTION_FACTORY_CLOSED");
@@ -608,6 +752,18 @@ export function enqueueSqliteProjectionReplaySession<Result>(
     );
   }
   return factory.enqueueProjectionReplaySession(operation);
+}
+
+export function enqueueSqliteProjectionDispatchSession<Result>(
+  factory: SqliteConnectionFactory,
+  operation: SqliteProjectionDispatchSessionOperation<Result>,
+): Promise<Result> {
+  if (!(factory instanceof SqliteConnectionFactoryImplementation)) {
+    return Promise.reject(
+      new SqliteConnectionError("INVALID_TRANSACTION_PROGRAM"),
+    );
+  }
+  return factory.enqueueProjectionDispatchSession(operation);
 }
 
 export function enqueueSqliteMigrationOperation(

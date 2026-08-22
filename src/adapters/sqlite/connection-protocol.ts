@@ -233,6 +233,34 @@ export interface SqliteProjectionReplayCommitResult {
   readonly projectionRowCount: number;
 }
 
+export interface SqliteProjectionDispatchAppendEvent {
+  readonly eventId: string;
+  readonly kind: "statement" | "retraction" | "merge" | "alias";
+  readonly bodyJson: string;
+  readonly actor: string | null;
+  readonly branch: string | null;
+  readonly session: string | null;
+  readonly createdAt: number;
+}
+
+export interface SqliteProjectionDispatchBeginResult {
+  readonly dispatchId: number;
+  readonly collision: boolean;
+  readonly events: readonly ProjectionReplayJournalEvent[];
+  readonly appendedEvents: readonly ProjectionReplayJournalEvent[];
+  readonly current: ProjectionSnapshot;
+  readonly meta: SqliteProjectionMetaSnapshot | null;
+  readonly projectionValid: boolean;
+  readonly previousLastSeq: number;
+}
+
+export type SqliteProjectionPublishMode = "incremental" | "replay";
+
+export interface SqliteProjectionDispatchCommitResult
+  extends SqliteProjectionReplayCommitResult {
+  readonly mode: SqliteProjectionPublishMode;
+}
+
 export interface SqliteWorkerProjectionReplayBeginRequest {
   readonly type: "projection-replay-begin";
   readonly requestId: number;
@@ -254,6 +282,23 @@ export interface SqliteWorkerProjectionReplayRollbackRequest {
   readonly replayId: number;
 }
 
+export interface SqliteWorkerProjectionDispatchBeginRequest {
+  readonly type: "projection-dispatch-begin";
+  readonly requestId: number;
+  readonly scopeKey: string;
+  readonly events: readonly SqliteProjectionDispatchAppendEvent[];
+}
+
+export interface SqliteWorkerProjectionDispatchCommitRequest {
+  readonly type: "projection-dispatch-commit";
+  readonly requestId: number;
+  readonly dispatchId: number;
+  readonly mode: SqliteProjectionPublishMode;
+  readonly rulesVersion: string;
+  readonly rebuiltAt: number;
+  readonly snapshot: ProjectionSnapshot;
+}
+
 export interface SqliteWorkerCloseRequest {
   readonly type: "close";
   readonly requestId: number;
@@ -266,6 +311,8 @@ export type SqliteWorkerRequest =
   | SqliteWorkerProjectionReplayBeginRequest
   | SqliteWorkerProjectionReplayCommitRequest
   | SqliteWorkerProjectionReplayRollbackRequest
+  | SqliteWorkerProjectionDispatchBeginRequest
+  | SqliteWorkerProjectionDispatchCommitRequest
   | SqliteWorkerCloseRequest;
 
 export interface SqliteWorkerReadyResponse {

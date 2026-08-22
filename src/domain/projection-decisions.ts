@@ -109,7 +109,7 @@ function reject(code: ProjectionDecisionErrorCode): never {
 type SurfaceOrigin = SurfaceFormProjectionRow["origin"];
 type ClaimState = ClaimProjectionRow["state"];
 
-interface ParsedStoredDraft {
+export interface ProjectionStoredDraft {
   readonly subject: string;
   readonly subjectNormal: string;
   readonly subjectKind: string | null;
@@ -127,7 +127,7 @@ interface AnchoredDraft {
   readonly actualSeq: number;
   readonly draftIndex: number;
   readonly candidate: OccurrenceCandidates;
-  readonly draft: ParsedStoredDraft;
+  readonly draft: ProjectionStoredDraft;
   readonly initialSubjectId: string;
   readonly initialObjectId: string | null;
   readonly initialClaimId: string;
@@ -180,12 +180,12 @@ interface KindContribution {
   readonly position: 0 | 1;
 }
 
-interface ParsedMergeBody {
+export interface ProjectionMergeBody {
   readonly keep: string;
   readonly absorb: string;
 }
 
-interface ParsedAliasBody {
+export interface ProjectionAliasBody {
   readonly surface: string;
   readonly entityId: string;
 }
@@ -378,7 +378,7 @@ function parseAliases(value: unknown): readonly string[] {
   return Object.freeze(result);
 }
 
-function parseStoredDraft(value: unknown): ParsedStoredDraft {
+export function parseProjectionStoredDraft(value: unknown): ProjectionStoredDraft {
   const source = plainDataRecord(value, "INVALID_STORED_DRAFT");
   if (
     Object.keys(source).some((key) => !DRAFT_KEYS.has(key)) ||
@@ -468,9 +468,9 @@ function validateDecisionNote(value: unknown): void {
   }
 }
 
-function parseMergeBody(event: EffectiveMergeEvent): ParsedMergeBody {
+export function parseProjectionMergeBody(bodyJson: unknown): ProjectionMergeBody {
   const body = exactDataRecord(
-    parseJsonBody(event.bodyJson),
+    parseJsonBody(bodyJson),
     ["keep", "absorb"],
     ["note"],
     "INVALID_DECISION_BODY",
@@ -486,9 +486,9 @@ function parseMergeBody(event: EffectiveMergeEvent): ParsedMergeBody {
   });
 }
 
-function parseAliasBody(event: EffectiveAliasEvent): ParsedAliasBody {
+export function parseProjectionAliasBody(bodyJson: unknown): ProjectionAliasBody {
   const body = exactDataRecord(
-    parseJsonBody(event.bodyJson),
+    parseJsonBody(bodyJson),
     ["surface", "entity_id"],
     ["note"],
     "INVALID_DECISION_BODY",
@@ -524,7 +524,7 @@ function occurrenceKey(eventId: string, draftIndex: number): string {
   return JSON.stringify([eventId, draftIndex]);
 }
 
-function claimIdentityKey(
+export function projectionClaimIdentityKey(
   scopeKey: string,
   subjectId: string,
   relation: CanonicalRelation,
@@ -709,7 +709,7 @@ export function reduceMergeAliasState(
       ) {
         return reject("INVALID_PROJECTION_STATE");
       }
-      const draft = parseStoredDraft(registration.parsed[draftIndex]);
+      const draft = parseProjectionStoredDraft(registration.parsed[draftIndex]);
       const anchorEntity = (
         candidateIdValue: unknown,
         name: string,
@@ -807,7 +807,7 @@ export function reduceMergeAliasState(
     claimAnchors.push(
       Object.freeze({ id: claimCandidateId, kind: "claim", scopeKey }),
     );
-    const identity = claimIdentityKey(
+    const identity = projectionClaimIdentityKey(
       scopeKey,
       occurrence.initialSubjectId,
       occurrence.draft.relation,
@@ -1037,7 +1037,7 @@ export function reduceMergeAliasState(
       claim.subjectId = resolveEntity(claim.subjectId);
       claim.objectId =
         claim.objectId === null ? null : resolveEntity(claim.objectId);
-      const identity = claimIdentityKey(
+      const identity = projectionClaimIdentityKey(
         scopeKey,
         claim.subjectId,
         claim.relation,
@@ -1088,7 +1088,7 @@ export function reduceMergeAliasState(
       claim.subjectId = resolveEntity(claim.subjectId);
       claim.objectId =
         claim.objectId === null ? null : resolveEntity(claim.objectId);
-      const identity = claimIdentityKey(
+      const identity = projectionClaimIdentityKey(
         scopeKey,
         claim.subjectId,
         claim.relation,
@@ -1288,7 +1288,7 @@ export function reduceMergeAliasState(
         );
       }
 
-      const desiredIdentity = claimIdentityKey(
+      const desiredIdentity = projectionClaimIdentityKey(
         scopeKey,
         subject.entityId,
         occurrence.draft.relation,
@@ -1381,7 +1381,7 @@ export function reduceMergeAliasState(
   };
 
   const applyMerge = (event: EffectiveMergeEvent): void => {
-    const body = parseMergeBody(event);
+    const body = parseProjectionMergeBody(event.bodyJson);
     assertDecisionTargetPast(body.keep, event.actualSeq);
     assertDecisionTargetPast(body.absorb, event.actualSeq);
     if (!entityAnchorIds.has(body.keep) || !entityAnchorIds.has(body.absorb)) {
@@ -1407,7 +1407,7 @@ export function reduceMergeAliasState(
   };
 
   const applyAlias = (event: EffectiveAliasEvent): void => {
-    const body = parseAliasBody(event);
+    const body = parseProjectionAliasBody(event.bodyJson);
     assertDecisionTargetPast(body.entityId, event.actualSeq);
     if (!entityAnchorIds.has(body.entityId)) {
       return reject("ALIAS_TARGET_NOT_FOUND");

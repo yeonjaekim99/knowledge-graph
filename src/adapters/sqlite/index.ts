@@ -48,6 +48,19 @@ export { CLAIM_AGGREGATE_SQL_SOURCE } from "./claim-aggregate.js";
 export type { ClaimAggregateSqlSource } from "./claim-aggregate.js";
 
 export {
+  SqliteProjectionDispatcherError,
+  createSqliteProjectionDispatcher,
+} from "./projection-dispatcher.js";
+export type {
+  ProjectionDispatchMode,
+  ProjectionDispatchReason,
+  SqliteProjectionDispatcher,
+  SqliteProjectionDispatcherDependencies,
+  SqliteProjectionDispatcherErrorCode,
+  SqliteProjectionDispatchReceipt,
+} from "./projection-dispatcher.js";
+
+export {
   JOURNAL_ID_COLLISION_ATTEMPT_LIMIT,
   JournalAppendError,
   createSqliteJournalRepository,
