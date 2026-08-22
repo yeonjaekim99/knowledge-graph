@@ -30,6 +30,30 @@ export {
   normalizeRelationLabel,
   normalizeV1,
 } from "./projection-rules.js";
+export {
+  ProjectionIdentifierError,
+  assertCanonicalIdentifier,
+  chooseCanonicalIdentifier,
+  compareOccurrenceIdentifiers,
+  createIdentifierRedirectRegistry,
+  dryRunIdentityRuleChange,
+  enumerateOccurrenceCandidates,
+  isCanonicalIdentifier,
+  resolveCanonicalIdentifier,
+} from "./projection-identifiers.js";
+export type {
+  CanonicalIdentifierSelection,
+  IdentifierAnchor,
+  IdentifierKind,
+  IdentifierRedirectReason,
+  IdentifierRedirectRegistry,
+  IdentifierRedirectRow,
+  IdentityRuleDryRunResult,
+  IdentityRuleMaintenanceCandidate,
+  OccurrenceCandidates,
+  ProjectionIdentifierErrorCode,
+  RedirectKind,
+} from "./projection-identifiers.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,

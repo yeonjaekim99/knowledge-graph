@@ -40,6 +40,7 @@
     "test:sto-008": "pnpm run build && node --test test/e2e/process/s20-wal-concurrent-clients.test.mjs test/e2e/process/sto-008-journal-crash-reopen.test.mjs",
     "test:prj-001": "pnpm run build && node --test test/unit/domain/prj-001-replay-contract.test.mjs test/integration/projection/prj-001-scope-replay.test.mjs",
     "test:prj-002": "pnpm run build && node --test test/unit/domain/prj-002-normalization-relations.test.mjs test/e2e/process/prj-002-normalization-locale.test.mjs",
+    "test:prj-003": "pnpm run build && node --test test/unit/domain/prj-003-occurrence-redirects.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
@@ -58,6 +59,7 @@
     "verify:sto-008": "pnpm run verify:fnd-007",
     "verify:prj-001": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-001",
     "verify:prj-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-002",
+    "verify:prj-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-003",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
