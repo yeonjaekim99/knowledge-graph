@@ -323,10 +323,10 @@ export interface SqliteProjectionDispatchPrepareResult {
   readonly meta: SqliteProjectionMetaSnapshot | null;
   readonly projectionValid: boolean;
   readonly previousLastSeq: number;
+  readonly expectedJournalSeq: number;
 }
 
 export interface SqliteWriteEntityReferenceInput {
-  readonly candidateId: string;
   readonly name: string;
   readonly kind: string | null;
   readonly aliases: readonly string[];
@@ -362,6 +362,11 @@ export interface SqliteWriteEntityRejectedDraft {
 export type SqliteWriteEntityDraftResolution =
   | SqliteWriteEntityResolvedDraft
   | SqliteWriteEntityRejectedDraft;
+
+export interface SqliteWriteEntityFinalizationResult {
+  readonly expectedJournalSeq: number;
+  readonly drafts: readonly SqliteWriteEntityResolvedDraft[];
+}
 
 export type SqliteProjectionPublishMode = "incremental" | "replay";
 
@@ -411,6 +416,14 @@ export interface SqliteWorkerProjectionDispatchResolveEntitiesRequest {
   readonly drafts: readonly SqliteWriteEntityDraftInput[];
 }
 
+export interface SqliteWorkerProjectionDispatchFinalizeEntitiesRequest {
+  readonly type: "projection-dispatch-finalize-entities";
+  readonly requestId: number;
+  readonly dispatchId: number;
+  readonly survivorDraftIndexes: readonly number[];
+  readonly statementBodyJson: string;
+}
+
 export interface SqliteWorkerProjectionDispatchAppendRequest {
   readonly type: "projection-dispatch-append";
   readonly requestId: number;
@@ -443,6 +456,7 @@ export type SqliteWorkerRequest =
   | SqliteWorkerProjectionDispatchBeginRequest
   | SqliteWorkerProjectionDispatchPrepareRequest
   | SqliteWorkerProjectionDispatchResolveEntitiesRequest
+  | SqliteWorkerProjectionDispatchFinalizeEntitiesRequest
   | SqliteWorkerProjectionDispatchAppendRequest
   | SqliteWorkerProjectionDispatchCommitRequest
   | SqliteWorkerRecallSnapshotBeginRequest

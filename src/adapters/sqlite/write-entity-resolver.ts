@@ -1,6 +1,7 @@
 import {
   ProjectionIdentifierError,
   assertCanonicalIdentifier,
+  compareOccurrenceIdentifiers,
 } from "../../domain/projection-identifiers.js";
 import {
   ProjectionRuleError,
@@ -10,6 +11,7 @@ import type { SqliteProjectionDispatchSession } from "./connection-factory.js";
 import type {
   SqliteWriteEntityDraftInput,
   SqliteWriteEntityDraftResolution,
+  SqliteWriteEntityFinalizationResult,
   SqliteWriteEntityReferenceInput,
 } from "./connection-protocol.js";
 
@@ -135,28 +137,29 @@ function boundedText(
   return result;
 }
 
+function boundedKind(
+  value: unknown,
+  code: WriteEntityResolutionErrorCode,
+): string {
+  if (typeof value !== "string") {
+    return reject(code);
+  }
+  const result = value.trim().normalize("NFKC").toLowerCase();
+  const length = Array.from(result).length;
+  if (length === 0 || length > 64) {
+    return reject(code);
+  }
+  return result;
+}
+
 function snapshotReference(
   value: unknown,
-  seenCandidates: Set<string>,
 ): SqliteWriteEntityReferenceInput {
   const input = plainDataRecord(
     value,
-    ["aliases", "candidateId", "kind", "name"],
+    ["aliases", "kind", "name"],
     "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
   );
-  let candidateId: string;
-  try {
-    candidateId = assertCanonicalIdentifier(input["candidateId"], "entity");
-  } catch (error: unknown) {
-    if (error instanceof ProjectionIdentifierError) {
-      return reject("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
-    }
-    throw error;
-  }
-  if (seenCandidates.has(candidateId)) {
-    return reject("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
-  }
-  seenCandidates.add(candidateId);
   const name = boundedText(
     input["name"],
     1_024,
@@ -166,11 +169,7 @@ function snapshotReference(
   const kind =
     kindValue === null
       ? null
-      : boundedText(
-          kindValue,
-          64,
-          "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
-        );
+      : boundedKind(kindValue, "INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
   const aliases = plainDataArray(
     input["aliases"],
     20,
@@ -179,7 +178,6 @@ function snapshotReference(
     boundedText(alias, 256, "INVALID_WRITE_ENTITY_RESOLUTION_INPUT"),
   );
   return Object.freeze({
-    candidateId,
     name,
     kind,
     aliases: Object.freeze(aliases),
@@ -192,8 +190,7 @@ function snapshotDrafts(value: unknown): readonly SqliteWriteEntityDraftInput[] 
     100,
     "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
   );
-  const seenCandidates = new Set<string>();
-  const seenIndexes = new Set<number>();
+  let previousIndex = -1;
   return Object.freeze(
     drafts.map((draftValue) => {
       const draft = plainDataRecord(
@@ -204,19 +201,19 @@ function snapshotDrafts(value: unknown): readonly SqliteWriteEntityDraftInput[] 
       if (
         !Number.isSafeInteger(draft["draftIndex"]) ||
         Number(draft["draftIndex"]) < 0 ||
-        seenIndexes.has(Number(draft["draftIndex"]))
+        Number(draft["draftIndex"]) <= previousIndex
       ) {
         return reject("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
       }
       const draftIndex = Number(draft["draftIndex"]);
-      seenIndexes.add(draftIndex);
+      previousIndex = draftIndex;
       return Object.freeze({
         draftIndex,
-        subject: snapshotReference(draft["subject"], seenCandidates),
+        subject: snapshotReference(draft["subject"]),
         object:
           draft["object"] === null
             ? null
-            : snapshotReference(draft["object"], seenCandidates),
+            : snapshotReference(draft["object"]),
       });
     }),
   );
@@ -228,7 +225,15 @@ function freezeResolution(
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
-  const status = (value as Readonly<Record<string, unknown>>)["status"];
+  const statusDescriptor = Object.getOwnPropertyDescriptor(value, "status");
+  if (
+    statusDescriptor === undefined ||
+    statusDescriptor.enumerable !== true ||
+    !("value" in statusDescriptor)
+  ) {
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+  const status = statusDescriptor.value;
   if (status === "resolved") {
     const result = plainDataRecord(
       value,
@@ -279,6 +284,8 @@ function freezeResolution(
   ) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
+  const seenCandidates = new Set<string>();
+  let previousCandidate: string | null = null;
   const candidates = plainDataArray(
     result["candidates"],
     Number.MAX_SAFE_INTEGER,
@@ -298,10 +305,23 @@ function freezeResolution(
       }
       throw error;
     }
-    if (typeof candidate["name"] !== "string") {
+    if (seenCandidates.has(entityId)) {
       return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
     }
-    return Object.freeze({ entityId, name: candidate["name"] });
+    if (
+      previousCandidate !== null &&
+      compareOccurrenceIdentifiers(previousCandidate, entityId, "entity") >= 0
+    ) {
+      return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    }
+    const name = boundedText(
+      candidate["name"],
+      1_024,
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+    );
+    seenCandidates.add(entityId);
+    previousCandidate = entityId;
+    return Object.freeze({ entityId, name });
   });
   if (candidates.length < 2) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
@@ -313,6 +333,63 @@ function freezeResolution(
     field: result["field"],
     candidates: Object.freeze(candidates),
     note: result["note"],
+  });
+}
+
+function snapshotSurvivorDraftIndexes(value: unknown): readonly number[] {
+  const values = plainDataArray(
+    value,
+    100,
+    "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+  );
+  let previous = -1;
+  return Object.freeze(
+    values.map((item) => {
+      if (!Number.isSafeInteger(item) || Number(item) <= previous) {
+        return reject("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
+      }
+      previous = Number(item);
+      return previous;
+    }),
+  );
+}
+
+function freezeFinalizationResult(
+  value: unknown,
+  survivorDraftIndexes: readonly number[],
+): SqliteWriteEntityFinalizationResult {
+  const result = plainDataRecord(
+    value,
+    ["drafts", "expectedJournalSeq"],
+    "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+  );
+  if (
+    !Number.isSafeInteger(result["expectedJournalSeq"]) ||
+    Number(result["expectedJournalSeq"]) <= 0
+  ) {
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+  const draftValues = plainDataArray(
+    result["drafts"],
+    100,
+    "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+  );
+  if (draftValues.length !== survivorDraftIndexes.length) {
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+  const drafts = draftValues.map((draftValue, index) => {
+    const draft = freezeResolution(draftValue);
+    if (
+      draft.status !== "resolved" ||
+      draft.draftIndex !== survivorDraftIndexes[index]
+    ) {
+      return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    }
+    return draft;
+  });
+  return Object.freeze({
+    expectedJournalSeq: Number(result["expectedJournalSeq"]),
+    drafts: Object.freeze(drafts),
   });
 }
 
@@ -372,8 +449,64 @@ export function resolveSqliteWriteEntityDrafts(
     .then((results) => freezeResults(results, drafts));
 }
 
+/**
+ * Replays only caller-selected survivor drafts inside the same writer lock.
+ * REC-005 owns survivor selection; the worker owns compact occurrence IDs.
+ */
+export function finalizeSqliteWriteEntityDrafts(
+  session: SqliteProjectionDispatchSession,
+  value: unknown,
+): Promise<SqliteWriteEntityFinalizationResult> {
+  let dispatchId: number;
+  let survivorDraftIndexes: readonly number[];
+  let statementBodyJson: string;
+  try {
+    const input = plainDataRecord(
+      value,
+      ["dispatchId", "statementBodyJson", "survivorDraftIndexes"],
+      "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+    );
+    if (
+      !Number.isSafeInteger(input["dispatchId"]) ||
+      Number(input["dispatchId"]) <= 0 ||
+      session === null ||
+      typeof session !== "object" ||
+      typeof session.finalizeEntities !== "function"
+    ) {
+      return Promise.reject(
+        new WriteEntityResolutionError(
+          "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+        ),
+      );
+    }
+    dispatchId = Number(input["dispatchId"]);
+    survivorDraftIndexes = snapshotSurvivorDraftIndexes(
+      input["survivorDraftIndexes"],
+    );
+    if (
+      typeof input["statementBodyJson"] !== "string" ||
+      input["statementBodyJson"].length === 0
+    ) {
+      return Promise.reject(
+        new WriteEntityResolutionError(
+          "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
+        ),
+      );
+    }
+    statementBodyJson = input["statementBodyJson"];
+  } catch (error: unknown) {
+    return Promise.reject(error);
+  }
+  return session
+    .finalizeEntities(dispatchId, survivorDraftIndexes, statementBodyJson)
+    .then((result) =>
+      freezeFinalizationResult(result, survivorDraftIndexes),
+    );
+}
+
 export type {
   SqliteWriteEntityDraftInput as WriteEntityDraftResolutionInput,
   SqliteWriteEntityDraftResolution as WriteEntityDraftResolution,
+  SqliteWriteEntityFinalizationResult as WriteEntityFinalizationResult,
   SqliteWriteEntityReferenceInput as WriteEntityReferenceResolutionInput,
 };

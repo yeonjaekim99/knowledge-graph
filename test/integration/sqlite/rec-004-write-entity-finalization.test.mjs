@@ -135,6 +135,9 @@ test("allocates occurrence candidates from the database-global next journal seq 
     const finalized = await finalizeSqliteWriteEntityDrafts(session, {
       dispatchId: prepared.dispatchId,
       survivorDraftIndexes: [7],
+      statementBodyJson: statement("current scope", [
+        { subject: "Current", relation: "describes", object_value: "safe" },
+      ]).bodyJson,
     });
     assert.deepEqual(finalized, {
       expectedJournalSeq: 2,
@@ -202,6 +205,13 @@ test("compacts rejected occurrences and lets REC-005 choose survivors before fin
     const finalized = await finalizeSqliteWriteEntityDrafts(session, {
       dispatchId: prepared.dispatchId,
       survivorDraftIndexes: [11],
+      statementBodyJson: statement("survivor", [
+        {
+          subject: "First survivor",
+          relation: "describes",
+          object_value: "safe",
+        },
+      ]).bodyJson,
     });
     assert.deepEqual(finalized.drafts, [
       {
@@ -248,6 +258,26 @@ test("normalizes kind independently from entity names and accepts separator-only
     const finalized = await finalizeSqliteWriteEntityDrafts(session, {
       dispatchId: prepared.dispatchId,
       survivorDraftIndexes: [0, 1, 2],
+      statementBodyJson: statement("kinds", [
+        {
+          subject: "Hyphen kind",
+          subject_kind: " - ",
+          relation: "describes",
+          object_value: "one",
+        },
+        {
+          subject: "Underscore kind",
+          subject_kind: "_",
+          relation: "describes",
+          object_value: "two",
+        },
+        {
+          subject: "Fullwidth kind",
+          subject_kind: "＿",
+          relation: "describes",
+          object_value: "three",
+        },
+      ]).bodyJson,
     });
     assert.deepEqual(
       finalized.drafts.map((item) => item.subjectId),
@@ -330,15 +360,22 @@ test("fails closed on journal sequence drift and on finalized body mismatch", as
       await finalizeSqliteWriteEntityDrafts(session, {
         dispatchId: prepared.dispatchId,
         survivorDraftIndexes: [0],
+        statementBodyJson: statement("expected", [
+          {
+            subject: "Expected",
+            relation: "describes",
+            object_value: "safe",
+          },
+        ]).bodyJson,
       });
       await session.append(prepared.dispatchId, [
         appendEvent(
           "1",
           statement("mismatch", [
             {
-              subject: "Different",
+              subject: "Expected",
               relation: "describes",
-              object_value: "unsafe",
+              object_value: "safe",
             },
           ]),
         ),

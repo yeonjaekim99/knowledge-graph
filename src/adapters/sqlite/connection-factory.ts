@@ -28,6 +28,7 @@ import {
   type SqliteTransactionCommand,
   type SqliteWriteEntityDraftInput,
   type SqliteWriteEntityDraftResolution,
+  type SqliteWriteEntityFinalizationResult,
   type SqliteWorkerResponse,
   type SqliteWorkerRole,
 } from "./connection-protocol.js";
@@ -313,6 +314,19 @@ class SqliteWorkerClient {
     }) as Promise<readonly SqliteWriteEntityDraftResolution[]>;
   }
 
+  public finalizeProjectionDispatchEntities(
+    dispatchId: number,
+    survivorDraftIndexes: readonly number[],
+    statementBodyJson: string,
+  ): Promise<SqliteWriteEntityFinalizationResult> {
+    return this.#request({
+      type: "projection-dispatch-finalize-entities",
+      dispatchId,
+      survivorDraftIndexes,
+      statementBodyJson,
+    }) as Promise<SqliteWriteEntityFinalizationResult>;
+  }
+
   public appendProjectionDispatch(
     dispatchId: number,
     events: readonly SqliteProjectionDispatchAppendEvent[],
@@ -400,6 +414,12 @@ class SqliteWorkerClient {
           readonly type: "projection-dispatch-resolve-entities";
           readonly dispatchId: number;
           readonly drafts: readonly SqliteWriteEntityDraftInput[];
+        }
+      | {
+          readonly type: "projection-dispatch-finalize-entities";
+          readonly dispatchId: number;
+          readonly survivorDraftIndexes: readonly number[];
+          readonly statementBodyJson: string;
         }
       | {
           readonly type: "projection-dispatch-append";
@@ -690,6 +710,11 @@ export interface SqliteProjectionDispatchSession {
     dispatchId: number,
     drafts: readonly SqliteWriteEntityDraftInput[],
   ): Promise<readonly SqliteWriteEntityDraftResolution[]>;
+  finalizeEntities(
+    dispatchId: number,
+    survivorDraftIndexes: readonly number[],
+    statementBodyJson: string,
+  ): Promise<SqliteWriteEntityFinalizationResult>;
   append(
     dispatchId: number,
     events: readonly SqliteProjectionDispatchAppendEvent[],
@@ -910,6 +935,20 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
           return this.#writer.resolveProjectionDispatchEntities(
             dispatchId,
             drafts,
+          );
+        },
+        finalizeEntities: async (
+          dispatchId: number,
+          survivorDraftIndexes: readonly number[],
+          statementBodyJson: string,
+        ): Promise<SqliteWriteEntityFinalizationResult> => {
+          if (activeDispatchId !== dispatchId) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          return this.#writer.finalizeProjectionDispatchEntities(
+            dispatchId,
+            survivorDraftIndexes,
+            statementBodyJson,
           );
         },
         append: async (

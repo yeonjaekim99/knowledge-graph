@@ -15,6 +15,7 @@ import { reduceIncrementalProjection } from "../../../dist/domain/index.js";
 import { enqueueSqliteProjectionDispatchSession } from "../../../dist/adapters/sqlite/connection-factory.js";
 import {
   WriteEntityResolutionError,
+  finalizeSqliteWriteEntityDrafts,
   resolveSqliteWriteEntityDrafts,
 } from "../../../dist/adapters/sqlite/write-entity-resolver.js";
 import { createDeterministicRuntimeProvider } from "../../support/deterministic-runtime-provider.mjs";
@@ -59,9 +60,8 @@ async function rows(factory, sql, parameters = []) {
   }
 }
 
-function reference(candidateId, name, options = {}) {
+function reference(name, options = {}) {
   return {
-    candidateId,
     name,
     kind: options.kind ?? null,
     aliases: options.aliases ?? [],
@@ -124,6 +124,22 @@ async function seedEntityState(factory) {
       parameters: [SCOPE],
     },
   ]);
+  await seedJournalAnchors(factory, 2);
+}
+
+async function seedJournalAnchors(factory, count, scope = SCOPE) {
+  await factory.enqueueWriteTransaction(
+    Array.from({ length: count }, (_, index) => ({
+      kind: "run",
+      sql: "INSERT INTO journal(id, scope_key, kind, body, actor, branch, session, created_at) VALUES (?, ?, 'statement', ?, NULL, NULL, NULL, ?)",
+      parameters: [
+        eventId(String(index + 1)),
+        scope,
+        statement(`anchor-${index + 1}`, []).bodyJson,
+        NOW + index,
+      ],
+    })),
+  );
 }
 
 test("resolves every surface candidate through redirects before exact-name fallback and never changes an existing kind", async () => {
@@ -133,11 +149,11 @@ test("resolves every surface candidate through redirects before exact-name fallb
   const result = await resolveInRollback(factory, [
     draft(
       0,
-      reference("e90.0", "login", {
+      reference("login", {
         kind: "different-kind",
         aliases: ["entry"],
       }),
-      reference("e90.1", "Session Store", { kind: "database" }),
+      reference("Session Store", { kind: "database" }),
     ),
   ]);
 
@@ -148,7 +164,7 @@ test("resolves every surface candidate through redirects before exact-name fallb
       draftIndex: 0,
       status: "resolved",
       subjectId: "e1.0",
-      objectId: "e90.1",
+      objectId: "e3.1",
     },
   ]);
   assert.deepEqual(
@@ -213,11 +229,12 @@ test("uses an exact active normal name as the only tie-break and otherwise rejec
       parameters: [SCOPE],
     },
   ]);
+  await seedJournalAnchors(factory, 3);
 
   const result = await resolveInRollback(factory, [
-    draft(0, reference("e90.0", "login")),
-    draft(1, reference("e90.1", "shared")),
-    draft(2, reference("e90.2", "Safe Entity")),
+    draft(0, reference("login")),
+    draft(1, reference("shared")),
+    draft(2, reference("Safe Entity")),
   ]);
 
   assert.deepEqual(result[0], {
@@ -243,7 +260,7 @@ test("uses an exact active normal name as the only tie-break and otherwise rejec
   assert.deepEqual(result[2], {
     draftIndex: 2,
     status: "resolved",
-    subjectId: "e90.2",
+    subjectId: "e4.1",
     objectId: null,
   });
 });
@@ -272,23 +289,24 @@ test("rolls an ambiguous draft savepoint back without removing prior accepted st
       parameters: [SCOPE],
     },
   ]);
+  await seedJournalAnchors(factory, 2);
 
   const result = await resolveInRollback(factory, [
-    draft(0, reference("e90.0", "Prior", { aliases: ["prior-alias"] })),
+    draft(0, reference("Prior", { aliases: ["prior-alias"] })),
     draft(
       1,
-      reference("e90.1", "Transient"),
-      reference("e90.2", "shared"),
+      reference("Transient"),
+      reference("shared"),
     ),
-    draft(2, reference("e90.3", "Transient")),
-    draft(3, reference("e90.4", "prior-alias")),
+    draft(2, reference("Transient")),
+    draft(3, reference("prior-alias")),
   ]);
 
   assert.deepEqual(result, [
     {
       draftIndex: 0,
       status: "resolved",
-      subjectId: "e90.0",
+      subjectId: "e3.0",
       objectId: null,
     },
     {
@@ -306,13 +324,13 @@ test("rolls an ambiguous draft savepoint back without removing prior accepted st
     {
       draftIndex: 2,
       status: "resolved",
-      subjectId: "e90.3",
+      subjectId: "e3.1",
       objectId: null,
     },
     {
       draftIndex: 3,
       status: "resolved",
-      subjectId: "e90.0",
+      subjectId: "e3.0",
       objectId: null,
     },
   ]);
@@ -324,18 +342,18 @@ test("keeps alias homonyms separate and makes a later write deterministically am
   const result = await resolveInRollback(factory, [
     draft(
       0,
-      reference("e90.0", "Alpha", { aliases: ["shared"] }),
-      reference("e90.1", "Beta", { aliases: ["shared"] }),
+      reference("Alpha", { aliases: ["shared"] }),
+      reference("Beta", { aliases: ["shared"] }),
     ),
-    draft(1, reference("e90.2", "shared")),
+    draft(1, reference("shared")),
   ]);
 
   assert.deepEqual(result, [
     {
       draftIndex: 0,
       status: "resolved",
-      subjectId: "e90.0",
-      objectId: "e90.1",
+      subjectId: "e1.0",
+      objectId: "e1.1",
     },
     {
       draftIndex: 1,
@@ -343,8 +361,8 @@ test("keeps alias homonyms separate and makes a later write deterministically am
       reason: "ambiguous_entity",
       field: "subject",
       candidates: [
-        { entityId: "e90.0", name: "Alpha" },
-        { entityId: "e90.1", name: "Beta" },
+        { entityId: "e1.0", name: "Alpha" },
+        { entityId: "e1.1", name: "Beta" },
       ],
       note:
         "subject matches multiple entities; retry with an exact canonical name or confirm an alias or merge",
@@ -359,7 +377,7 @@ test("rereads the unique normal-name winner after an INSERT OR IGNORE constraint
       kind: "exec",
       sql: [
         "CREATE TRIGGER rec004_competing_entity BEFORE INSERT ON entities",
-        "WHEN new.id = 'e90.0' BEGIN",
+        "WHEN new.id = 'e1.0' BEGIN",
         `INSERT INTO entities(id, scope_key, name, normal_name, kind, merged_into, origin_seq) VALUES ('e80.0', '${SCOPE}', 'Collision Name', new.normal_name, 'winner-kind', NULL, 80);`,
         "END",
       ].join(" "),
@@ -367,8 +385,8 @@ test("rereads the unique normal-name winner after an INSERT OR IGNORE constraint
   ]);
 
   const result = await resolveInRollback(factory, [
-    draft(0, reference("e90.0", "Collision Name", { kind: "loser-kind" })),
-    draft(1, reference("e90.1", "Collision-Name")),
+    draft(0, reference("Collision Name", { kind: "loser-kind" })),
+    draft(1, reference("Collision-Name")),
   ]);
 
   assert.deepEqual(result, [
@@ -386,7 +404,7 @@ test("rereads the unique normal-name winner after an INSERT OR IGNORE constraint
     },
   ]);
   assert.deepEqual(
-    await rows(factory, "SELECT id FROM entities WHERE id IN ('e80.0','e90.0','e90.1')"),
+    await rows(factory, "SELECT id FROM entities WHERE id IN ('e80.0','e1.0','e1.1')"),
     [],
     "the defensive insert and collision winner stay inside the outer savepoint",
   );
@@ -410,21 +428,29 @@ test("ignores other-scope candidates and redacts cross-scope identifier collisio
 
   assert.deepEqual(
     await resolveInRollback(factory, [
-      draft(0, reference("e90.0", "shared private")),
+      draft(0, reference("shared private")),
     ]),
     [
       {
         draftIndex: 0,
         status: "resolved",
-        subjectId: "e90.0",
+        subjectId: "e1.0",
         objectId: null,
       },
     ],
   );
 
+  await factory.enqueueWriteTransaction([
+    {
+      kind: "run",
+      sql: "INSERT INTO entities(id, scope_key, name, normal_name, kind, merged_into, origin_seq) VALUES ('e1.0', ?, 'Other Collision', 'othercollision', NULL, NULL, 1)",
+      parameters: [OTHER_SCOPE],
+    },
+  ]);
+
   await assert.rejects(
     resolveInRollback(factory, [
-      draft(0, reference("e70.0", "current-scope-name")),
+      draft(0, reference("current-scope-name")),
     ]),
     (error) => {
       assert.ok(
@@ -437,15 +463,17 @@ test("ignores other-scope candidates and redacts cross-scope identifier collisio
     },
   );
 
+  await seedJournalAnchors(factory, 1, OTHER_SCOPE);
+
   assert.deepEqual(
     await resolveInRollback(factory, [
-      draft(1, reference("e91.0", "queue remains usable")),
+      draft(1, reference("queue remains usable")),
     ]),
     [
       {
         draftIndex: 1,
         status: "resolved",
-        subjectId: "e91.0",
+        subjectId: "e2.0",
         objectId: null,
       },
     ],
@@ -461,7 +489,10 @@ test("rejects malformed resolver input without opening a projection-only commit 
       resolveSqliteWriteEntityDrafts(session, {
         dispatchId: prepared.dispatchId,
         drafts: [
-          draft(0, reference("not-an-entity-id", "payload-must-not-echo")),
+          draft(0, {
+            ...reference("payload-must-not-echo"),
+            unexpected: "not-an-entity-id",
+          }),
         ],
       }),
       (error) => {
@@ -492,7 +523,7 @@ test("rejects malformed resolver input without opening a projection-only commit 
   assert.deepEqual(await rows(factory, "SELECT seq FROM journal"), []);
 });
 
-test("rolls all pre-resolution staging back before append and permits only journal plus projection commit", async () => {
+test("finalizes the survivor plan before append and publishes only the matching journal projection", async () => {
   const factory = await createStore();
   const rulesVersion = "projection-v1";
   const dispatcher = createSqliteProjectionDispatcher({
@@ -516,18 +547,18 @@ test("rolls all pre-resolution staging back before append and permits only journ
 
   await enqueueSqliteProjectionDispatchSession(factory, async (session) => {
     const prepared = await session.prepare(SCOPE);
-    assert.deepEqual(
-      await resolveSqliteWriteEntityDrafts(session, {
+    const resolved = await resolveSqliteWriteEntityDrafts(session, {
         dispatchId: prepared.dispatchId,
         drafts: [
           draft(
             0,
-            reference("e2.0", "Must Roll Back", {
+            reference("Must Roll Back", {
               aliases: ["must-not-persist"],
             }),
           ),
         ],
-      }),
+      });
+    assert.deepEqual(resolved,
       [
         {
           draftIndex: 0,
@@ -537,11 +568,43 @@ test("rolls all pre-resolution staging back before append and permits only journ
         },
       ],
     );
+    assert.deepEqual(
+      await finalizeSqliteWriteEntityDrafts(session, {
+        dispatchId: prepared.dispatchId,
+        survivorDraftIndexes: [0],
+        statementBodyJson: statement("matching body", [
+          {
+            subject: "Must Roll Back",
+            subject_aliases: ["must-not-persist"],
+            relation: "describes",
+            object_value: "recorded",
+          },
+        ]).bodyJson,
+      }),
+      {
+        expectedJournalSeq: 2,
+        drafts: [
+          {
+            draftIndex: 0,
+            status: "resolved",
+            subjectId: "e2.0",
+            objectId: null,
+          },
+        ],
+      },
+    );
     const appended = await session.append(prepared.dispatchId, [
       {
         eventId: eventId("2"),
         kind: "statement",
-        bodyJson: statement("raw only", []).bodyJson,
+        bodyJson: statement("matching body", [
+          {
+            subject: "Must Roll Back",
+            subject_aliases: ["must-not-persist"],
+            relation: "describes",
+            object_value: "recorded",
+          },
+        ]).bodyJson,
         actor: null,
         branch: null,
         session: null,
@@ -574,13 +637,16 @@ test("rolls all pre-resolution staging back before append and permits only journ
       "SELECT id, name FROM entities WHERE scope_key=? ORDER BY id",
       [SCOPE],
     ),
-    [{ id: "e1.0", name: "Seed" }],
+    [
+      { id: "e1.0", name: "Seed" },
+      { id: "e2.0", name: "Must Roll Back" },
+    ],
   );
   assert.deepEqual(
     await rows(
       factory,
       "SELECT surface_norm FROM surface_forms WHERE surface_norm='mustnotpersist'",
     ),
-    [],
+    [{ surface_norm: "mustnotpersist" }],
   );
 });
