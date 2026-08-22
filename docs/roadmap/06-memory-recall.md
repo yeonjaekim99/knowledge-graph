@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 4/9
+- 진행률: 5/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -19,7 +19,7 @@
 | RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
-| RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md), branch `rcl-005-bfs-traversal` |
+| RCL-005 | BFS 이동·수집·경로 복원 | `DONE` | `log0629` | RCL-001, RCL-002 | [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md) |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
@@ -209,10 +209,11 @@
 
 ### RCL-005 — BFS 이동·수집·경로 복원
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-005-bfs-traversal`
 - Planning PR: [#40](https://github.com/yeonjaekim99/knowledge-graph/pull/40)
+- PR: [#46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)
 - 근거: ADR-010, ADR-012
 - 선행 작업: RCL-001, RCL-002
 - 결과물: TEMP link/incident views, reached와 parent map
@@ -226,7 +227,7 @@
 - [x] 별칭·FTS·overview 표시와 entity 간 실제 hops를 구분해 path를 복원한다.
 - [x] incoming, literal, multi-seed와 cycle fixture에서 path/hops가 반복 실행마다 같다.
 
-로컬 구현 증거:
+완료 증거:
 
 - [구현 결정](../implementation/rcl-005-bfs-traversal.md)에 RCL-001의 fixed scope/now snapshot과
   유효 aggregate에 뿌리를 둔 TEMP link/incident, typed neighborhood, canonical BFS와
@@ -266,8 +267,10 @@
   통합 gate는 70/70이다. 전체 fast는 51개 파일 409/409, PRJ-010은 39/39, spike는
   25/25다. roadmap evidence 67/67·ADR 17/17·scenario 24/24·link 415와 dependency audit
   0을 확인했다.
-- 독립 review와 PR merge 전이므로 상태는 `IN_PROGRESS`이고 Phase/master 완료 수는 바꾸지
-  않는다. review finding과 PR 증거는 제출 단계에서 갱신한다.
+- 최신 main 재통합 뒤 독립 최종 review가 HIGH/MEDIUM/LOW finding 0건과 focused 21/21,
+  전체 fast 51개 파일 409/409, PRJ-010 39/39 및 모든 공통 gate를 재현했다.
+  [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)이 구현·remediation·검증과
+  이 완료 상태를 `main`에 함께 고정한다.
 
 ### RCL-006 — ranking·상충·문장 조합
 

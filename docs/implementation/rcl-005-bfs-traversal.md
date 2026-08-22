@@ -1,6 +1,6 @@
 # RCL-005: BFS 이동·수집·경로 복원
 
-- 상태: 로컬 구현·검증 완료, 독립 review 대기
+- 상태: 구현·독립 review·PR #46 완료
 - 결정일: 2026-08-23
 - 작업: RCL-005
 - Owner: `log0629`
@@ -208,8 +208,9 @@ REC-001 13/13, REC-002 13/13과 REC-003 17/17이며 REC-004 통합 gate는 70/70
 25/25다. roadmap validator는 evidence 67/67·ADR 17/17·scenario 24/24·link 415와 기존 Phase/master 집계를 통과했고
 production dependency 알려진 취약점은 0개다.
 
-PR link, 독립 review 결과와 `main` merge 증거는 root 작업자가 붙인다. 그 전까지 task는
-`IN_PROGRESS`이고 Phase 06/master 완료 수는 바꾸지 않는다.
+독립 최종 review는 latest-main 결합 상태에서 HIGH/MEDIUM/LOW finding 0건과 focused 21/21,
+전체 409/409 및 공통 gate를 재현했다. [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)이
+구현·remediation·검증·상태 증거를 `main`에 함께 고정해 RCL-005를 `DONE`으로 만든다.
 
 ## 후속 작업 경계
 
