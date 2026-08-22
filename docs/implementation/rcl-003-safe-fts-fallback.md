@@ -29,19 +29,27 @@ BFS/ranking/final `RecallResult` 조합은 RCL-005~008, MCP wiring은 MCP-003에
 1. 내부 candidate collection이 dense data array·문자열·최대 10개 계약인지 값 getter를
    실행하지 않고 snapshot한다.
 2. C0/C1 제어 문자를 제거하고 양끝을 trim한다.
-3. 기존 ADR-006 `normalizeV1` 결과가 Unicode code point 3개 이상인 후보만 남긴다.
+3. 실제로 MATCH에 bind할 위 표시 문자열이 Unicode code point 3개 이상인 후보만 남긴다.
 4. 표시 문자열의 `"`를 `""`로 escape하고 각각 하나의 quoted phrase literal로 감싼다.
 5. literal들을 고정 ` OR `로 결합하되 전체 표현은 SQL text가 아니라 named binding으로
    worker에 전달한다.
 
-정규화는 길이 gate에만 쓰며 FTS phrase 자체를 graph identity처럼 바꾸거나 dedupe하지 않는다.
-`normalizeV1` 결과가 같은 fullwidth/ASCII 표현도 SQLite trigram tokenizer에서는 별개일 수
-있으므로 원래 입력 순서의 두 phrase를 모두 보존한다.
+길이 gate에 `normalizeV1`을 쓰지 않는다. `a\u0301b`는 실제 phrase가 세 code point라
+MATCH 가능하지만 NFKC 뒤에는 두 code point이고, `㍿`은 실제 phrase가 한 code point라 MATCH
+불가능하지만 NFKC 뒤에는 네 code point다. FTS phrase를 graph identity처럼 바꾸거나 dedupe하지
+않고, normalize 결과가 같은 fullwidth/ASCII 표현도 SQLite trigram tokenizer에서는 별개일 수
+있으므로 원래 입력 순서의 두 phrase를 모두 보존한다. 그래서 `RecallFtsTerm`에는 downstream이
+쓰지 않는 `normalized`를 두지 않고 `display`와 `phraseLiteral`만 둔다.
 모든 후보가 3 code point 미만이면 MATCH를 실행하지 않고
 `fts_terms_too_short` code와 더 긴 query/terms를 요청하는 사용자용 note를 반환한다.
 정상 quoted expression에서도 SQLite가 FTS syntax 오류로 판정하면 내부 장애 모양으로
 숨기지 않고 `kind=unavailable`, `fts_query_unavailable` note와 빈 후보를 반환한다. 다른
 schema/connection 오류는 이 경로로 낮추지 않는다.
+
+RCL-002와 합칠 때는 그 단계가 이미 고정한 ordered `RecallQueryTerm.text`만 이 경계로 넘긴다.
+semantic integration hunk는 `searchFtsCandidates(selection.terms.map((term) => term.text))`이며,
+surface identity용 `surfaceNorm`은 FTS phrase로 사용하지 않는다. 이 branch는 아직 병합되지 않은
+RCL-002 구현을 cherry-pick하지 않고 이 단일 값 경계만 문서로 고정한다.
 
 ## RCL-001 snapshot 안의 SQL 경계
 
@@ -73,11 +81,17 @@ journal.scope_key = :scope_key
 statements.scope_key = :scope_key
 statements.state = live
 statements.expires_at IS NULL OR > :now
+eligible = valid graph support OR unsuppressed parsed=[] raw
 ORDER BY bm25 ASC, journal.seq DESC
 LIMIT 21
 ```
 
-21번째는 FTS truncation 판정에만 쓰고 앞 20개 statement만 graph/raw 후보로 변환한다.
+eligibility는 ORDER/LIMIT 전에 판정한다. 유효 aggregate support가 없는 non-empty parsed history와
+동일 raw_text의 유효 graph가 있어 억제될 parsed=[] row는 cap을 소비하지 않는다. 따라서 오래된
+valid graph가 최신 suppressed raw 20개 뒤에 있어도 사라지지 않는다. 반면 JSON type이나 row
+shape가 손상된 matching row는 validation 경로에 남겨 성공 모양으로 숨기지 않고 fail closed한다.
+eligible 집합의 21번째는 FTS truncation 판정에만 쓰고 앞 20개 statement만 graph/raw 후보로
+변환한다.
 각 statement의 첫 matching phrase는 입력 순서대로 별도 bound MATCH probe를 한다. bound
 sequence는 FTS5 rowid constraint에서 정수로 명시해 다른 statement의 phrase hit를 가져오지
 않으므로 path용 표시는 단순히 첫 query term을 추측하지 않는다. SQL source에는 FTS column read와
@@ -128,7 +142,10 @@ RCL-004가 재사용할 `RecallRawCandidate`에는 effective `createdAt`, actual
 요청하는 note도 함께 반환한다. 최종 `more_available`과 여러 단계 note 합성은 RCL-007이
 이 ledger를 누적해 수행한다.
 
-adapter는 candidate/support의 exact column set과 다음을 전부 검증한다.
+adapter는 candidate collection/result envelope/row를 own data descriptor로 먼저 snapshot한다.
+accessor는 실행하지 않고, Proxy의 `ownKeys`·descriptor trap을 포함한 검사 예외는 원 payload나
+driver cause 없이 typed error로 바꾼다. 그 뒤 candidate/support의 exact column set과 다음을
+전부 검증한다.
 
 - canonical event/claim/entity ID와 positive seq/origin
 - current scope·live/active state·non-merged endpoint
@@ -143,11 +160,11 @@ state를 쓰지 않으며 외부 reader의 canonical dump와 `PRAGMA data_versio
 
 ## TDD와 검증
 
-기존 production build가 성공한 뒤 test-only commit `73ff8fb`에서 focused command는 아직
+기존 production build가 성공한 뒤 rebased test-only commit `4b33cb7`에서 focused command는 아직
 없는 `dist/application/recall-fts-query.js` import 때문에 새 unit/SQLite 두 모듈이 0/2 RED였다.
-제품 구현 commit `8c6d1af` 뒤 `pnpm verify:rcl-003`은 unit 3개와 file-backed SQLite 7개,
+제품 구현 commit `f707c86` 뒤 `pnpm verify:rcl-003`은 unit 3개와 file-backed SQLite 7개,
 총 10/10 GREEN이다. downstream raw base type, depth-0 pin과 full 4,096-code-point query
-candidate guard는 hardening commit `4d81a35`에, stored raw text 보존은 `281d85c`에 분리했다.
+candidate guard는 hardening commit `7d088a6`에, stored raw text 보존은 `fb2aef5`에 분리했다.
 
 자체 diff review에서는 모든 candidate가 3자 미만이면 worker call을 하지 않아 callback 종료
 뒤 stale source가 성공 응답을 만들 수 있는 lifecycle 결함을 발견했다. 보관한 source의 짧은
@@ -160,16 +177,23 @@ candidate guard는 hardening commit `4d81a35`에, stored raw text 보존은 `281
 마지막으로 NFKC가 같은 fullwidth/ASCII phrase를 dedupe하면 실제 trigram token 하나를 놓치고,
 숫자 binding을 그대로 쓴 FTS5 rowid probe가 행 제약을 적용하지 않는 것을 실제 SQLite fixture로
 발견했다. compatibility-equivalent 두 원문과 matched-term assertion을 먼저 추가해 8/10 RED를
-확인한 뒤 phrase 순서 보존과 integer rowid constraint를 `cec212d`에서 고쳐 10/10 GREEN으로
+확인한 뒤 phrase 순서 보존과 integer rowid constraint를 `3a023f2`에서 고쳐 10/10 GREEN으로
 닫았다.
 
 내부 typed seam도 sparse/accessor-backed array를 평범한 문자열 배열처럼 처리하면 untyped
 예외 또는 getter 실행이 생길 수 있었다. 두 malformed fixture가 unit target을 2/3 RED로
-만드는 것을 먼저 확인하고, bounded code-point 순회와 data descriptor snapshot을 `3a2e165`에
+만드는 것을 먼저 확인하고, bounded code-point 순회와 data descriptor snapshot을 `e1bebb1`에
 적용해 accessor를 한 번도 읽지 않은 3/3, focused 10/10 GREEN으로 닫았다.
 
-최종 local gate는 architecture/type/build, RCL-003 10/10, RCL-001 10/10, STO-002 7/7,
-STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 39개 파일 265/265, PRJ-010 독립
+독립 review는 candidate eligibility보다 앞선 SQL `LIMIT 21`, normalize 결과로 측정한 trigram
+길이와 candidate container/row Proxy 예외 누출을 추가로 발견했다. test-only `f8a186f`는 valid
+graph seq 1 뒤의 suppressed raw 20개와 dead parsed 20개, `a\u0301b`/`㍿`, accessor/Proxy trap을
+각각 RED로 고정했다. fix `ca21753`은 eligibility를 SQL cap 앞으로 옮기고 actual display phrase를
+측정하며 exact descriptor snapshot으로 외부 payload를 닫아 focused 14/14를 통과했다. 기존
+eligible raw 21개 fixture도 그대로 20개와 정확한 truncation을 반환해 순서·절단 회귀가 없다.
+
+최종 local gate는 architecture/type/build, RCL-003 14/14, RCL-001 10/10, STO-002 7/7,
+STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 40개 파일 282/282, PRJ-010 독립
 reference parity는 39/39, behavior spike는 25/25다. roadmap validator는 phase 9,
 active task 73, historical task 74, retired 1, evidence 67/67, ADR 17/17과 scenario 24/24를
 통과했고 production dependency 알려진 취약점은 0개였다.

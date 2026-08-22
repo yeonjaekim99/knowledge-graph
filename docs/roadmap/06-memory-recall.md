@@ -124,25 +124,29 @@
 완료 체크:
 
 - [ ] 사용자 문자열을 FTS operator가 아닌 escaped phrase literal로만 만든다.
-- [ ] normalized 3자 미만 후보뿐이면 FTS를 생략하고 이유 있는 none note를 준비한다.
-- [ ] live·unexpired statement를 21개 읽어 20개만 쓰고 절단을 기록한다.
+- [ ] 제어 문자 제거·trim 뒤 실제 MATCH phrase가 3자 미만인 후보뿐이면 FTS를 생략하고
+  이유 있는 none note를 준비한다.
+- [ ] graph 또는 raw fallback에 eligible한 live·unexpired statement를 21개 읽어 20개만
+  쓰고 절단을 기록한다.
 - [ ] 유효 support claim의 양 끝을 seed로 만들고 원 claim을 reached에 고정한다.
 - [ ] live·unexpired parsed=[]만 raw이며 죽은 parsed claim 원문으로 fallback하지 않는다.
 - [ ] 같은 raw_text의 유효 graph statement가 있으면 raw-only 복제 답을 제거한다.
 
 현재 구현 증거(PR review·`main` 병합 전):
 
-- [구현 결정](../implementation/rcl-003-safe-fts-fallback.md)에 query escaping, normalized 3자
-  gate, RCL-001 snapshot/PRJ-008 TEMP aggregate 재사용, 21/20 SQL, endpoint seed와 depth-0
-  reached pin, raw-only·동일 원문 graph 우선 경계를 고정했다.
-- test-only `73ff8fb`에서 기존 build 성공 뒤 missing production module로 새 두 test module이
-  0/2 RED였고, product `8c6d1af`·hardening `4d81a35`·`281d85c`·`cec212d`·`3a2e165`
-  뒤 `pnpm verify:rcl-003` 10/10 GREEN이다.
-- operator/quote/control/Korean/emoji와 NFKC-equivalent 별도 phrase, 3자 경계,
+- [구현 결정](../implementation/rcl-003-safe-fts-fallback.md)에 query escaping, 실제 bound
+  phrase 3자 gate, RCL-001 snapshot/PRJ-008 TEMP aggregate 재사용, eligibility 선별 뒤 21/20
+  SQL, endpoint seed와 depth-0 reached pin, raw-only·동일 원문 graph 우선 경계를 고정했다.
+- rebased test-only `4b33cb7`에서 기존 build 성공 뒤 missing production module로 새 두 test
+  module이 0/2 RED였고, product `f707c86`·hardening `7d088a6`·`fb2aef5`·`3a023f2`·`e1bebb1`
+  뒤 첫 focused target이 10/10 GREEN이었다. 독립 review RED `f8a186f`의 eligible cap,
+  exact phrase code-point와 Proxy/accessor 경계는 fix `ca21753` 뒤 14/14 GREEN이다.
+- operator/quote/control/Korean/emoji와 NFKC-equivalent 별도 phrase, 실제 bound phrase 3자 경계,
   scope·expiry·retraction·supersede, entity/literal endpoint, raw duplicate와 저장 원문 공백
-  보존, 21개 절단, 반복 결정성, 고정 snapshot, persistent dump/data_version와
-  payload-redacted corruption을 실제 file SQLite에서 검증했다.
-- 전체 fast 39개 파일 265/265, PRJ-010 39/39, behavior spike 25/25, roadmap evidence
+  보존, suppressed raw/dead parsed의 cap 비소비, eligible 21개 절단, 반복 결정성, 고정
+  snapshot, persistent dump/data_version와 payload-redacted corruption을 실제 file SQLite에서
+  검증했다.
+- 전체 fast 40개 파일 282/282, PRJ-010 39/39, behavior spike 25/25, roadmap evidence
   67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - 최종 BFS/ranking/Answer/MCP와 overview는 포함하지 않았고 S11/S22 public manifest도
   `planned`로 유지한다. root reviewer가 PR·merge 증거를 확인할 때까지 상태·체크·진행률은

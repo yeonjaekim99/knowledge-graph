@@ -59,8 +59,8 @@ compile fixture는 같은 정책이 RCL-001 snapshot callback의 typed `resolveS
 raw SQL/connection capability를 얻지 못하는지 검증한다.
 
 RCL-003의 [`application/rcl-003-fts-query.test.mjs`](application/rcl-003-fts-query.test.mjs)는
-제어 문자 제거, quote doubling, 최대 10개 OR phrase, normalize_v1 기반 Unicode 3 code point
-gate와 compatibility-equivalent display phrase 순서 보존, sparse/accessor array의 값 미실행
-거부를 IO 없이 검증한다.
+제어 문자 제거, quote doubling, 최대 10개 OR phrase, 실제 bound phrase 기반 Unicode 3 code
+point gate와 compatibility-equivalent display phrase 순서 보존, sparse/accessor/Proxy array의
+값 미실행·payload-redacted 거부를 IO 없이 검증한다.
 `rcl-003-fts-candidates.type-test.ts`는 후속 recall 단계가 raw SQL 대신
 seed/reached/raw/truncation의 좁은 snapshot capability만 소비하도록 compile 경계를 고정한다.
