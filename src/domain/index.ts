@@ -148,3 +148,28 @@ export type {
   ProjectionRuleErrorCode,
   RelationCardinality,
 } from "./projection-rules.js";
+export {
+  SECRET_DETECTOR_VERSION,
+  SECRET_ENTROPY_ALLOWLIST_REGISTRY,
+  SECRET_ENTROPY_POLICY,
+  SECRET_SIGNATURE_REGISTRY,
+  STORABLE_SECRET_FIELD_CONTEXTS,
+  SecretDetectorError,
+  createSecretDetector,
+  detectSecretEntropy,
+  detectSecretPatterns,
+  detectSecrets,
+} from "./secret-detector.js";
+export type {
+  EntropyAllowlistMode,
+  SecretClass,
+  SecretDetectionResult,
+  SecretDetector,
+  SecretDetectorDependencies,
+  SecretDetectorErrorCode,
+  SecretEntropyAllowlistDefinition,
+  SecretEntropyPolicy,
+  SecretFieldContext,
+  SecretFinding,
+  SecretSignatureDefinition,
+} from "./secret-detector.js";

@@ -1,7 +1,7 @@
 # Phase 04 — memory_record 수직 경로
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/8
+- 진행률: 2/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
 - 선행 증거 감사: [Phase 04 baseline과 production gap](evidence-audit.md#phase-04-record)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
-| REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | — |
+| REC-002 | 비밀값 pattern·entropy 탐지기 | `DONE` | `log0629` | FND-003 | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [구현 결정](../implementation/rec-002-secret-detector.md) |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
 | REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
@@ -64,23 +64,52 @@
 
 ### REC-002 — 비밀값 pattern·entropy 탐지기
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rec-002-secret-detector`
+- PR: [#36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)
 - 근거: ADR-011
 - 선행 작업: FND-003
 - 결과물: versioned detector registry와 탐지 결과 type
 
 완료 체크:
 
-- [ ] AWS/GitHub/JWT 등 명시 pattern과 긴 random 문자열 entropy 검사를 분리한다.
-- [ ] provider token 경계는 Unicode `\b` 대신 ASCII lookaround를 쓰고 한국어 조사·문장부호
+- [x] AWS/GitHub/JWT 등 명시 pattern과 긴 random 문자열 entropy 검사를 분리한다.
+- [x] provider token 경계는 Unicode `\b` 대신 ASCII lookaround를 쓰고 한국어 조사·문장부호
       인접 fixture로 class 판정을 검증한다.
-- [ ] allowlist와 커밋 SHA·hash 같은 오탐 fixture를 코드 리뷰 가능한 registry로 둔다.
-- [ ] 탐지 결과는 종류와 위치만 제공하고 원문 secret을 복사하지 않는다.
-- [ ] note, alias, kind, relation label을 포함한 모든 저장 가능 문자열에 같은 detector를 쓴다.
-- [ ] detector 내부 예외는 fail-closed typed error가 되고 어떤 write도 시작하지 않는다.
-- [ ] detector fixture와 로그에 실제 credential을 사용하지 않는다.
+- [x] allowlist와 커밋 SHA·hash 같은 오탐 fixture를 코드 리뷰 가능한 registry로 둔다.
+- [x] 탐지 결과는 종류와 위치만 제공하고 원문 secret을 복사하지 않는다.
+- [x] note, alias, kind, relation label을 포함한 모든 저장 가능 문자열을 같은 pure detector
+      surface의 field context로 등록한다.
+- [x] detector 내부 예외는 payload-redacted fail-closed typed error가 되고 pure domain 모듈은
+      IO·writer dependency를 갖지 않는다.
+- [x] detector fixture와 로그에 실제 credential을 사용하지 않는다.
+
+완료 증거:
+
+- [구현 결정](../implementation/rec-002-secret-detector.md)에 `secret-detector-v1`, explicit
+  signature 우선순위, Unicode code-point entropy, UTF-16 slice 위치와 context-bound
+  allowlist를 고정했다.
+- 최초 TDD RED는 production export 부재로 target 0/1이었고, 독립 리뷰 보강 RED는
+  internal punctuation과 64-hex `metadata.branch` fixture에서 8/10이었다. root review의
+  exact-20 edge-symbol fixture도 wrapper trim fail-open을 10/11 RED로 재현했다. 이어
+  namespaced/quoted assignment, empty-user credential URL, complete/truncated PEM masking 범위,
+  marker delimiter·Unicode boundary와 actor/branch allowlist 우회를 9/13, 11/13, 12/13 RED로
+  고정했다. 수정 뒤 `pnpm verify:rec-002` target 13/13과 architecture/type/build, 전체
+  `pnpm test` 38개 파일 268/268을
+  통과했다.
+- synthetic fixture만으로 AWS/GitHub/GitLab/Google/Slack/Stripe, JWT, PEM, credential URL,
+  assignment와 한국어 조사·문장부호, internal/edge punctuation segmentation, 임의 hex
+  actor/branch, standalone marker+delimiter 및 19/20자·4.0-bit entropy 경계를 검증한다.
+- result와 typed error에는 match/value/prefix/suffix/cause가 없고 registry/result는 freeze된다.
+  application의 scan-before-write 연결, raw 마스킹과 draft 부분 거부는 REC-003에 남고
+  transaction·log/MCP 전체 누출 검사는 REC-008/MCP-005에 남긴다.
+- 독립 behavior spike 25/25, roadmap active 73·historical 74·evidence 67/67과 dependency
+  audit 알려진 취약점 0개를 확인했다.
+- 독립 review에서 발견한 entropy edge, assignment/URL/PEM interval과 marker·metadata allowlist
+  결함을 모두 synthetic RED로 재현해 닫았다. 최종 재검토의 미해결 HIGH/MEDIUM은 0건이고,
+  bounded 입력의 결과 수 비례 LOW 비용만 후속 부하 관찰로 남겼다. [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)가
+  구현·review·검증과 이 상태 증거를 함께 `main`에 고정한다.
 
 ### REC-003 — raw 마스킹과 draft 부분 거부
 
