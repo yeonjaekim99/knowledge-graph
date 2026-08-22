@@ -78,8 +78,10 @@
       인접 fixture로 class 판정을 검증한다.
 - [x] allowlist와 커밋 SHA·hash 같은 오탐 fixture를 코드 리뷰 가능한 registry로 둔다.
 - [x] 탐지 결과는 종류와 위치만 제공하고 원문 secret을 복사하지 않는다.
-- [x] note, alias, kind, relation label을 포함한 모든 저장 가능 문자열에 같은 detector를 쓴다.
-- [x] detector 내부 예외는 fail-closed typed error가 되고 어떤 write도 시작하지 않는다.
+- [x] note, alias, kind, relation label을 포함한 모든 저장 가능 문자열을 같은 pure detector
+      surface의 field context로 등록한다.
+- [x] detector 내부 예외는 payload-redacted fail-closed typed error가 되고 pure domain 모듈은
+      IO·writer dependency를 갖지 않는다.
 - [x] detector fixture와 로그에 실제 credential을 사용하지 않는다.
 
 검토 대기 증거:
@@ -87,13 +89,16 @@
 - [구현 결정](../implementation/rec-002-secret-detector.md)에 `secret-detector-v1`, explicit
   signature 우선순위, Unicode code-point entropy, UTF-16 slice 위치와 context-bound
   allowlist를 고정했다.
-- TDD RED는 production export 부재로 target 0/1이었고, 구현 뒤
-  `pnpm verify:rec-002` target 9/9과 architecture/type/build, 전체 `pnpm test` 241/241을
+- 최초 TDD RED는 production export 부재로 target 0/1이었고, 독립 리뷰 보강 RED는
+  internal punctuation과 64-hex `metadata.branch` fixture에서 8/10이었다. 수정 뒤
+  `pnpm verify:rec-002` target 10/10과 architecture/type/build, 전체 `pnpm test` 242/242를
   통과했다.
 - synthetic fixture만으로 AWS/GitHub/GitLab/Google/Slack/Stripe, JWT, PEM, credential URL,
-  assignment와 한국어 조사·문장부호, 19/20자·4.0-bit entropy 경계를 검증한다.
+  assignment와 한국어 조사·문장부호, internal punctuation segmentation, 임의 hex branch 및
+  19/20자·4.0-bit entropy 경계를 검증한다.
 - result와 typed error에는 match/value/prefix/suffix/cause가 없고 registry/result는 freeze된다.
-  raw 마스킹, draft 부분 거부, transaction·log/MCP 연결은 REC-003/REC-008/MCP-005에 남긴다.
+  application의 scan-before-write 연결, raw 마스킹과 draft 부분 거부는 REC-003에 남고
+  transaction·log/MCP 전체 누출 검사는 REC-008/MCP-005에 남긴다.
 - 독립 behavior spike 25/25, roadmap active 73·historical 74·evidence 67/67과 dependency
   audit 알려진 취약점 0개를 확인했다.
 - 완료 체크는 구현·로컬 검증 기준으로 닫았지만 상태와 Phase/master 완료 수는 review,

@@ -37,5 +37,7 @@ payload를 보관하지 않는 typed error로 닫는다.
 REC-002의 provider signature, Unicode code-point entropy, context-bound allowlist와 UTF-16
 slice 위치 fixture는
 [`domain/rec-002-secret-detector.test.mjs`](domain/rec-002-secret-detector.test.mjs)에 둔다.
-이 fixture는 pure detector 결과가 class·위치만 반환하는 경계까지 검증하며 raw 마스킹,
-draft 거부, journal write와 log/MCP 통합은 REC-003/MCP-005/REC-008에 남긴다.
+이 fixture는 internal punctuation을 유지하는 공백 단위 entropy segmentation과 symbolic
+branch/trusted Git object context 분리, pure detector 결과가 class·위치만 반환하는 경계까지
+검증한다. application scan-before-write, raw 마스킹, draft 거부, journal write와 log/MCP
+통합은 REC-003/MCP-005/REC-008에 남긴다.

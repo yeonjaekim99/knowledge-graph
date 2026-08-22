@@ -161,9 +161,11 @@
     분리하고 ASCII lookaround로 한국어 조사·문장부호 인접 class를 보존한다. UUID/ULID와
     commit·checksum·build false positive는 field/context와 모양에 묶고, local Git object
     확인은 pure domain 밖의 trusted seam으로 남겼다. result는 UTF-16 slice 위치와 class만
-    freeze하며 주입된 detector 예외도 payload/cause 없는 typed failure로 닫는다. raw 마스킹,
-    draft 부분 거부, transaction·log/DB/FTS scan은 REC-003/008과 MCP-005에 남겼고 PR/main
-    병합 전 작업 상태와 완료 roll-up은 `IN_PROGRESS` 26/66을 유지한다.
+    freeze하며 주입된 detector 예외도 payload/cause 없는 typed failure로 닫는다. 이 증거는
+    IO·writer dependency가 없는 pure detector까지만 닫고, application scan-before-write와
+    raw 마스킹·draft 부분 거부는 REC-003, transaction·log/DB/FTS scan은 REC-008과 MCP-005에
+    남겼다. 공식 provider prefix 확장 corpus도 REL-005에 남겼고 PR/main 병합 전 작업 상태와
+    완료 roll-up은 `IN_PROGRESS` 26/66을 유지한다.
 
 ## 의도적으로 남은 상태
 
@@ -194,7 +196,7 @@
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| REC-002 local gate | PASS — architecture/type/build, target 9/9와 전체 빠른 suite 241/241 |
+| REC-002 local gate | PASS — architecture/type/build, target 10/10와 전체 빠른 suite 242/242 |
 | 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure domain detector·unit fixture·검증 script와 결정/evidence 문서만 추가, raw 마스킹·draft/application write·schema·journal·log/MCP·Phase 08 corpus 변경 없음 |
 
 ## 게시 전 재현 검사

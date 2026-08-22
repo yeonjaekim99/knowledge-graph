@@ -35,7 +35,7 @@ REC-002는 이 상태 전이를 복제하지 않고 production에 남아 있던 
 | 원본 | 책임 | v1 내용 |
 |---|---|---|
 | `SECRET_SIGNATURE_REGISTRY` | 알려진 형식 | AWS access/secret, GitHub legacy/fine-grained, GitLab, Google, Slack, Stripe, JWT, PEM private key, credential URL, password/secret assignment |
-| `SECRET_ENTROPY_POLICY` | 형식 없는 token | 20 Unicode code point 이상, Shannon entropy 4.0 bits/code point 이상, 대문자·소문자·숫자·기호 중 2 class 이상 |
+| `SECRET_ENTROPY_POLICY` | 형식 없는 token | 공백을 넘지 않는 segment의 양끝 구두점만 제거하고 내부 기호는 유지, 20 Unicode code point 이상, Shannon entropy 4.0 bits/code point 이상, 대문자·소문자·숫자·기호 중 2 class 이상 |
 | `SECRET_ENTROPY_ALLOWLIST_REGISTRY` | 제한된 오탐 해제 | typed UUID/event ULID, adjacent commit/SHA/checksum/hash/build ID, typed build ID, 검증된 local Git object seam |
 
 `detectSecretPatterns`와 `detectSecretEntropy`는 서로 독립된 test surface다.
@@ -54,6 +54,14 @@ entropy 후보의 길이, 빈도와 Shannon score는 `Array.from(value)`의 Unic
 계산한다. surrogate pair 하나를 두 문자로 세지 않는다. 문자 class도 Unicode property를
 사용하되 ADR의 네 class에 없는 uncased letter 하나만으로는 random token으로 분류하지
 않는다.
+
+후보 segmentation은 Unicode whitespace를 넘지 않는 하나의 run에서 시작한다. run 양끝의
+`, ; : ' " ( ) [ ] { } < >`는 문장 wrapper로 제거하지만 내부의 같은 기호는 token 일부로
+유지한다. 따라서 `Aa0_Bb1-Cc:2+Dd3/Ee4=` 같은 compact credential은 중간 `:`에서
+쪼개지지 않고, 공백이 있는 일반 문장을 하나의 entropy 후보로 합치지도 않는다. 길이,
+문자 class, allowlist와 entropy는 wrapper를 제거한 값에 순서대로 적용하고 반환 위치도
+제거된 code-unit만큼 조정한다. 이 경계는 `SECRET_ENTROPY_POLICY`의 frozen pattern source로
+고정한다.
 
 반환 위치는 의도적으로 Unicode 문자 index가 아니라 JavaScript UTF-16 code-unit의
 `startCodeUnit` inclusive, `endCodeUnit` exclusive다. REC-003이 같은 원문에
@@ -105,13 +113,18 @@ allowlist는 token 모양만 보고 전역 적용하지 않는다.
   해당 typed reference context일 때만 entropy에서 제외한다.
 - `reference.build_id`는 문서화된 `bld_`/`build-` + ULID/hex 모양만 허용한다.
 - `trusted.local_git_object`는 detector가 Git을 조회한다는 뜻이 아니다. STO-006/후속
-  adapter가 configured local repository에서 object를 확인한 뒤에만 선택할 수 있는 seam이다.
-  확인하지 않은 free text나 문맥 없는 긴 hex에는 `raw_text`를 사용해 entropy를 유지한다.
+  adapter가 configured local repository에서 object를 확인한 뒤 그 OID 값 일부에만 선택할
+  수 있는 seam이다. `metadata.branch` 자체는 이 allowlist에 속하지 않으므로 임의 symbolic
+  64-hex branch는 high-entropy hit다. STO-006이 마련한 `MetadataTextSanitizer` seam의 후속
+  구현은 trusted resolver의 `detached:<oid>` 결과를 구분하고 검증된 `<oid>` substring에만
+  `trusted.local_git_object` context를 적용해야 한다. detector는 Git IO나 그 검증을 하지 않는다.
 - production에서 활성인 provider signature는 어떤 context와 allowlist로도 통과하지 않는다.
 
 이 선택은 정상 build/hash 오탐을 제한하면서 임의 random 문자열에 대한 전역 예외를 만들지
-않는다. 새로운 provider나 allowlist는 registry version과 synthetic regression fixture를
-같은 PR에서 검토한다.
+않는다. v1 signature 목록은 REC-002가 고정한 대표 provider family이며 공식 provider prefix의
+완전한 최신 corpus를 주장하지 않는다. 공식 prefix 확장·갱신과 그 corpus fixture, registry
+version 전환은 REL-005가 소유한다. 새로운 allowlist도 registry version과 synthetic regression
+fixture를 같은 PR에서 검토한다.
 
 ## fail-closed 오류와 순수 경계
 
@@ -136,12 +149,20 @@ SyntaxError: dist/domain/index.js does not provide an export named
 tests 1, pass 0, fail 1
 ```
 
+독립 리뷰 보강 RED는 internal punctuation 후보와 `metadata.branch`의 임의 64-hex를 먼저
+fixture로 추가한 뒤 실행했다. 기존 구현은 두 경우 모두 finding을 0개 반환해 target
+10개 중 8 pass, 2 fail이었다. production 수정은 공백 단위 deterministic segmentation과
+`trusted.local_git_object` 전용 context 축소에만 한정했다.
+
 GREEN fixture는 다음을 확인한다.
 
 - provider별 explicit synthetic signature family와 frozen registry
 - GitHub token의 한국어 조사·emoji·문장부호 인접, ASCII identifier 내부 비매치
 - entropy의 19/20 code-point, 정확히 4.0 bits, 1/2 class와 surrogate-pair 경계
+- 내부 `: , ; ( ) [ ] { } < >`를 유지하고 양끝 wrapper를 제외하는 공백 단위 segmentation,
+  공백 포함 일반 prose 비결합
 - 문맥 없는 high-entropy hex 거부와 commit/SHA/checksum/hash/build·typed ID allowlist
+- 임의 64-hex `metadata.branch` 거부와 검증된 OID substring 전용 trusted context seam
 - raw, note, alias, kind, relation label, actor/branch를 포함한 13개 저장 context 공유
 - explicit signature 우선순위, assignment/entropy overlap의 안전 구간 합집합,
   non-overlap·결정적 frozen result와 payload 부재
@@ -157,7 +178,7 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 git diff --check
 ```
 
-REC-002 target 9/9, 전체 빠른 suite 241/241과 독립 behavior oracle 25/25를 통과했다.
+REC-002 target 10/10, 전체 빠른 suite 242/242와 독립 behavior oracle 25/25를 통과했다.
 roadmap validator는 active 73·historical 74·evidence 67/67·ADR 17/17·scenario 24/24와
 acyclic dependency를 확인했고 production dependency audit은 알려진 취약점 0개다.
 
@@ -168,7 +189,7 @@ acyclic dependency를 확인했고 production dependency audit은 알려진 취�
 - REC-005/006: 승인 draft mapping, journal append·동기 projection과 결과 원자성
 - REV-001/007: revise 의미 문자열의 전체 실패와 S18 수직 회귀
 - MCP-005/REC-008: error/log/response/DB/FTS 전체 누출 scan
-- REL-005: 확장 provider corpus, backup·권한과 offline incident rehearsal
+- REL-005: 확장 공식 provider prefix corpus와 registry 갱신, backup·권한 및 offline incident rehearsal
 
 REC-002는 raw_text를 바꾸거나 draft를 판정하지 않고 schema, journal, logging, MCP와
 Phase 08 corpus를 추가하지 않는다. Accepted ADR의 의미를 변경하지 않으므로 superseding

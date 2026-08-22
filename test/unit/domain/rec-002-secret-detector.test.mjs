@@ -186,6 +186,40 @@ test("entropy uses Unicode code points and fixes length, entropy, and character-
   assert.equal(surrogateToken.length, 21);
 });
 
+test("entropy candidates retain internal punctuation without joining prose across spaces", () => {
+  const punctuationVariants = [
+    "Aa0_Bb1-Cc:2+Dd3/Ee4=",
+    "Aa0_Bb1-Cc,2+Dd3/Ee4=",
+    "Aa0_Bb1-Cc;2+Dd3/Ee4=",
+    "Aa0_Bb1-Cc(2)+Dd3/Ee4=",
+    "Aa0_Bb1-Cc[2]+Dd3/Ee4=",
+    "Aa0_Bb1-Cc{2}+Dd3/Ee4=",
+    "Aa0_Bb1-Cc<2>+Dd3/Ee4=",
+  ];
+
+  for (const token of punctuationVariants) {
+    assert.equal(Array.from(token).length >= 20, true, token);
+    const input = `discard (${token}), now`;
+    const finding = onlyFinding(
+      detectSecretEntropy(input, "raw_text"),
+      "high-entropy",
+    );
+    assert.deepEqual(
+      [finding.startCodeUnit, finding.endCodeUnit],
+      ["discard (".length, "discard (".length + token.length],
+      token,
+    );
+  }
+
+  assert.equal(
+    detectSecretEntropy(
+      "This ordinary sentence, with punctuation; remains separate prose.",
+      "raw_text",
+    ).findings.length,
+    0,
+  );
+});
+
 test("entropy allowlists are shape- and context-bound while explicit patterns always win", () => {
   onlyFinding(detectSecretEntropy(BALANCED_HEX, "raw_text"), "high-entropy");
   assert.equal(
@@ -221,15 +255,23 @@ test("entropy allowlists are shape- and context-bound while explicit patterns al
     "reference.hash",
     "reference.checksum",
     "trusted.local_git_object",
-    "metadata.branch",
   ]) {
     assert.equal(detectSecretEntropy(BALANCED_HEX, context).findings.length, 0);
   }
+  const arbitrarySymbolicHexBranch = BALANCED_HEX;
+  onlyFinding(
+    detectSecretEntropy(arbitrarySymbolicHexBranch, "metadata.branch"),
+    "high-entropy",
+  );
 
   const uuid = "01234567-89ab-4cde-8f01-23456789abcd";
   onlyFinding(detectSecretEntropy(uuid, "raw_text"), "high-entropy");
   assert.equal(
     detectSecretEntropy(uuid, "target.entity_id").findings.length,
+    0,
+  );
+  assert.equal(
+    detectSecretEntropy(`(${uuid}),`, "target.entity_id").findings.length,
     0,
   );
 

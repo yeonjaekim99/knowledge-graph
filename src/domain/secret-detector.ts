@@ -166,14 +166,15 @@ export interface SecretEntropyPolicy {
   readonly minimumBitsPerCodePoint: number;
   readonly minimumCharacterClasses: number;
   readonly candidatePatternSource: string;
+  readonly edgePunctuationPatternSource: string;
 }
 
 export const SECRET_ENTROPY_POLICY: SecretEntropyPolicy = Object.freeze({
   minimumCodePoints: 20,
   minimumBitsPerCodePoint: 4,
   minimumCharacterClasses: 2,
-  candidatePatternSource:
-    "[^\\p{White_Space},;:'\"()\\[\\]{}<>]{20,}",
+  candidatePatternSource: "[^\\p{White_Space}]{20,}",
+  edgePunctuationPatternSource: "[,;:'\"()\\[\\]{}<>]",
 });
 
 export type EntropyAllowlistMode = "context" | "adjacent";
@@ -242,7 +243,7 @@ export const SECRET_ENTROPY_ALLOWLIST_REGISTRY: readonly SecretEntropyAllowlistD
       "trusted-local-git-object",
       "context",
       "[0-9A-Fa-f]{7,64}",
-      ["trusted.local_git_object", "metadata.branch"],
+      ["trusted.local_git_object"],
     ),
     allowlist(
       "adjacent-commit-sha",
@@ -540,6 +541,34 @@ function entropyCandidateIsAllowlisted(
   return false;
 }
 
+interface EntropyCandidate {
+  readonly token: string;
+  readonly startCodeUnit: number;
+}
+
+function trimEntropyCandidateEdges(
+  token: string,
+  startCodeUnit: number,
+): EntropyCandidate | undefined {
+  const edgePattern = SECRET_ENTROPY_POLICY.edgePunctuationPatternSource;
+  const leading = new RegExp(`^(?:${edgePattern})+`, "u").exec(token);
+  const leadingCodeUnits = leading?.[0].length ?? 0;
+  const withoutLeading = token.slice(leadingCodeUnits);
+  const trailing = new RegExp(`(?:${edgePattern})+$`, "u").exec(withoutLeading);
+  const trailingCodeUnits = trailing?.[0].length ?? 0;
+  const trimmed = withoutLeading.slice(
+    0,
+    withoutLeading.length - trailingCodeUnits,
+  );
+  if (trimmed.length === 0) {
+    return undefined;
+  }
+  return {
+    token: trimmed,
+    startCodeUnit: startCodeUnit + leadingCodeUnits,
+  };
+}
+
 function scanEntropy(
   value: string,
   context: SecretFieldContext,
@@ -551,15 +580,20 @@ function scanEntropy(
     "gu",
   );
   for (const match of value.matchAll(candidatePattern)) {
-    const token = match[0];
-    if (match.index === undefined || token.length === 0) {
+    const segment = match[0];
+    if (match.index === undefined || segment.length === 0) {
       throw new Error("entropy policy produced an unsafe candidate");
     }
+    const candidate = trimEntropyCandidateEdges(segment, match.index);
+    if (candidate === undefined) {
+      continue;
+    }
+    const { token, startCodeUnit } = candidate;
     if (
       Array.from(token).length < SECRET_ENTROPY_POLICY.minimumCodePoints ||
       characterClassCount(token) <
         SECRET_ENTROPY_POLICY.minimumCharacterClasses ||
-      entropyCandidateIsAllowlisted(value, token, match.index, context)
+      entropyCandidateIsAllowlisted(value, token, startCodeUnit, context)
     ) {
       continue;
     }
@@ -570,8 +604,8 @@ function scanEntropy(
     if (entropy >= SECRET_ENTROPY_POLICY.minimumBitsPerCodePoint) {
       findings.push({
         secretClass: "high-entropy",
-        startCodeUnit: match.index,
-        endCodeUnit: match.index + token.length,
+        startCodeUnit,
+        endCodeUnit: startCodeUnit + token.length,
       });
     }
   }

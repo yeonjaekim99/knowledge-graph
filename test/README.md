@@ -125,5 +125,7 @@ SQLite fixture를 추가했다. term/FTS/overview/traversal/ranking/Answer 조�
 REC-002는 [`unit/domain/rec-002-secret-detector.test.mjs`](unit/domain/rec-002-secret-detector.test.mjs)에서
 IO 없는 versioned signature/entropy detector를 검증한다. fixture는 실제 credential이 아닌
 형식 전용 synthetic 값만 사용하고, 결과·typed error가 탐지 문자열을 보유하지 않는지
-검사한다. 마스킹, draft 부분 거부와 transaction rollback은 REC-003 이후 수직 경로가
-소유하므로 이 unit suite가 S18 production target 완료를 주장하지 않는다.
+검사한다. internal punctuation entropy segmentation, 임의 64-hex branch와 verified local Git
+object context 분리도 여기서 고정한다. application scan-before-write, 마스킹, draft 부분 거부와
+transaction rollback은 REC-003 이후 수직 경로가 소유하므로 이 unit suite가 S18 production
+target 완료를 주장하지 않는다.
