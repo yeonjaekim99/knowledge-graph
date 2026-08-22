@@ -86,6 +86,9 @@ origin-seq와 claim ID의 일치, root incident/link 방향, 최대 31개, 중�
 payload-bearing `RecallGraphTraversalError`를 reject해도 fresh
 `INVALID_TRAVERSAL_STATE`로 바꾼다. fake 또는 다른 adapter가 typed port를 흉내 내도
 malformed neighborhood가 BFS에 들어오거나 공격자 payload가 오류에 남지 않는다.
+input의 entry branch와 exact key 집합은 같은 descriptor snapshot에서 결정한다. 또한 동일
+root에서 entity-object incident는 같은 claim/endpoint/aggregate의 link를 반드시 가져야 하므로,
+alternate source가 이동 간선만 누락해 탐색 결과를 조용히 줄일 수 없다.
 `readTraversalNeighborhood`는 property를 한 번만 guarded lookup하고 receiver와 함께
 고정한다. lookup, method apply, Promise·thenable assimilation/settlement와 반환 neighborhood
 검증 중 어떤 오류가 나도 원본 종류·identity·message·cause를 읽거나 보존하지 않고 같은
@@ -119,6 +122,8 @@ parent를 seed까지 역추적하고 anchor의 claim이 entity-object이며 반�
   연결은 hop이 아니다.
 - FTS 표시는 첫 phrase에 `(FTS)`를 붙이고 overview는 canonical entity name만 쓴다.
 - seed 표시는 원문을 바꾸지 않고 Unicode code point 80자를 넘을 때만 79자와 `…`로 출력한다.
+- 긴 FTS 표시는 80자 예산에서 ` (FTS)`를 먼저 예약하고 남은 prefix만 줄이므로 marker가
+  사라지지 않는다.
 - `hops`는 entity-object 간 실제 edge 수다. depth 3 frontier의 incident가 아직 path에 없는
   반대 endpoint를 가지면 합법적으로 최대 4가 된다.
 
@@ -146,6 +151,11 @@ application 경계 의미를 바로잡아 18개 중 7개 실패를 포착했다.
 lookup해 receiver와 묶고 lookup·apply·await·settlement·validation을 하나의 fail-closed
 경계에 넣어 focused target을 18/18로 만들었다.
 
+후속 독립 review의 tests-only RED `f7fac7f`는 stateful input 재-snapshot, link가 빠진
+entity-object incident와 긴 FTS marker 소실을 추가해 21개 중 정확히 3개 실패를 포착했다.
+fix `8577155`는 input branch/key를 한 snapshot에서 고르고 incident⊆link를 검증하며 FTS
+suffix 예산을 먼저 예약해 focused target을 21/21로 만들었다.
+
 fixture는 다음을 고정한다.
 
 - incoming 방향 시작, literal collection, 별칭·FTS·overview path와 실제 hops
@@ -157,6 +167,7 @@ fixture는 다음을 고정한다.
 - cross-scope endpoint 손상의 payload-redacted fail-closed와 실패 뒤 snapshot 재사용
 - domain/SQLite의 envelope·row·array/accessor trap과 source typed-error payload 비보존
 - source method lookup·invoke·Promise/thenable settlement의 fresh fixed-error 변환
+- input 단일 snapshot, entity-object incident⊆link와 긴 FTS suffix 보존
 - 81-code-point surface가 canonical name과 같을 때 truncation으로 중복 표시되지 않음
 - 성공/실패 전후 permanent dump와 외부 reader `data_version` 불변
 
@@ -182,10 +193,10 @@ pnpm audit --prod
 
 최신 `main` `3e2eedb` 위 semantic rebase에서 RCL-003의 FTS protocol/factory/worker/read-port
 facet과 RCL-004의 `IN_PROGRESS` 계획을 보존했다. 현재 branch의 로컬 통합 검증은 RCL-005
-18/18, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
+21/21, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11, PRJ-007 19/19, PRJ-008 8/8,
 REC-001 13/13, REC-002 13/13과 REC-003 17/17이다. 빠른 전체 suite는 47개 파일
-341/341, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
+344/344, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
 validator는 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고
 production dependency 알려진 취약점은 0개다.
 

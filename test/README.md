@@ -203,6 +203,8 @@ redaction을 검증한다. domain/SQLite raw envelope·row·array/accessor는 de
 bounded snapshot 뒤 fresh fixed error로 닫히고, source가 던진 typed error payload도 보존하지
 않는다. source method는 한 번만 lookup해 receiver와 묶으며 property trap·method failure·
 Promise rejection·hostile thenable settlement도 원본 payload 없는 fresh fixed error로 바꾼다.
+input branch/key는 같은 descriptor snapshot에서 결정하고 entity-object incident는 같은 root
+link에 완전히 포함되어야 한다. 긴 FTS 표시는 80-code-point 예산에서 marker를 먼저 예약하며,
 canonical name과 동일한 81-code-point surface는 truncation 전에 raw equality를 비교해
 한 번만 표시한다. 따라서 manifest 상태가 `implemented`다. 이 상태는 RCL-005 traversal seam의
 production target이 존재한다는 뜻이며 ranking·public Answer/note와 완성 recall vertical은
