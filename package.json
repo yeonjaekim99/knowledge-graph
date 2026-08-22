@@ -43,6 +43,7 @@
     "test:prj-003": "pnpm run build && node --test test/unit/domain/prj-003-occurrence-redirects.test.mjs",
     "test:prj-004": "pnpm run build && node --test test/unit/domain/prj-004-event-pre-scan.test.mjs",
     "test:prj-005": "pnpm run build && node --test test/unit/domain/prj-005-entity-surface-kind.test.mjs",
+    "test:prj-006": "pnpm run build && node --test test/unit/domain/prj-006-claim-support-cardinality.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
@@ -64,6 +65,7 @@
     "verify:prj-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-003",
     "verify:prj-004": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-004",
     "verify:prj-005": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-005",
+    "verify:prj-006": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-006",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
