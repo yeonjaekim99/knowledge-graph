@@ -254,6 +254,7 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
       recordedAt: NOW - 7,
     }),
     ...rawStatementCommands({ seq: 8, rawText: "😀😃😄" }),
+    ...rawStatementCommands({ seq: 9, rawText: "  공백 원문 검색  " }),
   ]);
 
   const cases = [
@@ -263,6 +264,7 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
     ["제어\u0000문자\u001f검색", 6],
     ["인증서버", 7],
     ["😀😃😄", 8],
+    ["공백 원문 검색", 9],
   ];
   for (const [term, seq] of cases) {
     const result = await search(factory, [term]);
@@ -278,6 +280,9 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
     if (seq === 7) {
       assert.equal(result.rawCandidates[0].createdAt, NOW - 700);
       assert.equal(result.rawCandidates[0].recordedAt, NOW - 7);
+    }
+    if (seq === 9) {
+      assert.equal(result.rawCandidates[0].text, "  공백 원문 검색  ");
     }
   }
 });

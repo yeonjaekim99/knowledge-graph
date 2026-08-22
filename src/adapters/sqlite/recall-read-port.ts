@@ -212,6 +212,21 @@ function safePositiveInteger(value: unknown): number {
   return Number(value);
 }
 
+function isBoundedStoredRawText(value: string): boolean {
+  const trimmed = value.trim();
+  if (trimmed.length === 0) {
+    return false;
+  }
+  let codePoints = 0;
+  for (const _codePoint of trimmed) {
+    codePoints += 1;
+    if (codePoints > 32_768) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function safeFtsExpiry(
   value: unknown,
   context: RecallReadContext,
@@ -427,9 +442,7 @@ function decodeFtsStatements(
       seenSequences.has(statementSeq) ||
       row["recall_fts_raw_text_type"] !== "text" ||
       typeof rawText !== "string" ||
-      rawText.length === 0 ||
-      rawText.trim() !== rawText ||
-      Array.from(rawText).length > 32_768 ||
+      !isBoundedStoredRawText(rawText) ||
       row["recall_fts_parsed_type"] !== "array" ||
       !Number.isSafeInteger(parsedCount) ||
       Number(parsedCount) < 0 ||
