@@ -1,6 +1,6 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
-- 상태: `TODO`
+- 상태: `IN_PROGRESS`
 - 진행률: 0/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| RCL-001 | recall 계약·snapshot·유효 aggregate | `TODO` | `unassigned` | FND-004, PRJ-008 | — |
+| RCL-001 | recall 계약·snapshot·유효 aggregate | `IN_PROGRESS` | `log0629` | FND-004, PRJ-008 | — |
 | RCL-002 | query term과 surface seed | `TODO` | `unassigned` | RCL-001, PRJ-005 | — |
 | RCL-003 | 안전한 FTS와 raw fallback | `TODO` | `unassigned` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
@@ -29,8 +29,9 @@
 
 ### RCL-001 — recall 계약·snapshot·유효 aggregate
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rcl-001-recall-contract`
 - 근거: ADR-003, ADR-010, ADR-014
 - 선행 작업: FND-004, PRJ-008
 - 결과물: MemoryRecall schema, read transaction과 scope TEMP aggregate

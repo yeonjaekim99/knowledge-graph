@@ -1,6 +1,6 @@
 # Phase 04 — memory_record 수직 경로
 
-- 상태: `TODO`
+- 상태: `IN_PROGRESS`
 - 진행률: 0/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
@@ -15,8 +15,8 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| REC-001 | record 입력·출력 schema와 domain 계약 | `TODO` | `unassigned` | FND-004, PRJ-009 | — |
-| REC-002 | 비밀값 pattern·entropy 탐지기 | `TODO` | `unassigned` | FND-003 | — |
+| REC-001 | record 입력·출력 schema와 domain 계약 | `IN_PROGRESS` | `log0629` | FND-004, PRJ-009 | — |
+| REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | — |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
 | REC-004 | write entity 해석과 모호성 처리 | `TODO` | `unassigned` | REC-001, PRJ-005 | — |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
@@ -28,8 +28,9 @@
 
 ### REC-001 — record 입력·출력 schema와 domain 계약
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rec-001-record-contract`
 - 근거: ADR-002, ADR-004, ADR-013
 - 선행 작업: FND-004, PRJ-009
 - 결과물: MemoryRecordInput, ClaimDraft, RecordResult schema와 validator
@@ -44,8 +45,9 @@
 
 ### REC-002 — 비밀값 pattern·entropy 탐지기
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rec-002-secret-detector`
 - 근거: ADR-011
 - 선행 작업: FND-003
 - 결과물: versioned detector registry와 탐지 결과 type

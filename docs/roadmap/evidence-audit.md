@@ -155,7 +155,7 @@
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. 다음 dependency-ready
-  범위는 Phase 04 `memory_record`와 Phase 06 `memory_recall`이며 두 phase는 병렬 착수할 수 있다.
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. Phase 04와 Phase 06의
+  첫 병렬 wave로 `REC-001`, `REC-002`, `RCL-001`이 owner와 격리 branch를 갖고 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.
