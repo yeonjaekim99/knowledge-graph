@@ -1,0 +1,15 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "declaration": false,
+    "declarationMap": false,
+    "isolatedDeclarations": false,
+    "noEmit": true,
+    "rootDir": ".",
+    "sourceMap": false
+  },
+  "include": [
+    "src/**/*.ts",
+    "test/unit/application/rcl-005-graph-traversal.type-test.ts"
+  ]
+}

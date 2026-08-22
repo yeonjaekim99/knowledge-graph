@@ -60,10 +60,14 @@ test("the service captures trusted scope and UTC epoch now once and exposes only
         listValidClaimAggregates: async () => Object.freeze([aggregate]),
         resolveSurfaceSeeds: async (terms) =>
           Object.freeze({ terms, seeds: Object.freeze([]), truncated: false }),
+        readTraversalNeighborhood: async () => {
+          throw new Error("unused traversal read");
+        },
       });
       assert.deepEqual(Object.keys(source), [
         "listValidClaimAggregates",
         "resolveSurfaceSeeds",
+        "readTraversalNeighborhood",
       ]);
       return operation(source);
     },
