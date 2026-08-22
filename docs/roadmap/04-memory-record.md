@@ -1,7 +1,7 @@
 # Phase 04 — memory_record 수직 경로
 
 - 상태: `IN_PROGRESS`
-- 진행률: 1/8
+- 진행률: 2/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
 - 선행 증거 감사: [Phase 04 baseline과 production gap](evidence-audit.md#phase-04-record)
@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
-| REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | [구현 결정](../implementation/rec-002-secret-detector.md) |
+| REC-002 | 비밀값 pattern·entropy 탐지기 | `DONE` | `log0629` | FND-003 | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [구현 결정](../implementation/rec-002-secret-detector.md) |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
 | REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
@@ -64,9 +64,10 @@
 
 ### REC-002 — 비밀값 pattern·entropy 탐지기
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rec-002-secret-detector`
+- PR: [#36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)
 - 근거: ADR-011
 - 선행 작업: FND-003
 - 결과물: versioned detector registry와 탐지 결과 type
@@ -84,7 +85,7 @@
       IO·writer dependency를 갖지 않는다.
 - [x] detector fixture와 로그에 실제 credential을 사용하지 않는다.
 
-검토 대기 증거:
+완료 증거:
 
 - [구현 결정](../implementation/rec-002-secret-detector.md)에 `secret-detector-v1`, explicit
   signature 우선순위, Unicode code-point entropy, UTF-16 slice 위치와 context-bound
@@ -105,8 +106,10 @@
   transaction·log/MCP 전체 누출 검사는 REC-008/MCP-005에 남긴다.
 - 독립 behavior spike 25/25, roadmap active 73·historical 74·evidence 67/67과 dependency
   audit 알려진 취약점 0개를 확인했다.
-- 완료 체크는 구현·로컬 검증 기준으로 닫았지만 상태와 Phase/master 완료 수는 review,
-  PR과 `main` 병합 전까지 `IN_PROGRESS`로 유지한다.
+- 독립 review에서 발견한 entropy edge, assignment/URL/PEM interval과 marker·metadata allowlist
+  결함을 모두 synthetic RED로 재현해 닫았다. 최종 재검토의 미해결 HIGH/MEDIUM은 0건이고,
+  bounded 입력의 결과 수 비례 LOW 비용만 후속 부하 관찰로 남겼다. [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)가
+  구현·review·검증과 이 상태 증거를 함께 `main`에 고정한다.
 
 ### REC-003 — raw 마스킹과 draft 부분 거부
 

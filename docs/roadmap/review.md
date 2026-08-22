@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-22
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#34 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001/RCL-001 완료 · REC-002/REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#36 누적 게시·로컬 검증과 2026-08-22 scope 재검토
+- 결과: **Phase 01·02·03 종료 · REC-001/REC-002/RCL-001 완료 · REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 26/66, Phase 01·02·03과 REC-001/RCL-001 `DONE`, REC-002/REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 27/66, Phase 01·02·03과 REC-001/REC-002/RCL-001 `DONE`, REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -164,13 +164,14 @@
     freeze하며 주입된 detector 예외도 payload/cause 없는 typed failure로 닫는다. 이 증거는
     IO·writer dependency가 없는 pure detector까지만 닫고, application scan-before-write와
     raw 마스킹·draft 부분 거부는 REC-003, transaction·log/DB/FTS scan은 REC-008과 MCP-005에
-    남겼다. 공식 provider prefix 확장 corpus도 REL-005에 남겼고 PR/main 병합 전 작업 상태와
-    완료 roll-up은 `IN_PROGRESS` 26/66을 유지한다. root·독립 review에서는 exact-20 token의
+    남겼다. 공식 provider prefix 확장 corpus도 REL-005에 남겼다. root·독립 review에서는 exact-20 token의
     양끝 기호를 제거해 놓치던 fail-open, quoted/namespaced assignment, empty-user credential
     URL, complete/truncated PEM masking 범위, marker delimiter·Unicode boundary와 actor/branch
     allowlist 우회를 tests-only RED로 고정했다. trimmed allowlist를 보존하면서 원래 run을
     보수적으로 재평가하고, masking consumer가 interval만으로 전체 credential을 제거할 수 있게
-    signature 범위를 닫았다.
+    signature 범위를 닫았다. 최종 268/268 회귀와 미해결 HIGH/MEDIUM 0건을 확인한
+    [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)을 완료 증거로 고정해
+    제품 roll-up을 27/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -183,9 +184,11 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001과 RCL-001은
-  각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로
-  완료했고, REC-002, REC-004, RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001, REC-002와
+  RCL-001은 각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32),
+  [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36),
+  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로 완료했고, REC-004,
+  RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -201,7 +204,7 @@
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| REC-002 local gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268 |
+| REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
 | 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure domain detector·unit fixture·검증 script와 결정/evidence 문서만 추가, raw 마스킹·draft/application write·schema·journal·log/MCP·Phase 08 corpus 변경 없음 |
 
 ## 게시 전 재현 검사

@@ -1,11 +1,12 @@
 # REC-002: versioned 비밀값 detector
 
-- 상태: Accepted
+- 상태: 완료 — [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)
 - 결정일: 2026-08-22
 - 작업: REC-002
 - Owner: `log0629`
 - 규범 근거: ADR-003, ADR-011, ADR-013
 - 선행 구현: FND-003
+- 구현 branch: `rec-002-secret-detector`
 - 규범 관계: ADR을 대체하지 않는 production implementation decision
 
 ## 기존 증거와 production gap
