@@ -247,7 +247,12 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
     ...rawStatementCommands({ seq: 4, rawText: "NEAR(foo bar)" }),
     ...rawStatementCommands({ seq: 5, rawText: "말\"인용\"검색" }),
     ...rawStatementCommands({ seq: 6, rawText: "제어문자검색" }),
-    ...rawStatementCommands({ seq: 7, rawText: "인증서버" }),
+    ...rawStatementCommands({
+      seq: 7,
+      rawText: "인증서버",
+      createdAt: NOW - 700,
+      recordedAt: NOW - 7,
+    }),
     ...rawStatementCommands({ seq: 8, rawText: "😀😃😄" }),
   ]);
 
@@ -270,6 +275,10 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
       term,
     );
     assert.equal(result.rawCandidates[0].matchedTerm, term.replace(/[\u0000-\u001f\u007f-\u009f]/gu, ""));
+    if (seq === 7) {
+      assert.equal(result.rawCandidates[0].createdAt, NOW - 700);
+      assert.equal(result.rawCandidates[0].recordedAt, NOW - 7);
+    }
   }
 });
 
@@ -329,6 +338,7 @@ test("valid graph supports produce ordered endpoint seeds and fanout-independent
     [
       {
         claimId: "c1.0",
+        depth: 0,
         anchorEntityId: "e1.0",
         seedEntityId: "e1.0",
         seedOrder: 0,
@@ -339,6 +349,24 @@ test("valid graph supports produce ordered endpoint seeds and fanout-independent
     ],
   );
   assert.deepEqual(entityResult.rawCandidates, []);
+
+  await factory.enqueueWriteTransaction([
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET live=0 WHERE claim_id='c1.0'",
+    },
+    {
+      kind: "run",
+      sql: "UPDATE claims SET state='retracted' WHERE id='c1.0'",
+    },
+  ]);
+  const afterGraphRetraction = await search(factory, ["같은 원문 검색"]);
+  assert.deepEqual(afterGraphRetraction.seeds, []);
+  assert.deepEqual(afterGraphRetraction.reachedClaims, []);
+  assert.deepEqual(
+    afterGraphRetraction.rawCandidates.map((candidate) => candidate.eventId),
+    [eventId(2)],
+  );
 
   const literalResult = await search(factory, ["리터럴 검색 값"]);
   assert.deepEqual(
@@ -470,7 +498,16 @@ test("all sub-trigram candidates skip FTS with an actionable none-note seam", as
   const { factory } = await fixture();
   t.after(() => factory.close());
 
-  const result = await search(factory, ["가", "ab", "Ａ_Ｂ", "\u0000-_\u001f"]);
+  let staleSource = null;
+  const result = await service(factory).withSnapshot(async (source) => {
+    staleSource = source;
+    return source.searchFtsCandidates([
+      "가",
+      "ab",
+      "Ａ_Ｂ",
+      "\u0000-_\u001f",
+    ]);
+  });
   assert.deepEqual(result, {
     kind: "skipped",
     terms: [],
@@ -485,6 +522,10 @@ test("all sub-trigram candidates skip FTS with an actionable none-note seam", as
       },
     ],
   });
+  await assert.rejects(
+    staleSource.searchFtsCandidates(["가"]),
+    /temporary state was discarded/u,
+  );
 });
 
 test("malformed candidate state fails closed without echoing stored text or driver causes", async (t) => {

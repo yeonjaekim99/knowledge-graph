@@ -232,6 +232,12 @@ export interface SqliteRecallSurfaceStateRowsResult {
   readonly redirectRows: readonly Readonly<Record<string, unknown>>[];
 }
 
+export interface SqliteRecallFtsRowsResult {
+  readonly queryUnavailable: boolean;
+  readonly candidateRows: readonly Readonly<Record<string, unknown>>[];
+  readonly supportRows: readonly Readonly<Record<string, unknown>>[];
+}
+
 export interface SqliteWorkerRecallSnapshotBeginRequest {
   readonly type: "recall-snapshot-begin";
   readonly requestId: number;
@@ -250,6 +256,14 @@ export interface SqliteWorkerRecallSurfaceStateRequest {
   readonly requestId: number;
   readonly snapshotId: number;
   readonly surfaceNorms: readonly string[];
+}
+
+export interface SqliteWorkerRecallSnapshotFtsRequest {
+  readonly type: "recall-snapshot-fts";
+  readonly requestId: number;
+  readonly snapshotId: number;
+  readonly matchExpression: string;
+  readonly phraseLiterals: readonly string[];
 }
 
 export interface SqliteWorkerRecallSnapshotEndRequest {
@@ -360,6 +374,7 @@ export type SqliteWorkerRequest =
   | SqliteWorkerRecallSnapshotBeginRequest
   | SqliteWorkerRecallSnapshotReadRequest
   | SqliteWorkerRecallSurfaceStateRequest
+  | SqliteWorkerRecallSnapshotFtsRequest
   | SqliteWorkerRecallSnapshotEndRequest
   | SqliteWorkerCloseRequest;
 

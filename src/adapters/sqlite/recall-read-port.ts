@@ -2,10 +2,17 @@ import {
   RecallReadError,
   createRecallReadContext,
   type RecallClaimAggregate,
+  type RecallFtsCandidateResult,
+  type RecallFtsNote,
+  type RecallFtsReachedClaimCandidate,
+  type RecallFtsSeedCandidate,
+  type RecallFtsTerm,
+  type RecallRawCandidate,
   type RecallReadContext,
   type RecallReadPort,
+  type RecallSnapshotSource,
   type RecallSnapshotOperation,
-  type RecallValidClaimSource,
+  type RecallTruncationReason,
 } from "../../application/ports/recall-read-port.js";
 import {
   RecallQuerySurfaceError,
@@ -15,6 +22,10 @@ import {
   type RecallSurfaceEntityState,
 } from "../../domain/recall-query-surface.js";
 import type { IdentifierRedirectRow } from "../../domain/projection-identifiers.js";
+import {
+  createRecallFtsNote,
+  prepareRecallFtsQuery,
+} from "../../application/recall-fts-query.js";
 
 import {
   runSqliteRecallSnapshot,
@@ -22,6 +33,8 @@ import {
 } from "./connection-factory.js";
 
 const CLAIM_ID_PATTERN = /^c[1-9][0-9]*\.[0-9]+$/u;
+const ENTITY_ID_PATTERN = /^e[1-9][0-9]*\.[0-9]+$/u;
+const EVENT_ID_PATTERN = /^ev_[0-7][0-9A-HJKMNP-TV-Z]{25}$/u;
 const ROW_KEYS: readonly string[] = Object.freeze([
   "recall_aggregate_claim_id",
   "recall_aggregate_effective_expires_at",
@@ -50,12 +63,79 @@ const SURFACE_REDIRECT_ROW_KEYS: readonly string[] = Object.freeze([
   "recall_surface_redirect_reason",
 ]);
 
+const FTS_CANDIDATE_ROW_KEYS: readonly string[] = Object.freeze(
+  [
+    "recall_fts_created_at",
+    "recall_fts_event_id",
+    "recall_fts_has_valid_graph_duplicate",
+    "recall_fts_journal_scope_key",
+    "recall_fts_parsed_count",
+    "recall_fts_parsed_type",
+    "recall_fts_phrase_index",
+    "recall_fts_provenance",
+    "recall_fts_rank",
+    "recall_fts_raw_text",
+    "recall_fts_raw_text_type",
+    "recall_fts_recorded_at",
+    "recall_fts_statement_expires_at",
+    "recall_fts_statement_scope_key",
+    "recall_fts_statement_seq",
+    "recall_fts_statement_state",
+  ].sort(),
+);
+const FTS_SUPPORT_ROW_KEYS: readonly string[] = Object.freeze(
+  [
+    "recall_fts_claim_id",
+    "recall_fts_claim_origin_seq",
+    "recall_fts_claim_scope_key",
+    "recall_fts_claim_state",
+    "recall_fts_has_object_value",
+    "recall_fts_object_id",
+    "recall_fts_object_merged_into",
+    "recall_fts_object_scope_key",
+    "recall_fts_subject_id",
+    "recall_fts_subject_merged_into",
+    "recall_fts_subject_scope_key",
+    "recall_fts_support_draft_index",
+    "recall_fts_support_event_id",
+    "recall_fts_support_expires_at",
+    "recall_fts_support_live",
+  ].sort(),
+);
+
+interface DecodedFtsStatement {
+  readonly eventId: string;
+  readonly statementSeq: number;
+  readonly ftsRank: number;
+  readonly rawText: string;
+  readonly parsedCount: number;
+  readonly createdAt: number;
+  readonly recordedAt: number;
+  readonly provenance: "user_stated" | "observed" | "inferred";
+  readonly expiresAt: number | null;
+  readonly hasValidGraphDuplicate: boolean;
+  readonly term: RecallFtsTerm;
+}
+
+interface DecodedFtsSupport {
+  readonly eventId: string;
+  readonly claimId: string;
+  readonly claimOriginSeq: number;
+  readonly draftIndex: number;
+  readonly subjectId: string;
+  readonly objectId: string | null;
+}
+
 function invalidAggregate(): never {
   throw new RecallReadError("INVALID_RECALL_AGGREGATE");
 }
 
 function invalidSurfaceState(): never {
   throw new RecallReadError("INVALID_RECALL_SURFACE_STATE");
+}
+
+function invalidFtsCandidate(): never {
+  throw new RecallReadError("INVALID_RECALL_FTS_CANDIDATE");
 }
 
 function exactRow(
@@ -93,11 +173,54 @@ function exactSurfaceRow(
   return row;
 }
 
+function exactFtsRow(
+  value: unknown,
+  expectedKeys: readonly string[],
+): Readonly<Record<string, unknown>> {
+  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+    return invalidFtsCandidate();
+  }
+  const row = value as Readonly<Record<string, unknown>>;
+  const keys = Object.keys(row).sort();
+  if (
+    keys.length !== expectedKeys.length ||
+    !keys.every((key, index) => key === expectedKeys[index])
+  ) {
+    return invalidFtsCandidate();
+  }
+  return row;
+}
+
 function safeEpoch(value: unknown): number {
   if (!Number.isSafeInteger(value) || Number(value) < 0) {
     return invalidAggregate();
   }
   return Number(value);
+}
+
+function safeFtsEpoch(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) {
+    return invalidFtsCandidate();
+  }
+  return Number(value);
+}
+
+function safePositiveInteger(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1) {
+    return invalidFtsCandidate();
+  }
+  return Number(value);
+}
+
+function safeFtsExpiry(
+  value: unknown,
+  context: RecallReadContext,
+): number | null {
+  if (value === null) {
+    return null;
+  }
+  const expiry = safeFtsEpoch(value);
+  return expiry > context.evaluationNow ? expiry : invalidFtsCandidate();
 }
 
 function decodeAggregate(
@@ -270,6 +393,327 @@ function validateTermsForRead(
   }
 }
 
+function decodeFtsStatements(
+  value: unknown,
+  context: RecallReadContext,
+  terms: readonly RecallFtsTerm[],
+): readonly DecodedFtsStatement[] {
+  if (!Array.isArray(value) || value.length > 21) {
+    return invalidFtsCandidate();
+  }
+  const seenEvents: Set<string> = new Set();
+  const seenSequences: Set<number> = new Set();
+  const result: DecodedFtsStatement[] = [];
+  for (const candidate of value) {
+    const row = exactFtsRow(candidate, FTS_CANDIDATE_ROW_KEYS);
+    const eventId = row["recall_fts_event_id"];
+    const rawText = row["recall_fts_raw_text"];
+    const parsedCount = row["recall_fts_parsed_count"];
+    const phraseIndex = row["recall_fts_phrase_index"];
+    const provenance = row["recall_fts_provenance"];
+    const rank = row["recall_fts_rank"];
+    const duplicate = row["recall_fts_has_valid_graph_duplicate"];
+    const statementSeq = safePositiveInteger(
+      row["recall_fts_statement_seq"],
+    );
+    const term =
+      Number.isSafeInteger(phraseIndex) && Number(phraseIndex) >= 0
+        ? terms[Number(phraseIndex)]
+        : undefined;
+    if (
+      typeof eventId !== "string" ||
+      !EVENT_ID_PATTERN.test(eventId) ||
+      seenEvents.has(eventId) ||
+      seenSequences.has(statementSeq) ||
+      row["recall_fts_raw_text_type"] !== "text" ||
+      typeof rawText !== "string" ||
+      rawText.length === 0 ||
+      rawText.trim() !== rawText ||
+      Array.from(rawText).length > 32_768 ||
+      row["recall_fts_parsed_type"] !== "array" ||
+      !Number.isSafeInteger(parsedCount) ||
+      Number(parsedCount) < 0 ||
+      Number(parsedCount) > 100 ||
+      term === undefined ||
+      (provenance !== "user_stated" &&
+        provenance !== "observed" &&
+        provenance !== "inferred") ||
+      typeof rank !== "number" ||
+      !Number.isFinite(rank) ||
+      (duplicate !== 0 && duplicate !== 1) ||
+      row["recall_fts_journal_scope_key"] !== context.scopeKey ||
+      row["recall_fts_statement_scope_key"] !== context.scopeKey ||
+      row["recall_fts_statement_state"] !== "live"
+    ) {
+      return invalidFtsCandidate();
+    }
+    const expiresAt = safeFtsExpiry(
+      row["recall_fts_statement_expires_at"],
+      context,
+    );
+    seenEvents.add(eventId);
+    seenSequences.add(statementSeq);
+    result.push(
+      Object.freeze({
+        eventId,
+        statementSeq,
+        ftsRank: rank,
+        rawText,
+        parsedCount: Number(parsedCount),
+        createdAt: safeFtsEpoch(row["recall_fts_created_at"]),
+        recordedAt: safeFtsEpoch(row["recall_fts_recorded_at"]),
+        provenance,
+        expiresAt,
+        hasValidGraphDuplicate: duplicate === 1,
+        term,
+      }),
+    );
+  }
+  for (let index = 1; index < result.length; index += 1) {
+    const previous = result[index - 1];
+    const current = result[index];
+    if (
+      previous === undefined ||
+      current === undefined ||
+      previous.ftsRank > current.ftsRank ||
+      (previous.ftsRank === current.ftsRank &&
+        previous.statementSeq <= current.statementSeq)
+    ) {
+      return invalidFtsCandidate();
+    }
+  }
+  return Object.freeze(result);
+}
+
+function decodeFtsSupport(
+  value: unknown,
+  statement: DecodedFtsStatement,
+  context: RecallReadContext,
+): DecodedFtsSupport {
+  const row = exactFtsRow(value, FTS_SUPPORT_ROW_KEYS);
+  const eventId = row["recall_fts_support_event_id"];
+  const claimId = row["recall_fts_claim_id"];
+  const subjectId = row["recall_fts_subject_id"];
+  const objectId = row["recall_fts_object_id"];
+  const draftIndex = row["recall_fts_support_draft_index"];
+  const hasObjectValue = row["recall_fts_has_object_value"];
+  const supportExpiry = safeFtsExpiry(
+    row["recall_fts_support_expires_at"],
+    context,
+  );
+  if (
+    eventId !== statement.eventId ||
+    typeof claimId !== "string" ||
+    !CLAIM_ID_PATTERN.test(claimId) ||
+    row["recall_fts_claim_scope_key"] !== context.scopeKey ||
+    row["recall_fts_claim_state"] !== "active" ||
+    typeof subjectId !== "string" ||
+    !ENTITY_ID_PATTERN.test(subjectId) ||
+    row["recall_fts_subject_scope_key"] !== context.scopeKey ||
+    row["recall_fts_subject_merged_into"] !== null ||
+    !Number.isSafeInteger(draftIndex) ||
+    Number(draftIndex) < 0 ||
+    Number(draftIndex) >= statement.parsedCount ||
+    row["recall_fts_support_live"] !== 1 ||
+    supportExpiry !== statement.expiresAt ||
+    ((objectId === null && hasObjectValue !== 1) ||
+      (objectId !== null && hasObjectValue !== 0)) ||
+    (objectId === null
+      ? row["recall_fts_object_scope_key"] !== null ||
+        row["recall_fts_object_merged_into"] !== null
+      : typeof objectId !== "string" ||
+        !ENTITY_ID_PATTERN.test(objectId) ||
+        row["recall_fts_object_scope_key"] !== context.scopeKey ||
+        row["recall_fts_object_merged_into"] !== null)
+  ) {
+    return invalidFtsCandidate();
+  }
+  return Object.freeze({
+    eventId,
+    claimId,
+    claimOriginSeq: safePositiveInteger(row["recall_fts_claim_origin_seq"]),
+    draftIndex: Number(draftIndex),
+    subjectId,
+    objectId: objectId as string | null,
+  });
+}
+
+function freezeFtsResult(
+  kind: RecallFtsCandidateResult["kind"],
+  terms: readonly RecallFtsTerm[],
+  seeds: readonly RecallFtsSeedCandidate[],
+  reachedClaims: readonly RecallFtsReachedClaimCandidate[],
+  rawCandidates: readonly RecallRawCandidate[],
+  truncated: boolean,
+  notes: readonly RecallFtsNote[],
+): RecallFtsCandidateResult {
+  const reasons: readonly RecallTruncationReason[] = Object.freeze(
+    truncated ? ["fts_candidates"] : [],
+  );
+  return Object.freeze({
+    kind,
+    terms,
+    seeds: Object.freeze([...seeds]),
+    reachedClaims: Object.freeze([...reachedClaims]),
+    rawCandidates: Object.freeze([...rawCandidates]),
+    truncation: Object.freeze({
+      reasons,
+    }),
+    notes: Object.freeze([...notes]),
+  });
+}
+
+function assembleFtsCandidates(
+  candidateRows: unknown,
+  supportRows: unknown,
+  context: RecallReadContext,
+  terms: readonly RecallFtsTerm[],
+): RecallFtsCandidateResult {
+  const statements = decodeFtsStatements(candidateRows, context, terms);
+  if (!Array.isArray(supportRows)) {
+    return invalidFtsCandidate();
+  }
+  const usedStatements = statements.slice(0, 20);
+  const statementsByEvent: Map<string, DecodedFtsStatement> = new Map(
+    usedStatements.map((statement) => [statement.eventId, statement]),
+  );
+  const supportsByEvent: Map<string, DecodedFtsSupport[]> = new Map();
+  const supportIdentity: Set<string> = new Set();
+  for (const value of supportRows) {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      return invalidFtsCandidate();
+    }
+    const eventId = (value as Readonly<Record<string, unknown>>)[
+      "recall_fts_support_event_id"
+    ];
+    const statement =
+      typeof eventId === "string" ? statementsByEvent.get(eventId) : undefined;
+    if (statement === undefined) {
+      return invalidFtsCandidate();
+    }
+    const support = decodeFtsSupport(value, statement, context);
+    const identity = `${support.eventId}\u0000${support.claimId}`;
+    if (supportIdentity.has(identity)) {
+      return invalidFtsCandidate();
+    }
+    supportIdentity.add(identity);
+    const group = supportsByEvent.get(support.eventId) ?? [];
+    group.push(support);
+    supportsByEvent.set(support.eventId, group);
+  }
+  for (const group of supportsByEvent.values()) {
+    for (let index = 1; index < group.length; index += 1) {
+      const previous = group[index - 1];
+      const current = group[index];
+      if (
+        previous === undefined ||
+        current === undefined ||
+        previous.draftIndex > current.draftIndex ||
+        (previous.draftIndex === current.draftIndex &&
+          (previous.claimOriginSeq > current.claimOriginSeq ||
+            (previous.claimOriginSeq === current.claimOriginSeq &&
+              previous.claimId >= current.claimId)))
+      ) {
+        return invalidFtsCandidate();
+      }
+    }
+  }
+
+  const seeds: RecallFtsSeedCandidate[] = [];
+  const seedOrderByEntity: Map<string, number> = new Map();
+  const reachedClaims: RecallFtsReachedClaimCandidate[] = [];
+  const seenClaims: Set<string> = new Set();
+  const rawCandidates: RecallRawCandidate[] = [];
+  const addSeed = (
+    statement: DecodedFtsStatement,
+    entityId: string,
+    endpoint: "subject" | "object",
+  ): number => {
+    const existing = seedOrderByEntity.get(entityId);
+    if (existing !== undefined) {
+      return existing;
+    }
+    const seedOrder = seeds.length;
+    seeds.push(
+      Object.freeze({
+        entityId,
+        endpoint,
+        matchedTerm: statement.term.display,
+        pathLabel: `${statement.term.display} (FTS)`,
+        eventId: statement.eventId,
+        statementSeq: statement.statementSeq,
+        ftsRank: statement.ftsRank,
+      }),
+    );
+    seedOrderByEntity.set(entityId, seedOrder);
+    return seedOrder;
+  };
+
+  for (const statement of usedStatements) {
+    const supports = supportsByEvent.get(statement.eventId) ?? [];
+    if (statement.parsedCount === 0 && supports.length > 0) {
+      return invalidFtsCandidate();
+    }
+    if (supports.length > 0) {
+      for (const support of supports) {
+        const subjectSeedOrder = addSeed(
+          statement,
+          support.subjectId,
+          "subject",
+        );
+        if (support.objectId !== null) {
+          addSeed(statement, support.objectId, "object");
+        }
+        if (!seenClaims.has(support.claimId)) {
+          seenClaims.add(support.claimId);
+          reachedClaims.push(
+            Object.freeze({
+              claimId: support.claimId,
+              depth: 0,
+              anchorEntityId: support.subjectId,
+              seedEntityId: support.subjectId,
+              seedOrder: subjectSeedOrder,
+              matchedTerm: statement.term.display,
+              eventId: statement.eventId,
+              statementSeq: statement.statementSeq,
+              ftsRank: statement.ftsRank,
+            }),
+          );
+        }
+      }
+    } else if (
+      statement.parsedCount === 0 &&
+      !statement.hasValidGraphDuplicate
+    ) {
+      rawCandidates.push(
+        Object.freeze({
+          eventId: statement.eventId,
+          text: statement.rawText,
+          createdAt: statement.createdAt,
+          recordedAt: statement.recordedAt,
+          provenance: statement.provenance,
+          matchedTerm: statement.term.display,
+          statementSeq: statement.statementSeq,
+          ftsRank: statement.ftsRank,
+        }),
+      );
+    }
+  }
+
+  const truncated = statements.length === 21;
+  return freezeFtsResult(
+    "searched",
+    terms,
+    seeds,
+    reachedClaims,
+    rawCandidates,
+    truncated,
+    truncated
+      ? Object.freeze([createRecallFtsNote("fts_candidate_limit")])
+      : Object.freeze([]),
+  );
+}
+
 class SqliteRecallReadPort implements RecallReadPort {
   readonly #factory: SqliteConnectionFactory;
 
@@ -296,7 +740,7 @@ class SqliteRecallReadPort implements RecallReadPort {
         context.scopeKey,
         context.evaluationNow,
         async (snapshot) => {
-          const source: RecallValidClaimSource = Object.freeze({
+          const source: RecallSnapshotSource = Object.freeze({
             listValidClaimAggregates: async () =>
               decodeAggregates(
                 await snapshot.listRawAggregateRows(),
@@ -323,6 +767,59 @@ class SqliteRecallReadPort implements RecallReadPort {
                 }
                 throw error;
               }
+            },
+            searchFtsCandidates: async (candidates: readonly string[]) => {
+              snapshot.assertActive();
+              const plan = prepareRecallFtsQuery(candidates);
+              if (plan.kind === "skip") {
+                return freezeFtsResult(
+                  "skipped",
+                  plan.terms,
+                  Object.freeze([]),
+                  Object.freeze([]),
+                  Object.freeze([]),
+                  false,
+                  plan.notes,
+                );
+              }
+              const rawResult = await snapshot.searchRawFtsRows(
+                plan.matchExpression,
+                plan.terms.map((term) => term.phraseLiteral),
+              );
+              if (
+                rawResult === null ||
+                typeof rawResult !== "object" ||
+                typeof rawResult.queryUnavailable !== "boolean" ||
+                !Array.isArray(rawResult.candidateRows) ||
+                !Array.isArray(rawResult.supportRows)
+              ) {
+                return invalidFtsCandidate();
+              }
+              if (rawResult.queryUnavailable) {
+                if (
+                  rawResult.candidateRows.length !== 0 ||
+                  rawResult.supportRows.length !== 0
+                ) {
+                  return invalidFtsCandidate();
+                }
+                return freezeFtsResult(
+                  "unavailable",
+                  plan.terms,
+                  Object.freeze([]),
+                  Object.freeze([]),
+                  Object.freeze([]),
+                  false,
+                  Object.freeze([
+                    createRecallFtsNote("fts_query_unavailable"),
+                  ]),
+                );
+              }
+              return assembleFtsCandidates(
+                rawResult.candidateRows,
+                rawResult.supportRows,
+                context,
+                plan.terms,
+              );
             },
           });
           return operation(source);

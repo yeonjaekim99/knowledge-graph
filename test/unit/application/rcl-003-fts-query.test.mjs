@@ -92,6 +92,13 @@ test("user strings become at most ten deduplicated quoted phrase literals", () =
   assert.equal(Object.isFrozen(plan), true);
   assert.equal(Object.isFrozen(plan.terms), true);
   assert.equal(Object.isFrozen(plan.terms[0]), true);
+
+  const ten = prepareRecallFtsQuery(
+    Array.from({ length: 10 }, (_, index) => `term-${index}-검색`),
+  );
+  assert.equal(ten.kind, "query");
+  assert.equal(ten.terms.length, 10);
+  assert.equal(ten.matchExpression.split(" OR ").length, 10);
 });
 
 test("only normalized candidates with at least three Unicode code points reach trigram FTS", () => {

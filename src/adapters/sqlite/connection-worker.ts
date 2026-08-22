@@ -33,6 +33,7 @@ import {
   type SqliteWorkerResponse,
 } from "./connection-protocol.js";
 import { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
+import { RECALL_FTS_SQL_SOURCE } from "./recall-fts-sql.js";
 
 interface SqliteRunMetadata {
   readonly changes: number;
@@ -43,7 +44,9 @@ interface SqliteStatement {
   run(...parameters: readonly SqliteBinding[]): SqliteRunMetadata;
   run(parameters: Readonly<Record<string, SqliteBinding>>): SqliteRunMetadata;
   get(...parameters: readonly SqliteBinding[]): unknown;
+  get(parameters: Readonly<Record<string, SqliteBinding>>): unknown;
   all(...parameters: readonly SqliteBinding[]): unknown[];
+  all(parameters: Readonly<Record<string, SqliteBinding>>): unknown[];
 }
 
 interface SqliteDatabaseConnection {
@@ -1734,6 +1737,154 @@ function readRecallSnapshotSurfaceState(
   });
 }
 
+function isFtsQuerySyntaxFailure(error: unknown): boolean {
+  return (
+    error instanceof Error &&
+    /(?:fts5:\s*syntax error|malformed MATCH expression|unterminated string)/iu.test(
+      error.message,
+    )
+  );
+}
+
+function unavailableRecallFtsRows(): Readonly<{
+  queryUnavailable: true;
+  candidateRows: readonly Readonly<Record<string, unknown>>[];
+  supportRows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  return Object.freeze({
+    queryUnavailable: true,
+    candidateRows: Object.freeze([]),
+    supportRows: Object.freeze([]),
+  });
+}
+
+function searchRecallSnapshotFts(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  matchExpression: string,
+  phraseLiterals: readonly string[],
+): Readonly<{
+  queryUnavailable: boolean;
+  candidateRows: readonly Readonly<Record<string, unknown>>[];
+  supportRows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction ||
+    typeof matchExpression !== "string" ||
+    !Array.isArray(phraseLiterals) ||
+    phraseLiterals.length < 1 ||
+    phraseLiterals.length > 10 ||
+    !phraseLiterals.every(
+      (phrase) =>
+        typeof phrase === "string" &&
+        phrase.length >= 2 &&
+        phrase.length <= 520 &&
+        phrase.startsWith('"') &&
+        phrase.endsWith('"') &&
+        !/[\u0000-\u001f\u007f-\u009f]/u.test(phrase),
+    ) ||
+    matchExpression !== phraseLiterals.join(" OR ")
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+
+  let candidateRows: readonly Readonly<Record<string, unknown>>[];
+  try {
+    candidateRows = rows(
+      database
+        .prepare(RECALL_FTS_SQL_SOURCE.selectCandidateStatements)
+        .all({
+          fts_query: matchExpression,
+          scope_key: state.active.scopeKey,
+          now: state.active.evaluationNow,
+        }),
+    );
+  } catch (error) {
+    if (isFtsQuerySyntaxFailure(error)) {
+      return unavailableRecallFtsRows();
+    }
+    throw error;
+  }
+
+  const phraseMatcher = database.prepare(
+    RECALL_FTS_SQL_SOURCE.matchCandidatePhrase,
+  );
+  const supportSelector = database.prepare(
+    RECALL_FTS_SQL_SOURCE.selectCandidateSupports,
+  );
+  const matchedRows: Readonly<Record<string, unknown>>[] = [];
+  const supportRows: Readonly<Record<string, unknown>>[] = [];
+
+  try {
+    for (const candidate of candidateRows) {
+      const statementSeq = candidate["recall_fts_statement_seq"];
+      if (!Number.isSafeInteger(statementSeq) || Number(statementSeq) < 1) {
+        throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+      }
+      let matchedPhraseIndex = -1;
+      for (let index = 0; index < phraseLiterals.length; index += 1) {
+        const phraseLiteral = phraseLiterals[index];
+        if (phraseLiteral === undefined) {
+          throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+        }
+        const matchRow = rowOrNull(
+          phraseMatcher.get({
+            statement_seq: Number(statementSeq),
+            fts_phrase: phraseLiteral,
+          }),
+        );
+        const matched = matchRow?.["recall_fts_phrase_matches"];
+        if (matched !== 0 && matched !== 1) {
+          throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+        }
+        if (matched === 1) {
+          matchedPhraseIndex = index;
+          break;
+        }
+      }
+      if (matchedPhraseIndex < 0) {
+        throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+      }
+      matchedRows.push(
+        Object.freeze({
+          ...candidate,
+          recall_fts_phrase_index: matchedPhraseIndex,
+        }),
+      );
+    }
+
+    for (const candidate of matchedRows.slice(0, 20)) {
+      const eventId = candidate["recall_fts_event_id"];
+      if (typeof eventId !== "string") {
+        throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+      }
+      supportRows.push(
+        ...rows(
+          supportSelector.all({
+            event_id: eventId,
+            scope_key: state.active.scopeKey,
+            now: state.active.evaluationNow,
+          }),
+        ),
+      );
+    }
+  } catch (error) {
+    if (isFtsQuerySyntaxFailure(error)) {
+      return unavailableRecallFtsRows();
+    }
+    throw error;
+  }
+
+  return Object.freeze({
+    queryUnavailable: false,
+    candidateRows: Object.freeze(matchedRows),
+    supportRows: Object.freeze(supportRows),
+  });
+}
+
 function endRecallSnapshot(
   database: SqliteDatabaseConnection,
   state: WorkerRecallSnapshotState,
@@ -1908,6 +2059,34 @@ function handleRequest(
         recallState,
         request.snapshotId,
         request.surfaceNorms,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-fts") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = searchRecallSnapshotFts(
+        database,
+        recallState,
+        request.snapshotId,
+        request.matchExpression,
+        request.phraseLiterals,
       );
       post({ type: "success", requestId: request.requestId, result });
     } catch (error) {
