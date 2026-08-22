@@ -62,7 +62,8 @@ function codePointLength(value: string): number {
 /**
  * Converts bounded user-controlled candidates into FTS5 phrase literals.
  * Display text remains distinct from normalize_v1, which is used only for the
- * trigram length gate and deterministic duplicate removal.
+ * trigram length gate. Compatibility-equivalent display strings remain
+ * distinct because SQLite's trigram tokenizer does not apply normalize_v1.
  */
 export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
   if (
@@ -77,7 +78,6 @@ export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
     return invalidRequest();
   }
 
-  const seenNormalized: Set<string> = new Set();
   const terms: RecallFtsTerm[] = [];
   for (const candidate of value as readonly string[]) {
     const display = sanitizeDisplay(candidate);
@@ -88,12 +88,10 @@ export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
       continue;
     }
     if (
-      Array.from(normalized).length < FTS_MINIMUM_NORMALIZED_CODE_POINTS ||
-      seenNormalized.has(normalized)
+      Array.from(normalized).length < FTS_MINIMUM_NORMALIZED_CODE_POINTS
     ) {
       continue;
     }
-    seenNormalized.add(normalized);
     terms.push(
       Object.freeze({
         display,

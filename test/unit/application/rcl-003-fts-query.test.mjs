@@ -16,7 +16,7 @@ function readError(code) {
   };
 }
 
-test("user strings become at most ten deduplicated quoted phrase literals", () => {
+test("user strings become at most ten ordered quoted phrase literals", () => {
   const plan = prepareRecallFtsQuery([
     "  alpha OR beta  ",
     "NEAR(foo)",
@@ -72,6 +72,11 @@ test("user strings become at most ten deduplicated quoted phrase literals", () =
         display: "ＦＯＯ",
         normalized: "foo",
         phraseLiteral: "\"ＦＯＯ\"",
+      },
+      {
+        display: "foo",
+        normalized: "foo",
+        phraseLiteral: "\"foo\"",
       },
       {
         display: "literal*glob",

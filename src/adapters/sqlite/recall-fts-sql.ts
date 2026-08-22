@@ -107,7 +107,7 @@ const matchCandidatePhrase = [
   "SELECT EXISTS (",
   "  SELECT 1",
   "  FROM journal_fts",
-  "  WHERE journal_fts.rowid = :statement_seq",
+  "  WHERE journal_fts.rowid = CAST(:statement_seq AS INTEGER)",
   "    AND journal_fts MATCH :fts_phrase",
   ") AS recall_fts_phrase_matches",
 ].join("\n");

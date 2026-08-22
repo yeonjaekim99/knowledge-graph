@@ -255,6 +255,8 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
     }),
     ...rawStatementCommands({ seq: 8, rawText: "😀😃😄" }),
     ...rawStatementCommands({ seq: 9, rawText: "  공백 원문 검색  " }),
+    ...rawStatementCommands({ seq: 10, rawText: "ＸＹＺ" }),
+    ...rawStatementCommands({ seq: 11, rawText: "xyz" }),
   ]);
 
   const cases = [
@@ -285,6 +287,24 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
       assert.equal(result.rawCandidates[0].text, "  공백 원문 검색  ");
     }
   }
+
+  const compatibilityDistinct = await search(factory, ["ＸＹＺ", "xyz"]);
+  assert.deepEqual(
+    compatibilityDistinct.terms.map((term) => term.display),
+    ["ＸＹＺ", "xyz"],
+  );
+  assert.deepEqual(
+    new Map(
+      compatibilityDistinct.rawCandidates.map((candidate) => [
+        candidate.eventId,
+        candidate.matchedTerm,
+      ]),
+    ),
+    new Map([
+      [eventId(10), "ＸＹＺ"],
+      [eventId(11), "xyz"],
+    ]),
+  );
 });
 
 test("valid graph supports produce ordered endpoint seeds and fanout-independent reached pins while graph duplicates suppress raw", async (t) => {
