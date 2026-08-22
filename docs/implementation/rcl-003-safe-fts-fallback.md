@@ -129,7 +129,7 @@ adapter는 candidate/support의 exact column set과 다음을 전부 검증한�
 
 - canonical event/claim/entity ID와 positive seq/origin
 - current scope·live/active state·non-merged endpoint
-- JSON raw text/parsed type과 stored draft index 범위
+- JSON raw text/parsed type, trim 후 1~32,768 code point와 stored draft index 범위
 - fixed-now 이후 expiry와 statement/support expiry 일치
 - provenance, effective/recorded epoch, finite FTS rank
 - rank/seq/draft/endpoint 정렬과 row 중복 없음
@@ -144,12 +144,15 @@ state를 쓰지 않으며 외부 reader의 canonical dump와 `PRAGMA data_versio
 없는 `dist/application/recall-fts-query.js` import 때문에 새 unit/SQLite 두 모듈이 0/2 RED였다.
 제품 구현 commit `8c6d1af` 뒤 `pnpm verify:rcl-003`은 unit 3개와 file-backed SQLite 7개,
 총 10/10 GREEN이다. downstream raw base type, depth-0 pin과 full 4,096-code-point query
-candidate guard는 hardening commit `4d81a35`에 분리했다.
+candidate guard는 hardening commit `4d81a35`에, stored raw text 보존은 `281d85c`에 분리했다.
 
 자체 diff review에서는 모든 candidate가 3자 미만이면 worker call을 하지 않아 callback 종료
 뒤 stale source가 성공 응답을 만들 수 있는 lifecycle 결함을 발견했다. 보관한 source의 짧은
 검색 fixture가 9/10 RED인 것을 확인한 뒤 snapshot active guard를 query 계획보다 앞에 두어
-10/10으로 닫았다.
+10/10으로 닫았다. 이어 stored `raw_text`의 앞뒤 공백은 record 계약상 보존 대상인데 decoder가
+손상으로 오인하는 경계를 발견했다. 기존 SQLite fixture에 exact text assertion을 먼저 넣어
+9/10 RED를 재현하고, trim은 code-point bound 검증에만 사용하며 반환 text는 바꾸지 않도록
+고쳐 다시 10/10 GREEN을 확인했다.
 
 최종 local gate는 architecture/type/build, RCL-003 10/10, RCL-001 10/10, STO-002 7/7,
 STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 39개 파일 265/265, PRJ-010 독립

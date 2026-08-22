@@ -136,10 +136,11 @@
   gate, RCL-001 snapshot/PRJ-008 TEMP aggregate 재사용, 21/20 SQL, endpoint seed와 depth-0
   reached pin, raw-only·동일 원문 graph 우선 경계를 고정했다.
 - test-only `73ff8fb`에서 기존 build 성공 뒤 missing production module로 새 두 test module이
-  0/2 RED였고, product `8c6d1af`·hardening `4d81a35` 뒤 `pnpm verify:rcl-003` 10/10 GREEN이다.
+  0/2 RED였고, product `8c6d1af`·hardening `4d81a35`·`281d85c` 뒤
+  `pnpm verify:rcl-003` 10/10 GREEN이다.
 - operator/quote/control/Korean/emoji, 3자 경계, scope·expiry·retraction·supersede, entity/literal
-  endpoint, raw duplicate, 21개 절단, 반복 결정성, 고정 snapshot, persistent dump/data_version와
-  payload-redacted corruption을 실제 file SQLite에서 검증했다.
+  endpoint, raw duplicate와 저장 원문 공백 보존, 21개 절단, 반복 결정성, 고정 snapshot,
+  persistent dump/data_version와 payload-redacted corruption을 실제 file SQLite에서 검증했다.
 - 전체 fast 39개 파일 265/265, PRJ-010 39/39, behavior spike 25/25, roadmap evidence
   67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - 최종 BFS/ranking/Answer/MCP와 overview는 포함하지 않았고 S11/S22 public manifest도

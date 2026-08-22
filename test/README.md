@@ -155,5 +155,5 @@ RCL-003은 user candidate를 최대 10개 quoted phrase literal로 만들고 nor
 미만을 actionable skip으로 분리하는 application fixture, 실제 contentless trigram FTS와
 RCL-001 TEMP aggregate를 같은 snapshot에서 읽는 SQLite fixture를 추가했다. graph support의
 subject/object seed와 depth-0 reached pin, parsed=[] raw-only, 죽은 parsed history 비부활,
-동일 raw valid graph 우선, 21/20 절단과 persistent dump/data_version 불변을 검증한다. 최종
-Answer와 overview가 아직 없으므로 S11/S22 manifest는 `planned`다.
+동일 raw valid graph 우선, 저장 원문 공백 보존, 21/20 절단과 persistent dump/data_version
+불변을 검증한다. 최종 Answer와 overview가 아직 없으므로 S11/S22 manifest는 `planned`다.
