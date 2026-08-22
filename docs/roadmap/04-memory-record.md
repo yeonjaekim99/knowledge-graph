@@ -1,7 +1,7 @@
 # Phase 04 — memory_record 수직 경로
 
 - 상태: `IN_PROGRESS`
-- 진행률: 2/8
+- 진행률: 3/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
 - 선행 증거 감사: [Phase 04 baseline과 production gap](evidence-audit.md#phase-04-record)
@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `DONE` | `log0629` | FND-003 | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [구현 결정](../implementation/rec-002-secret-detector.md) |
-| REC-003 | raw 마스킹과 draft 부분 거부 | `IN_PROGRESS` | `log0629` | REC-001, REC-002 | — |
+| REC-003 | raw 마스킹과 draft 부분 거부 | `DONE` | `log0629` | REC-001, REC-002 | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [구현 결정](../implementation/rec-003-record-sanitizer.md) |
 | REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
 | REC-006 | statement append·project·결과 원자성 | `TODO` | `unassigned` | REC-005, STO-007, PRJ-009 | — |
@@ -113,20 +113,46 @@
 
 ### REC-003 — raw 마스킹과 draft 부분 거부
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rec-003-record-sanitizer`
+- PR: [#38](https://github.com/yeonjaekim99/knowledge-graph/pull/38)
 - 근거: ADR-011, ADR-013
 - 선행 작업: REC-001, REC-002
 - 결과물: journal 기록 전 sanitizer와 actionable rejection note
 
 완료 체크:
 
-- [ ] raw_text 의심 구간을 길이 비례 마스킹한 뒤에만 journal/FTS로 전달한다.
-- [ ] secret이 든 draft만 제외하고 안전한 draft와 마스킹 원문은 계속 처리한다.
-- [ ] note와 error가 탐지값, SQL, DB 경로 또는 주변 민감 문맥을 echo하지 않는다.
-- [ ] 재해석 호출은 한 draft라도 거부되면 successor 전체를 만들지 않는다.
-- [ ] 마스킹/거부 전후 값을 audit-safe fixture로 검증한다.
+- [x] raw_text 의심 구간을 위치 기반 class marker로 마스킹하고 위치가 불명확하면 전체를
+      보수적으로 가린 plan만 후속 journal/FTS 경계에 전달한다.
+- [x] secret이 든 draft만 제외하고 안전한 draft와 마스킹 원문은 계속 처리한다.
+- [x] note와 error가 탐지값, SQL, DB 경로 또는 주변 민감 문맥을 echo하지 않는다.
+- [x] 재해석 호출은 한 draft라도 거부되면 successor 전체를 만들지 않는다.
+- [x] 마스킹/거부 전후 값을 audit-safe fixture로 검증한다.
+
+완료 증거:
+
+- [구현 결정](../implementation/rec-003-record-sanitizer.md)은 REC-001 입력과 REC-002
+  positional detector를 writer capability 없는 pure application plan으로 연결한다.
+- 최초 RED는 build 성공 뒤 sanitizer export 부재로 module load가 실패했다. GREEN은 raw
+  explicit/entropy 치환, 8개 draft 문자열 category, 부분/전체 거부, 재해석 전체 실패와
+  malformed detector fail-closed를 포함한 target 17/17이다.
+- UTF-16 astral 인접 위치와 surrogate split, 겹침·역순·범위 손상, unknown class와 extra
+  payload, 앞선 hit 뒤 후속 detector exception을 synthetic 값만으로 검증한다.
+- self-review에서 detector가 caller-owned 입력을 바꾸면 검사값과 승인값이 달라지는 경계를
+  14/15 RED로 고정했고, detector 실행 전 raw·mode·draft·alias snapshot으로 15/15 GREEN을
+  만들었다. result/finding accessor가 실행되는 경계도 15/16 RED로 고정하고 exact data
+  descriptor와 dense bounded finding snapshot으로 16/16 GREEN을 만들었다. 독립 review가
+  payload-bearing typed detector error 재사용을 16/17 RED로 찾았고, detector가 던진 객체를
+  항상 새 고정 오류로 치환해 17/17 GREEN으로 닫았다.
+- `pnpm verify:rec-003`은 architecture/type과 REC-001 11/11, REC-002 13/13, REC-003
+  17/17을 통과했다. 전체 fast suite 39개 파일 285/285, PRJ-010 39/39, behavior spike
+  25/25, roadmap audit 67/67과 production dependency audit 취약점 0개도 accessor hardening
+  및 typed-error hardening 뒤 다시 통과했다.
+- 독립 review는 위 MEDIUM 누출과 잘못된 변경 범위 설명 LOW를 찾았고 둘 다 회귀와 문서로
+  닫았다. 최종 재검증에서 미해결 HIGH/MEDIUM 0건을 확인한 [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38)이
+  구현과 검증을 `main`에 고정한다. journal/project 원자성과 전체 저장
+  매체 누출 scan은 REC-006/008의 완료를 과장하지 않고 남긴다.
 
 ### REC-004 — write entity 해석과 모호성 처리
 

@@ -41,3 +41,10 @@ slice 위치 fixture는
 branch/trusted Git object context 분리, pure detector 결과가 class·위치만 반환하는 경계까지
 검증한다. application scan-before-write, raw 마스킹, draft 거부, journal write와 log/MCP
 통합은 REC-003/MCP-005/REC-008에 남긴다.
+
+REC-003의 [`application/rec-003-record-sanitizer.test.mjs`](application/rec-003-record-sanitizer.test.mjs)는
+detector의 UTF-16 위치를 raw class marker로 치환하고 모든 draft 문자열을 ADR 순서로
+검사한다. 안전한 draft의 immutable clone과 원래 input index, draft별 actionable 거부,
+위치·결과 손상과 detector 예외 fail-closed, 재해석의 부분 성공 금지를 검증한다.
+`application/rec-003-record-sanitizer.type-test.ts`는 이 중간 plan의 readonly/type-only package
+경계를 확인한다. SQLite append/project와 public tool 응답 조립은 이 unit의 범위가 아니다.

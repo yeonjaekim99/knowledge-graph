@@ -1,10 +1,10 @@
 # 구현 로드맵 자체 리뷰
 
-- 리뷰일: 2026-08-22
+- 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#36 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001/REC-002/RCL-001 완료 · REC-003/REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#38 누적 게시·로컬 검증과 2026-08-23 scope 재검토
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001 완료 · REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 27/66, Phase 01·02·03과 REC-001/REC-002/RCL-001 `DONE`, REC-003/REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 28/66, Phase 01·02·03과 REC-001~003/RCL-001 `DONE`, REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -172,6 +172,21 @@
     signature 범위를 닫았다. 최종 268/268 회귀와 미해결 HIGH/MEDIUM 0건을 확인한
     [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)을 완료 증거로 고정해
     제품 roll-up을 27/66으로 올렸다.
+32. REC-003은 REC-001의 schema-valid 입력과 REC-002의 class/UTF-16 위치만 받는 detector를
+    writer 없는 pure application 경계에서 연결한다. raw hit는 뒤에서 앞으로 class marker로
+    치환하고 위치·순서·Unicode 경계가 손상되면 원문 전체를 가린다. 모든 draft 저장 문자열을
+    끝까지 검사해 detector 장애를 숨기지 않으며, 안전 draft는 immutable clone과 원래 input
+    index로 전달하고 hit draft만 actionable rejected로 분리한다. detector 호출 전 raw·mode와
+    draft/alias를 snapshot해 주입 구현이 caller-owned 값을 바꿔도 검사값과 plan이 갈리지 않는다.
+    detector result와 finding도 exact data descriptor로만 snapshot해 accessor를 실행하지 않는다.
+    독립 review에서 같은 typed error 객체에 message·cause·임의 payload를 붙여 던지면 그대로
+    재throw되는 누출을 확인했고, detector 예외는 종류와 무관하게 새 고정 오류로 치환하도록
+    16/17 RED에서 17/17 GREEN으로 닫았다.
+    재해석은 raw-only만 예외로
+    허용하고 한 draft라도 거부되면 successor plan 전체를 만들지 않는다. journal/FTS append,
+    duplicate/stored index·occurrence와 projection 원자성 및 전체 log/DB leak scan은 REC-005~008에
+    남겨 unit sanitizer 증거를 수직 경로 완료로 과장하지 않는다. 최종 독립 재검증과
+    285/285 회귀를 통과한 [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38)을 완료 증거로 고정해 제품 roll-up을 28/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -184,11 +199,12 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001, REC-002와
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001~REC-003과
   RCL-001은 각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32),
   [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36),
-  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로 완료했고, REC-003,
-  REC-004, RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
+  [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38),
+  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로 완료했고, REC-004,
+  RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -205,7 +221,8 @@
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
-| 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure domain detector·unit fixture·검증 script와 결정/evidence 문서만 추가, raw 마스킹·draft/application write·schema·journal·log/MCP·Phase 08 corpus 변경 없음 |
+| REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 17/17, 전체 fast 39개 파일 285/285, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16·typed detector error 16/17 RED를 닫았고 독립 review finding HIGH 0/MEDIUM 0 |
+| 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure application sanitation plan·unit/type fixture·검증 script와 결정/evidence 문서를 추가했다. writer/SQLite/MCP/schema/journal/log·Phase 08 corpus는 변경하지 않았다. |
 
 ## 게시 전 재현 검사
 

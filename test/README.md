@@ -41,6 +41,8 @@
 | `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
 | `pnpm test:rcl-001` | recall input/result 계약, request snapshot과 scope/fixed-now TEMP aggregate |
 | `pnpm test:rec-002` | versioned secret signature·entropy·allowlist와 safe positional result |
+| `pnpm test:rec-003` | record raw 마스킹, draft 부분 거부와 재해석 전체 실패 경계 |
+| `pnpm verify:rec-003` | architecture/type과 REC-001~003 계약·탐지·sanitizer 회귀 |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -129,3 +131,9 @@ IO 없는 versioned signature/entropy detector를 검증한다. fixture는 실�
 object context 분리도 여기서 고정한다. application scan-before-write, 마스킹, draft 부분 거부와
 transaction rollback은 REC-003 이후 수직 경로가 소유하므로 이 unit suite가 S18 production
 target 완료를 주장하지 않는다.
+
+REC-003은 [`unit/application/rec-003-record-sanitizer.test.mjs`](unit/application/rec-003-record-sanitizer.test.mjs)에서
+REC-001 입력과 REC-002 위치 결과를 연결한다. raw hit의 class 치환, 위치 불명확 시 전체
+마스킹, 모든 ClaimDraft 저장 문자열의 독립 거부, 원래 input index 보존과 재해석 전체
+실패를 IO 없는 application 경계에서 검증한다. 실제 journal/FTS write와 projection rollback,
+metadata/revise 및 공개 MCP log 누출 검사는 REC-006/008, REV와 MCP-005가 소유한다.
