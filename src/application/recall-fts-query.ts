@@ -7,6 +7,7 @@ import {
 } from "./ports/recall-read-port.js";
 
 const FTS_CANDIDATE_LIMIT = 10;
+const FTS_CANDIDATE_MAX_CODE_POINTS = 4_096;
 const FTS_MINIMUM_NORMALIZED_CODE_POINTS = 3;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f-\u009f]/gu;
 const EMPTY_TERMS: readonly RecallFtsTerm[] = Object.freeze([]);
@@ -54,6 +55,10 @@ function quotedPhraseLiteral(value: string): string {
   return `"${value.replaceAll('"', '""')}"`;
 }
 
+function codePointLength(value: string): number {
+  return [...value].length;
+}
+
 /**
  * Converts bounded user-controlled candidates into FTS5 phrase literals.
  * Display text remains distinct from normalize_v1, which is used only for the
@@ -63,7 +68,11 @@ export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
   if (
     !Array.isArray(value) ||
     value.length > FTS_CANDIDATE_LIMIT ||
-    !value.every((candidate) => typeof candidate === "string")
+    !value.every(
+      (candidate) =>
+        typeof candidate === "string" &&
+        codePointLength(candidate) <= FTS_CANDIDATE_MAX_CODE_POINTS,
+    )
   ) {
     return invalidRequest();
   }

@@ -1781,7 +1781,7 @@ function searchRecallSnapshotFts(
       (phrase) =>
         typeof phrase === "string" &&
         phrase.length >= 2 &&
-        phrase.length <= 520 &&
+        phrase.length <= 8_194 &&
         phrase.startsWith('"') &&
         phrase.endsWith('"') &&
         !/[\u0000-\u001f\u007f-\u009f]/u.test(phrase),

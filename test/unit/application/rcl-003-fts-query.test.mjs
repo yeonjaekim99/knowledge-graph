@@ -99,6 +99,10 @@ test("user strings become at most ten deduplicated quoted phrase literals", () =
   assert.equal(ten.kind, "query");
   assert.equal(ten.terms.length, 10);
   assert.equal(ten.matchExpression.split(" OR ").length, 10);
+
+  const fullQuery = prepareRecallFtsQuery(["😀".repeat(4_096)]);
+  assert.equal(fullQuery.kind, "query");
+  assert.equal(Array.from(fullQuery.terms[0].display).length, 4_096);
 });
 
 test("only normalized candidates with at least three Unicode code points reach trigram FTS", () => {
@@ -134,6 +138,7 @@ test("the internal capability rejects malformed or over-cap candidate collection
     privateMarker,
     [privateMarker, 3],
     Array.from({ length: 11 }, (_, index) => `${privateMarker}-${index}`),
+    [`${privateMarker}${"x".repeat(4_097)}`],
   ]) {
     assert.throws(
       () => prepareRecallFtsQuery(value),

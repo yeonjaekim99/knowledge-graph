@@ -97,8 +97,11 @@ export interface RecallRawCandidate {
   readonly createdAt: UnixEpochSeconds;
   readonly recordedAt: UnixEpochSeconds;
   readonly provenance: "user_stated" | "observed" | "inferred";
-  readonly matchedTerm: string;
   readonly statementSeq: number;
+}
+
+export interface RecallFtsRawCandidate extends RecallRawCandidate {
+  readonly matchedTerm: string;
   readonly ftsRank: number;
 }
 
@@ -113,7 +116,7 @@ export interface RecallFtsCandidateResult {
   readonly terms: readonly RecallFtsTerm[];
   readonly seeds: readonly RecallFtsSeedCandidate[];
   readonly reachedClaims: readonly RecallFtsReachedClaimCandidate[];
-  readonly rawCandidates: readonly RecallRawCandidate[];
+  readonly rawCandidates: readonly RecallFtsRawCandidate[];
   readonly truncation: RecallTruncationLedger;
   readonly notes: readonly RecallFtsNote[];
 }

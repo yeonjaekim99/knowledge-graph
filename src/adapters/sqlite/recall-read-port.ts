@@ -4,10 +4,10 @@ import {
   type RecallClaimAggregate,
   type RecallFtsCandidateResult,
   type RecallFtsNote,
+  type RecallFtsRawCandidate,
   type RecallFtsReachedClaimCandidate,
   type RecallFtsSeedCandidate,
   type RecallFtsTerm,
-  type RecallRawCandidate,
   type RecallReadContext,
   type RecallReadPort,
   type RecallSnapshotSource,
@@ -543,7 +543,7 @@ function freezeFtsResult(
   terms: readonly RecallFtsTerm[],
   seeds: readonly RecallFtsSeedCandidate[],
   reachedClaims: readonly RecallFtsReachedClaimCandidate[],
-  rawCandidates: readonly RecallRawCandidate[],
+  rawCandidates: readonly RecallFtsRawCandidate[],
   truncated: boolean,
   notes: readonly RecallFtsNote[],
 ): RecallFtsCandidateResult {
@@ -623,7 +623,7 @@ function assembleFtsCandidates(
   const seedOrderByEntity: Map<string, number> = new Map();
   const reachedClaims: RecallFtsReachedClaimCandidate[] = [];
   const seenClaims: Set<string> = new Set();
-  const rawCandidates: RecallRawCandidate[] = [];
+  const rawCandidates: RecallFtsRawCandidate[] = [];
   const addSeed = (
     statement: DecodedFtsStatement,
     entityId: string,
@@ -789,6 +789,8 @@ class SqliteRecallReadPort implements RecallReadPort {
               if (
                 rawResult === null ||
                 typeof rawResult !== "object" ||
+                Object.keys(rawResult).sort().join("\u0000") !==
+                  "candidateRows\u0000queryUnavailable\u0000supportRows" ||
                 typeof rawResult.queryUnavailable !== "boolean" ||
                 !Array.isArray(rawResult.candidateRows) ||
                 !Array.isArray(rawResult.supportRows)
