@@ -96,9 +96,11 @@ exact column set, term order, scope, entity/redirect shape와 canonical graph가
 고정 code/message의 `RecallReadError(INVALID_RECALL_SURFACE_STATE)`로 변환한다. submitted query,
 surface, ID, SQL, DB path와 driver cause는 error property/message에 넣지 않는다.
 
-ECMAScript의 ill-formed UTF-16 문자열은 Unicode NFKC 입력으로 간주하지 않는다. public recall
-schema와 공유 `normalizeV1`이 모두 lone surrogate를 payload-redacted 입력 오류로 거부해,
-application과 projection이 서로 다른 문자열을 조용히 받아들이지 않게 한다.
+ECMAScript의 ill-formed UTF-16 문자열은 Unicode scalar 문자열이나 NFKC 입력으로 간주하지
+않는다. public recall schema, REC-001의 모든 free-form record input schema와 structural helper,
+공유 `normalizeV1`이 lone surrogate를 payload-redacted 입력 오류로 거부하고 valid astral pair는
+그대로 받는다. 이 조건은 record/recall public 입력과 query·projection normalization 경계에
+한정해 동일하며, application의 모든 문자열 계약이 같다고 확대해 주장하지 않는다.
 
 정상 surface miss와 normalized 2자 미만으로 term이 0개가 된 경우는 오류가 아니라 frozen
 empty seed selection이다. FTS 불가 note와 최종 `entry='none'`은 RCL-003/RCL-007에서 조합한다.
@@ -109,7 +111,10 @@ tests-only RED commit `faf79ec`는 기존 production build 성공 뒤 두 test�
 application module과 domain export가 없어 세 test module이 import 단계에서 0/3 실패했다.
 제품 코드를 넣은 뒤 focused target은 11/11 GREEN이었다. 독립 review의 tests-only RED
 commit `9fc2c54`는 build 성공 뒤 표시 후보 손실·잘못된 cap 순서·ill-formed UTF-16 허용을
-7개 실패로 재현했고, fix 뒤 focused target은 15/15 GREEN이다.
+24개 중 8개 실패로 재현했고, fix 뒤 focused target은 15/15 GREEN이다. 후속 tests-only RED
+commit `73645f6`은 REC-001의 9개 free-form input 위치를 advertised source, MCP Standard Schema,
+validate helper에서 검사해 13개 중 1개 실패와 malformed acceptance 204개를 관찰했다. fix
+commit `2e2b22c` 뒤 같은 target은 13/13 GREEN이다.
 
 fixture는 다음을 고정한다.
 
@@ -122,11 +127,15 @@ fixture는 다음을 고정한다.
 - 한 snapshot 중 concurrent WAL commit 비가시성, 다음 호출 가시성, 반복 byte 결정성
 - 성공/실패 전후 persistent canonical dump와 observer `data_version` 불변
 - callback 종료 capability, ill-formed UTF-16과 손상 payload를 echo하지 않는 typed failure
+- REC-001의 `raw_text`, claim text/kind/label과 양쪽 alias에서 valid astral pair 유지 및 lone
+  high/lone low/high-high/low-high surrogate의 advertised/Standard/helper redacted 거부
 
 재현 명령은 다음과 같다.
 
 ```bash
 pnpm verify:rcl-002
+pnpm verify:rec-001
+pnpm verify:rec-002
 pnpm test:rcl-001
 pnpm test:prj-002
 pnpm test:prj-003
@@ -139,8 +148,9 @@ python3 docs/roadmap/validate.py
 pnpm audit --prod
 ```
 
-최종 로컬 검증은 RCL-002 15/15, RCL-001 10/10, PRJ-002 7/7, PRJ-003 9/9,
-PRJ-005 11/11과 PRJ-007 19/19다. 빠른 전체 suite는 41개 파일 283/283,
+최종 로컬 검증은 RCL-002 15/15, REC-001 13/13, REC-002 13/13, RCL-001 10/10,
+PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11과 PRJ-007 19/19다. 빠른 전체 suite는
+41개 파일 285/285,
 PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap validator는
 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고 production
 dependency 알려진 취약점은 0개다.

@@ -37,7 +37,7 @@
 | `pnpm test:prj-008` | effective TTL과 실제 SQLite aggregate·scope/invariant |
 | `pnpm test:prj-009` | 증분 dispatcher·full replay·atomic publish·commit gate |
 | `pnpm test:prj-010` | S01~S24 projection prefix, S23 288-prefix metamorphic, S24 process crash |
-| `pnpm test:rec-001` | record input/draft/result schema, Unicode bounds와 result index 계약 |
+| `pnpm test:rec-001` | record input/draft/result schema, Unicode scalar·trim bounds와 result index 계약 |
 | `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
 | `pnpm test:rcl-001` | recall input/result 계약, request snapshot과 scope/fixed-now TEMP aggregate |
 | `pnpm test:rec-002` | versioned secret signature·entropy·allowlist와 safe positional result |
@@ -118,8 +118,9 @@ Record/Revise/Recall 출력을 요구하는 S01~S22의 나머지 vertical target
 
 REC-001은 FND-004의 frozen Draft 2020-12 source와 SDK validator를 재사용해 record input,
 독립 ClaimDraft와 typed result를 검증한다. contract fixture는 trim 후 Unicode code-point
-경계, 목적어 XOR, 재해석 pair, trusted metadata 금지와 input/result index coverage를
-검증하며 secret 탐지, DB 해석과 journal write 완료를 주장하지 않는다.
+경계와 모든 free-form input의 well-formed scalar 조건, 목적어 XOR, 재해석 pair, trusted
+metadata 금지와 input/result index coverage를 검증하며 secret 탐지, DB 해석과 journal write
+완료를 주장하지 않는다.
 
 RCL-001은 실제 MCP SDK validator가 search/overview 입력과 RecallResult 닫힌 union을 같은
 Draft 2020-12 source에서 검증하는 contract fixture, trusted runtime snapshot을 정확히 한 번

@@ -92,14 +92,18 @@
   canonical redirect 재사용, RCL-001 typed snapshot seam, read-only/손상 경계를 고정했다.
 - tests-only RED commit `faf79ec`에서 기존 build 성공 뒤 application/domain 제품 관찰점 부재로
   0/3 실패했고, 최소 구현 뒤 focused target이 GREEN이었다. 독립 review RED `9fc2c54`는
-  표시 후보 손실·cap 순서·ill-formed UTF-16 허용을 7개 실패로 재현했고 fix 뒤
-  `pnpm test:rcl-002`는 domain/application/SQLite 15/15 GREEN이다.
+  표시 후보 손실·cap 순서·ill-formed UTF-16 허용을 24개 중 8개 실패로 재현했고 fix 뒤
+  `pnpm test:rcl-002`는 domain/application/SQLite 15/15 GREEN이다. 후속 RED `73645f6`은
+  REC-001의 모든 free-form input을 세 계약 경로에서 검사해 13개 중 1개 실패와 malformed
+  acceptance 204개를 고정했고, fix `2e2b22c` 뒤 REC-001은 13/13 GREEN이다.
 - Unicode code-point 길이·정렬, explicit precedence/빈 배열/<2/max10, 같은 norm의 구두점·NFKC
   표시 후보와 반복 run cap-before-dedupe, 다의 surface, redirect chain/cycle/33-hop/kind/scope
   손상, 51 seed와 repeat 결정성을 검증했다.
 - 실제 WAL snapshot에서 cross-scope 동명 surface가 제외되고 concurrent commit은 다음 recall에서만
   보였다. 성공/실패 뒤 persistent dump와 `data_version`은 같고 error는 payload를 echo하지 않았다.
-- 전체 fast suite 41개 파일 283/283, PRJ-010 39/39, behavior spike 25/25, roadmap
+- record/recall public input과 query·projection normalization의 Unicode scalar 경계가 일치하고
+  valid astral pair는 보존되는지 advertised source, Standard Schema와 helper에서 검증했다.
+- 전체 fast suite 41개 파일 285/285, PRJ-010 39/39, behavior spike 25/25, roadmap
   evidence 67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - FTS, BFS, ranking, Answer/note와 public S09/S21 golden은 RCL-003/RCL-005~008에 남겼다.
 - PR review와 `main` merge 증거가 없으므로 task/phase/master 상태와 완료 수는 `IN_PROGRESS`,
