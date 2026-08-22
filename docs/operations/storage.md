@@ -155,6 +155,12 @@ dry-run과 승인된 전체 replay가 필요하다. 실제 rules version 조립�
 PRJ-009/010과 REL-006/007이 소유한다. PRJ-002만으로 현재 projection row를 재생하거나 DB를
 변경하는 운영 명령은 제공하지 않는다.
 
+PRJ-003의 rules dry-run primitive는 occurrence별 현재 canonical과 새 identity 결과만 받아
+many-to-one redirect 계획 또는 one-to-many 배포 차단·정비 후보를 계산한다. 이 호출은 DB를
+열거나 journal/projection을 수정하지 않으며 blocked 결과가 하나라도 있으면 redirect를
+부분 게시하지 않는다. 실제 rules version 승격, 승인과 원자 replay는 PRJ-009/010과
+REL-006/007이 구현한다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -172,7 +178,8 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- Phase 03: ID·pre-scan·entity/claim 상태 reducer, 증분 dispatcher와 journal+projection crash parity
+- Phase 03: occurrence ID primitive의 event/entity/claim reducer 연결, pre-scan, 증분 dispatcher와
+  journal+projection crash parity
 - Phase 08: 실제 MCP 8-client load, kill/restart와 처리량·지연 판정
 
 user/project 설정, local/remote identity binding과 fail-closed 규칙은 별도
