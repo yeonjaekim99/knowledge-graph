@@ -4,6 +4,8 @@ import type {
   RecordClaimResult,
   RecordResult,
 } from "../../../src/index.js";
+// @ts-expect-error accepted status calculation facts remain application-internal
+import type { AcceptedRecordClaimStatusFacts } from "../../../src/index.js";
 
 const entityDraft: ClaimDraft = {
   subject: "인증 시스템",

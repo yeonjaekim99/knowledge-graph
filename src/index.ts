@@ -1,6 +1,5 @@
 export type {
   AcceptedRecordClaimStatus,
-  AcceptedRecordClaimStatusFacts,
   ClaimDraft,
   MemoryRecordInput,
   RecordClaimResult,
