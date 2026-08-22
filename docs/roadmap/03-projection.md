@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 3/10
+- 진행률: 4/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -18,7 +18,7 @@
 | PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
 | PRJ-003 | occurrence ID와 redirect registry | `DONE` | `log0629` | PRJ-001, PRJ-002 | [PR #23](https://github.com/yeonjaekim99/knowledge-graph/pull/23) |
-| PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
+| PRJ-004 | 사건 pre-scan과 effective statement 계산 | `DONE` | `log0629` | PRJ-001, PRJ-003 | [PR #24](https://github.com/yeonjaekim99/knowledge-graph/pull/24) |
 | PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
 | PRJ-007 | merge·alias와 claim rewrite | `TODO` | `unassigned` | PRJ-005, PRJ-006 | — |
@@ -120,24 +120,43 @@
   손상과 32/33-hop 경계를 safe typed error로 검증했다.
 - many-to-one은 입력 순서와 무관한 redirect 계획을, one-to-many는 ID-only maintenance와
   전체 배포 차단을 반환하며 journal·projection·DB를 수정하지 않는다.
-- 실제 pre-scan, entity/claim 상태 reducer, merge/alias event, DB publish와 RecordResult
-  index mapping은 완료로 과장하지 않고 PRJ-004~009와 REC-005에 남겼다.
+- event pre-scan은 PRJ-004에서 이어 완료했고 entity/claim 상태 reducer, merge/alias event,
+  DB publish와 RecordResult index mapping은 PRJ-005~009와 REC-005에 남겼다.
 
 ### PRJ-004 — 사건 pre-scan과 effective statement 계산
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `prj-004-effective-event-stream`
+- PR: [#24](https://github.com/yeonjaekim99/knowledge-graph/pull/24)
 - 근거: ADR-007, ADR-010, ADR-017
 - 선행 작업: PRJ-001, PRJ-003
 - 결과물: 사건 효력 pre-scan과 의미 event stream
 
 완료 체크:
 
-- [ ] retraction은 과거의 statement/merge/alias만 가리키고 retraction·미래 event는 거부한다.
-- [ ] supersedes graph의 cycle·교차 scope·복수 live leaf를 검출한다.
-- [ ] cascade true/false와 `retracted > superseded > live` 우선순위를 적용한다.
-- [ ] successor payload는 실제 seq 기반 후보 ID와 root order_seq를 함께 유지한다.
-- [ ] effective created_at/provenance/ttl 승계와 recorded 시각 분리를 fixture로 검증한다.
+- [x] retraction은 과거의 statement/merge/alias만 가리키고 retraction·미래 event는 거부한다.
+- [x] supersedes graph의 cycle·교차 scope·복수 live leaf를 검출한다.
+- [x] cascade true/false와 `retracted > superseded > live` 우선순위를 적용한다.
+- [x] successor payload는 실제 seq 기반 후보 ID와 root order_seq를 함께 유지한다.
+- [x] effective created_at/provenance/ttl 승계와 recorded 시각 분리를 fixture로 검증한다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-004-event-pre-scan.md)에 scope-bound 입력, retraction과
+  supersedes pre-scan, actual/effective 순서·시각, frozen 출력과 후속 reducer 경계를 고정했다.
+- 첫 TDD RED는 아직 없는 pre-scan export에서 실패했다. spike 대조 리뷰에서 중간
+  `cascade:false`가 두 live leaf를 만들던 문제와 깊은 재귀 stack 소진을 각각 추가 RED로
+  재현한 뒤 direct-child leaf 판정과 반복형 traversal/root registry로 수정했다.
+- `pnpm verify:prj-004`는 14/14를 3회 연속 통과했고 전체 `pnpm verify:local`은 131/131이다.
+  12,000단계 cycle은 safe typed error로, 같은 길이 cascade는 stack 소진 없이 전체 component로
+  확장된다.
+- event target의 missing/future/retraction/kind/cascade와 supersedes의 cycle·branch·metadata
+  drift·cross-scope를 payload 비노출 오류로 검증했다. 동일 journal 재실행은 byte-equivalent하고
+  domain pass는 clock·DB·network와 production spike import를 사용하지 않는다.
+- 독립 behavior spike 25/25, dependency audit 취약점 0개, roadmap audit와 clean source gate를
+  통과했다. claim/support·describes reduce와 SQLite prefix parity가 남아 S14/S15는 `planned`를
+  유지하며 PRJ-005~010이 이어받는다.
 
 ### PRJ-005 — entity·surface·kind 투영
 

@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-22
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#23 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01·02 종료 · Phase 03 3/10 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#24 누적 게시·로컬 검증과 2026-08-22 scope 재검토
+- 결과: **Phase 01·02 종료 · Phase 03 4/10 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 17/66, Phase 01·02 `DONE`, Phase 03 3/10, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 18/66, Phase 01·02 `DONE`, Phase 03 4/10, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -82,7 +82,7 @@
 19. PRJ-001은 reducer 입력을 한 scope의 정렬 journal과 rules version으로 제한하고 worker가
     `BEGIN IMMEDIATE`를 보유한 채 scope projection을 원자 교체하도록 했다. meta·rules·seq 판정,
     실패 rollback, WAL reader old snapshot과 독립 canonical dump를 검증하면서 normalize·ID·
-    pre-scan·증분 dispatcher와 S02/S24 전체 parity는 후속 PRJ owner에 남겼다.
+    pre-scan은 PRJ-004에서 닫았고, 증분 dispatcher와 S02/S24 전체 parity는 후속 PRJ owner에 남겼다.
 20. PRJ-002는 Accepted ADR 순서의 `normalize_v1`, 별도 literal identity와 immutable relation
     registry를 domain 단일 원본으로 만들었다. C/Turkish locale process fixture, 빈 값과
     Unicode label 경계를 검증하면서 entity/claim reducer와 S01/S03 완료는 후속 owner에 남겼다.
@@ -90,7 +90,13 @@
     계산하고 numeric earliest와 explicit merge keep을 분리했다. redirect를 최종 target으로
     압축하면서 source/target scope·kind, self/dangling/cycle과 32-hop을 fail-closed로 검증하고,
     many-to-one 계획과 one-to-many 전체 배포 차단을 쓰기 없는 dry-run으로 고정했다. 실제
-    사건/entity/claim reducer, DB publish와 S03/S07/S23/S24 parity는 후속 owner에 남겼다.
+    event pre-scan은 PRJ-004에서 닫았고 entity/claim reducer, DB publish와 S03/S07/S23/S24
+    parity는 후속 owner에 남겼다.
+22. PRJ-004는 event retraction과 supersedes graph를 projection write 전에 검증하고 모든
+    statement occurrence anchor를 보존하면서 live reinterpret leaf를 root order/effective
+    metadata에 놓는다. spike 대조 리뷰에서 중간 `cascade:false` split과 재귀 stack 소진을
+    추가 RED로 발견해 direct-child leaf·반복형 traversal로 수정했다. S14/S15의 claim/support,
+    describes와 SQLite prefix parity는 완료로 올리지 않고 PRJ-006/009/010에 유지했다.
 
 ## 의도적으로 남은 상태
 
@@ -103,8 +109,8 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 3/10이다. 다음 dependency-ready
-  작업은 사건 pre-scan과 effective statement 계산인 `PRJ-004`다.
+- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 4/10이다. 다음 dependency-ready
+  작업은 entity·surface·kind 투영인 `PRJ-005`다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -115,11 +121,11 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~008·PRJ-001~003 로컬 gate | PASS — PRJ-003 9/9, architecture/type/build와 Node test 117/117 |
-| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 117/117과 roadmap audit 재현 |
+| STO-001~008·PRJ-001~004 로컬 gate | PASS — PRJ-004 14/14를 3회, architecture/type/build와 Node test 131/131 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 131/131과 roadmap audit 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — domain identifier primitive·unit fixture·문서만 추가, DB mutation·event/entity/claim reducer·public memory/MCP wiring·자동 CI 변경 없음 |
+| 변경 범위 | PASS — domain event pre-scan·unit fixture·문서만 추가, DB mutation·entity/claim reducer·public memory/MCP wiring·자동 CI 변경 없음 |
 
 ## 게시 전 재현 검사
 

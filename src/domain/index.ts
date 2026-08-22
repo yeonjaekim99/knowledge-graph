@@ -54,6 +54,21 @@ export type {
   ProjectionIdentifierErrorCode,
   RedirectKind,
 } from "./projection-identifiers.js";
+export {
+  ProjectionPreScanError,
+  preScanProjectionEvents,
+} from "./projection-event-pre-scan.js";
+export type {
+  EffectiveClaimRetractionEvent,
+  EffectiveDecisionEvent,
+  EffectiveEventRetractionEvent,
+  EffectiveProjectionEvent,
+  EffectiveStatementEvent,
+  PreScannedStatement,
+  ProjectionPreScanErrorCode,
+  ProjectionPreScanResult,
+  StatementCandidateRegistration,
+} from "./projection-event-pre-scan.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,
