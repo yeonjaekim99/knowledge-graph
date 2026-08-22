@@ -29,7 +29,9 @@ MCP adapter의 `createMcpJsonSchemaContract`에 넘긴다. 별도 DTO interface�
 - search는 `mode` 생략 또는 `search`와 필수 query만 허용한다. overview는 명시한
   `mode=overview`만 받고 query/terms/depth를 닫힌 branch가 거부한다.
 - query는 양끝 whitespace를 제거한 뒤 Unicode 문자 기준 1~4,096자이고 terms는 최대
-  10개·각 1~256자, depth는 1~3, limit은 1~50이다.
+  10개·각 1~256자, depth는 1~3, limit은 1~50이다. advertised query schema 자체가 anchored
+  trim-aware pattern과 `x-recall-trimmedCodePoint*` annotation으로 padding을 한도에서 제외한다.
+  adapter는 반환 전에 trim하고 private exact code-point guard로 SDK regex drift도 닫는다.
 - schema의 default annotation과 runtime 반환은 `mode=search`, `depth=2`, `limit=10`,
   `detail=brief`로 일치한다. MCP SDK가 직접 소비하는 Standard Schema validate와 helper가
   같은 canonical default 함수를 통과하며 overview에는 depth 기본을 만들지 않는다.
@@ -132,6 +134,9 @@ fixture가 3/4 RED로 재현했다. Standard Schema와 helper를 한 canonical d
 개별 reader가 닫힌 뒤에도 factory가 다시 close하는 lifecycle fixture는 STO-002 5/6 RED로
 강참조 누적을 재현했다. deregistration을 worker close 완료 뒤로 옮기고 반복·factory close가
 같은 in-flight Promise를 기다리는 경합 fixture까지 추가해 7/7 GREEN으로 닫았다.
+독립 SDK contract로 advertised definition을 compile한 fixture는 padded emoji 4,096 query를
+raw `maxLength`가 거부해 focused 3/4 RED였다. source schema를 trim-aware Unicode pattern과
+명시 annotation으로 정정하고 exact guard를 유지해 wrapper 없이도 4/4 GREEN으로 닫았다.
 
 재현 명령은 다음과 같다.
 

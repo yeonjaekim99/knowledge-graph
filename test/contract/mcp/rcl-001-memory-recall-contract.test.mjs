@@ -3,6 +3,7 @@ import { test } from "node:test";
 
 import {
   JsonSchemaValidationError,
+  createMcpJsonSchemaContract,
   memoryRecallInputContract,
   recallResultContract,
   validateMemoryRecallInput,
@@ -133,6 +134,31 @@ test("input validation rejects missing query, mode leaks, closed fields, and Uni
   ].validate({ query: paddedUnicodeQuery });
   assert.equal(sdkValidation.issues, undefined);
   assert.equal(Array.from(sdkValidation.value.query).length, 4_096);
+
+  const advertisedContract = createMcpJsonSchemaContract(
+    memoryRecallInputDefinition,
+  );
+  const advertisedValidation = await advertisedContract.standardSchema[
+    "~standard"
+  ].validate({ query: paddedUnicodeQuery });
+  assert.equal(advertisedValidation.issues, undefined);
+  assert.equal(advertisedValidation.value.query, paddedUnicodeQuery);
+  const advertisedTooLong = await advertisedContract.standardSchema[
+    "~standard"
+  ].validate({ query: ` ${"😀".repeat(4_097)} ` });
+  assert.ok(advertisedTooLong.issues?.length > 0);
+
+  const advertisedQuerySchema =
+    memoryRecallInputDefinition.schema.oneOf[0].properties.query;
+  assert.equal(advertisedQuerySchema.maxLength, undefined);
+  assert.equal(
+    advertisedQuerySchema["x-recall-trimmedCodePointMinLength"],
+    1,
+  );
+  assert.equal(
+    advertisedQuerySchema["x-recall-trimmedCodePointMaxLength"],
+    4_096,
+  );
 });
 
 test("RecallResult schema accepts strict claim/raw answers without assembling semantics", async () => {

@@ -153,6 +153,8 @@
     같은 canonical default 경로로 묶고 overview에는 불필요한 depth가 생기지 않게 고정했다.
     매 recall 뒤 닫힌 reader가 factory Set에 남는 강참조도 제거하되 worker close 완료 전에는
     ownership을 유지하고, 반복 reader close와 factory close가 같은 종료 Promise를 기다리게 했다.
+    advertised query schema의 raw `maxLength`와 runtime 선-trim 의미도 독립 SDK compile 회귀로
+    발견해 padding을 제외한 Unicode 4,096자 경계를 schema source 자체에 표현했다.
 
 ## 의도적으로 남은 상태
 

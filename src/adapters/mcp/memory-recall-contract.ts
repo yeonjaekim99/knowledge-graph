@@ -41,6 +41,13 @@ function withTrimmedQuery(value: unknown): unknown {
 
 const schemaStandardProperties =
   typedSchemaMemoryRecallInputContract.standardSchema["~standard"];
+const INVALID_QUERY_BOUNDS_RESULT = Object.freeze({
+  issues: Object.freeze([
+    Object.freeze({
+      message: "query violates a trimmed Unicode code-point bound",
+    }),
+  ]),
+});
 
 async function validateCanonicalMemoryRecallInput(
   value: unknown,
@@ -53,7 +60,14 @@ async function validateCanonicalMemoryRecallInput(
   if ("issues" in result) {
     return result;
   }
-  return Object.freeze({ value: withInputDefaults(result.value) });
+  const input = withInputDefaults(result.value);
+  if (input.mode === "search") {
+    const queryLength = Array.from(input.query).length;
+    if (queryLength < 1 || queryLength > 4_096) {
+      return INVALID_QUERY_BOUNDS_RESULT;
+    }
+  }
+  return Object.freeze({ value: input });
 }
 
 const normalizedMemoryRecallStandardSchema: McpJsonSchemaContract<
