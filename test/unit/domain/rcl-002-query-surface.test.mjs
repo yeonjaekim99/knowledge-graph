@@ -61,7 +61,7 @@ function assertDeepFrozen(value) {
   }
 }
 
-test("explicit terms take precedence, preserve input order, reuse normalize_v1, and filter short duplicates", () => {
+test("explicit terms preserve display order, reuse normalize_v1, and filter only short candidates", () => {
   const result = extractRecallQueryTerms({
     query: "this query must not be derived",
     terms: [
@@ -80,8 +80,10 @@ test("explicit terms take precedence, preserve input order, reuse normalize_v1, 
 
   assert.deepEqual(result, [
     { text: "Ａ-Ｂ", surfaceNorm: "ab" },
+    { text: "ab", surfaceNorm: "ab" },
     { text: "😀😀", surfaceNorm: "😀😀" },
     { text: "가 나", surfaceNorm: "가나" },
+    { text: "가-나", surfaceNorm: "가나" },
     { text: "１２", surfaceNorm: "12" },
     { text: "Node.js", surfaceNorm: "node.js" },
   ]);
@@ -90,6 +92,19 @@ test("explicit terms take precedence, preserve input order, reuse normalize_v1, 
     extractRecallQueryTerms({ query: "query is still ignored", terms: [] }),
     [],
   );
+  assertDeepFrozen(result);
+});
+
+test("distinct explicit display terms survive a shared surface normalization", () => {
+  const result = extractRecallQueryTerms({
+    query: "ignored",
+    terms: ["auth-server", "auth_server"],
+  });
+
+  assert.deepEqual(result, [
+    { text: "auth-server", surfaceNorm: "authserver" },
+    { text: "auth_server", surfaceNorm: "authserver" },
+  ]);
   assertDeepFrozen(result);
 });
 
@@ -115,6 +130,24 @@ test("query-derived terms sort by normalized Unicode code-point length then sour
   );
 });
 
+test("query candidate ordering and cap precede surface normalization dedupe", () => {
+  assert.deepEqual(extractRecallQueryTerms({ query: "ＡＢＣ ABC" }), [
+    { text: "ＡＢＣ ABC", surfaceNorm: "abcabc" },
+    { text: "ＡＢＣ", surfaceNorm: "abc" },
+    { text: "ABC", surfaceNorm: "abc" },
+  ]);
+
+  const query = `${Array(10).fill("aaaa").join(" ")} zz`;
+  const result = extractRecallQueryTerms({ query });
+  assert.equal(result.length, 10);
+  assert.equal(result[0].text, query);
+  assert.deepEqual(
+    result.slice(1).map(({ text }) => text),
+    Array(9).fill("aaaa"),
+  );
+  assert.equal(result.some(({ text }) => text === "zz"), false);
+});
+
 test("invalid extractor input fails without retaining submitted query or term payload", () => {
   const secret = "secret-query-payload";
   assert.throws(
@@ -129,6 +162,41 @@ test("invalid extractor input fails without retaining submitted query or term pa
     () => extractRecallQueryTerms({ query: " ".repeat(8) }),
     querySurfaceFailure("INVALID_QUERY_TERM_INPUT"),
   );
+  const malformed = `safe-${"\ud800"}-payload`;
+  assert.throws(
+    () => extractRecallQueryTerms({ query: malformed }),
+    querySurfaceFailure("INVALID_QUERY_TERM_INPUT", malformed),
+  );
+  assert.throws(
+    () => extractRecallQueryTerms({ query: "safe", terms: [malformed] }),
+    querySurfaceFailure("INVALID_QUERY_TERM_INPUT", malformed),
+  );
+});
+
+test("surface pair dedupe keeps the first distinct display term", () => {
+  const terms = [term("auth-server"), term("auth_server")];
+  const result = resolveRecallSurfaceSeeds(
+    surfaceState({
+      terms,
+      candidates: [
+        candidate(0, "authserver", "e1.0"),
+        candidate(1, "authserver", "e1.0"),
+      ],
+      entities: [entity("e1.0")],
+    }),
+  );
+
+  assert.deepEqual(result, {
+    terms,
+    seeds: [
+      {
+        entityId: "e1.0",
+        matchedTerm: "auth-server",
+        surfaceNorm: "authserver",
+      },
+    ],
+    truncated: false,
+  });
 });
 
 test("surface rows are canonicalized through merge and ID redirect chains before stable polysemy dedupe", () => {

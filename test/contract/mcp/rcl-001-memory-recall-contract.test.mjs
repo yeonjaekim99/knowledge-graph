@@ -112,6 +112,8 @@ test("input validation rejects missing query, mode leaks, closed fields, and Uni
     { mode: "search", query: "ok", terms: Array(11).fill("term") },
     { mode: "search", query: "ok", terms: [""] },
     { mode: "search", query: "ok", terms: ["x".repeat(257)] },
+    { mode: "search", query: `safe-${"\ud800"}-payload` },
+    { mode: "search", query: "ok", terms: [`safe-${"\udfff"}-payload`] },
     { mode: "search", query: "ok", scope_key: "u:attacker/p:other" },
     { mode: "search", query: "ok", actor: "attacker" },
     { mode: "search", query: "😀".repeat(4_097) },

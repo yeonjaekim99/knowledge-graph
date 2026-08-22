@@ -208,6 +208,37 @@ test("surface reads remain on one snapshot across a concurrent WAL commit", asyn
   assert.deepEqual(next.seeds.map(({ entityId }) => entityId), ["e1.0", "e2.0"]);
 });
 
+test("distinct display terms with one normalized lookup keep order and dedupe only the surface entity pair", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  await factory.enqueueWriteTransaction([
+    entityCommand("e1.0", SCOPE),
+    surfaceCommand(SCOPE, "authserver", "e1.0"),
+  ]);
+
+  const result = await new RecallSnapshotService(
+    runtime(),
+    createSqliteRecallReadPort(factory),
+  ).withSnapshot((source) =>
+    resolveRecallQuerySurface(source, {
+      query: "ignored",
+      terms: ["auth-server", "auth_server"],
+    }));
+
+  assert.deepEqual(result.terms, [
+    { text: "auth-server", surfaceNorm: "authserver" },
+    { text: "auth_server", surfaceNorm: "authserver" },
+  ]);
+  assert.deepEqual(result.seeds, [
+    {
+      entityId: "e1.0",
+      matchedTerm: "auth-server",
+      surfaceNorm: "authserver",
+    },
+  ]);
+  assert.equal(result.truncated, false);
+});
+
 test("fifty-one canonical matches produce fifty ordered seeds plus a truncation signal", async (t) => {
   const { factory } = await fixture();
   t.after(() => factory.close());
