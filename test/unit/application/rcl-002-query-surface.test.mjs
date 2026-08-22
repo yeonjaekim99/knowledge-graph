@@ -56,10 +56,18 @@ test("query surface policy runs inside the RCL-001 snapshot and exposes only the
               truncated: false,
             });
           },
+          searchFtsCandidates: async () => {
+            throw new Error("unused FTS read");
+          },
+          readTraversalNeighborhood: async () => {
+            throw new Error("unused traversal read");
+          },
         });
         assert.deepEqual(Object.keys(source), [
           "listValidClaimAggregates",
           "resolveSurfaceSeeds",
+          "searchFtsCandidates",
+          "readTraversalNeighborhood",
         ]);
         assert.equal("query" in source, false);
         assert.equal("sql" in source, false);

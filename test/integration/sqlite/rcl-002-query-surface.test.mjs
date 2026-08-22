@@ -140,6 +140,7 @@ test("scoped surface candidates resolve through redirect chains with determinist
       "resolveSurfaceSeeds",
       "searchFtsCandidates",
       "selectOverviewCandidates",
+      "readTraversalNeighborhood",
     ]);
     assert.equal("query" in source, false);
     assert.equal("sql" in source, false);

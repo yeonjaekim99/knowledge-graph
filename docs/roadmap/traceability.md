@@ -40,7 +40,8 @@ production gate로 닫는다.
 [`adr-production-scenarios.json`](../../test/manifests/adr-production-scenarios.json)은 아래
 S01~S24 각각에 유일한 production target, test 계층과 이 표의 전체 owner 작업을 고정한다.
 foundation drift test가 source matrix checksum, ADR·task 연결과 target 상태를 검사한다.
-현재 S20 target은 `implemented`이고 나머지 23개는 `planned`다. 실제 동작과 black-box test는
+현재 S12, S13, S20, S23, S24 target 5개는 `implemented`이고 나머지 19개는 `planned`다.
+실제 동작과 black-box test는
 각 행의 구현·검증 작업이 같은 PR에서 추가한다. 공통 harness가 있다는 사실은 개별 production
 gate의 완료 증거를 대신하지 않는다.
 

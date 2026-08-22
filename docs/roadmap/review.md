@@ -3,9 +3,9 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#45 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
+- 성격: 작성자 자체 교차 검토, PR #3~#46 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
   REC-004 독립 review·Promise species 보완·최종 재검토·최신 main 결합 재검증
-- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~004 완료 · REC-005/RCL-005 진행**
+- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~005 완료 · REC-005 진행**
 
 ## 검토 결과
 
@@ -19,7 +19,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 32/66, Phase 01·02·03과 REC-001~004/RCL-001~004 `DONE`, REC-005/RCL-005 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 33/66, Phase 01·02·03과 REC-001~004/RCL-001~005 `DONE`, REC-005 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -246,6 +246,14 @@
     post-rebase 독립 최종 review HIGH/MEDIUM/LOW 0건 및 전체 388/388을 확인했다.
     [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)이 구현·검증·상태 증거를
     `main`에 고정해 제품 roll-up을 32/66으로 올렸다.
+37. RCL-005는 같은 snapshot의 TEMP valid aggregate에서 양방향 entity link와 literal 포함
+    incident를 분리해 읽고, depth 1~3 BFS·31→30 fanout·canonical one-visit·multi-seed
+    parent/path를 결정적으로 조립한다. 독립 review에서 cycle endpoint, Proxy/accessor/error
+    redaction, 81-code-point 표시, stateful input snapshot, incident⊆link와 긴 FTS suffix 경계를
+    tests-only RED로 고정해 모두 닫았다. RCL-004와 semantic rebase한 최종 상태에서 focused
+    21/21, 전체 409/409와 독립 review HIGH/MEDIUM/LOW 0건을 재현했다.
+    [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)이 구현·검증·상태 증거를
+    `main`에 고정해 제품 roll-up을 33/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -266,8 +274,9 @@
   [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39),
   [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004는
   [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)으로 완료했다.
-  RCL-004는 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)로 완료했고,
-  dependency-ready REC-005와 RCL-005는 격리 branch에서 병렬 진행한다.
+  RCL-004는 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), RCL-005는
+  [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)으로 완료했고,
+  dependency-ready REC-005는 격리 branch에서 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -289,7 +298,8 @@
 | RCL-002 branch gate | PASS — architecture/type/build, RCL-002 15/15·REC-001 13/13·REC-002 13/13·REC-003 17/17·RCL-001 10/10, 전체 fast 42개 파일 302/302, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | RCL-003 branch gate | PASS — architecture/type/build, RCL-003 21/21·RCL-002 15/15·RCL-001 10/10·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 44개 파일 323/323, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 2,100 support·21 candidate probe 및 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | RCL-004 branch gate | PASS — 최신 main `25eeb72` 위 semantic rebase, RCL-004 15/15·REC-004 focused 50/50을 포함한 verify 70/70·RCL-001 10/10·RCL-002 15/15·RCL-003 21/21·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 48개 파일 388/388, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; REC-004 writer resolver·REC-005 planning 보존, 독립 최종 review HIGH/MEDIUM/LOW 0건 |
-| 변경 범위 | PASS — REC-003 sanitation·RCL-003 FTS와 REC-004 writer resolver를 기존 REC-001/RCL-001 snapshot 경계에 병존시키고, dedupe·journal record service·BFS/ranking/Answer·MCP handler·자동 CI 변경은 포함하지 않음 |
+| RCL-005 branch gate | PASS — 최신 main `51523f3` 위 semantic rebase, RCL-005 21/21·RCL-004 15/15·REC-004 70/70·RCL-001/002/003 10/10·15/15·21/21, 전체 fast 51개 파일 409/409, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 최종 review HIGH/MEDIUM/LOW 0건 |
+| 변경 범위 | PASS — 기존 REC-004 writer와 RCL-001~004 snapshot/surface/FTS/overview seam에 bounded BFS/path를 병존시키고, record dedupe·journal service·ranking/Answer·MCP handler·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사
 

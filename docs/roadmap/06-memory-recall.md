@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 4/9
+- 진행률: 5/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -19,7 +19,7 @@
 | RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
-| RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), branch `rcl-005-bfs-traversal` |
+| RCL-005 | BFS 이동·수집·경로 복원 | `DONE` | `log0629` | RCL-001, RCL-002 | [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md) |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
@@ -209,22 +209,68 @@
 
 ### RCL-005 — BFS 이동·수집·경로 복원
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-005-bfs-traversal`
 - Planning PR: [#40](https://github.com/yeonjaekim99/knowledge-graph/pull/40)
+- PR: [#46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)
 - 근거: ADR-010, ADR-012
 - 선행 작업: RCL-001, RCL-002
 - 결과물: TEMP link/incident views, reached와 parent map
 
 완료 체크:
 
-- [ ] entity-object claim만 양방향 이동하고 방문 entity의 literal 포함 incident를 별도 수집한다.
-- [ ] 요청 depth까지 조기 종료 없이 BFS하며 canonical entity 기준으로 한 번 방문한다.
-- [ ] link와 incident를 규정된 aggregate tie-break로 31개 읽어 30개만 쓴다.
-- [ ] 같은 claim은 가장 낮은 depth와 가장 이른 seed/간선 경로를 유지한다.
-- [ ] 별칭·FTS·overview 표시와 entity 간 실제 hops를 구분해 path를 복원한다.
-- [ ] incoming, literal, multi-seed와 cycle fixture에서 path/hops가 반복 실행마다 같다.
+- [x] entity-object claim만 양방향 이동하고 방문 entity의 literal 포함 incident를 별도 수집한다.
+- [x] 요청 depth까지 조기 종료 없이 BFS하며 canonical entity 기준으로 한 번 방문한다.
+- [x] link와 incident를 규정된 aggregate tie-break로 31개 읽어 30개만 쓴다.
+- [x] 같은 claim은 가장 낮은 depth와 가장 이른 seed/간선 경로를 유지한다.
+- [x] 별칭·FTS·overview 표시와 entity 간 실제 hops를 구분해 path를 복원한다.
+- [x] incoming, literal, multi-seed와 cycle fixture에서 path/hops가 반복 실행마다 같다.
+
+완료 증거:
+
+- [구현 결정](../implementation/rcl-005-bfs-traversal.md)에 RCL-001의 fixed scope/now snapshot과
+  유효 aggregate에 뿌리를 둔 TEMP link/incident, typed neighborhood, canonical BFS와
+  path/hops 경계를 고정했다.
+- tests-only RED `6163876`은 기존 build 성공 뒤 새 traversal 제품 관찰점 부재로 0/3
+  실패했고, 최소 GREEN `13cec9e` 뒤 `pnpm verify:rcl-005`는 unit 5, S12 3, S13 1의
+  9/9다.
+- 로컬 diff 재검토 RED `2547781`은 non-parent cycle의 ancestor endpoint 손실을 8/9로
+  포착했고 fix `c389e8e`는 parent claim/self-loop만 중복 append에서 제외해 9/9로 닫았다.
+- 독립 review remediation RED `237e78e`는 payload-bearing source/proxy 오류, SQLite raw
+  envelope·row·array/accessor와 canonical name과 동일한 81-code-point surface 중복 표시를
+  9/13으로 포착했다. fix `da1b8a0`은 descriptor-only bounded snapshot과 fresh fixed error,
+  raw equality-before-truncation을 적용해 focused target 13/13으로 닫았다.
+- 최종 재review RED `213b81d`는 source property getter·Proxy lookup, method invocation,
+  Promise rejection·hostile thenable settlement와 adapter error의 application 경계 변환을
+  11/18로 포착했다. fix `b84f287`은 single lookup과 receiver binding 뒤 lookup·apply·await·
+  validation을 한 fail-closed 경계로 묶어 focused target 18/18로 닫았다.
+- 후속 독립 review RED `5c92341`은 input branch의 stateful 재-snapshot, entity-object
+  incident의 link 누락과 긴 FTS marker 소실을 18/21로 포착했다. fix `fae0ca0`은 single
+  input snapshot, incident⊆link와 suffix-first 80-code-point 예산으로 focused 21/21을 만들었다.
+- RCL-004 통합 첫 gate는 snapshot capability assertion이 overview facet을 모르기 때문에
+  20/21이었다. integration-only `a9aeb9f`가 overview와 traversal facet의 공존을 고정해
+  RCL-005 21/21과 RCL-004 15/15를 함께 통과시켰다.
+- file SQLite에서 scope·expiry가 이동/수집에 들어오지 않고, 같은 WAL snapshot 중 concurrent
+  commit은 다음 callback에서만 보이며, 성공·실패 뒤 permanent dump와 외부 `data_version`이
+  변하지 않음을 확인했다. cross-scope endpoint 손상과 callback 종료 source는 payload를
+  echo하지 않고 fail closed한다.
+- S12/S13 target이 production traversal/fanout seam을 실행하므로 manifest를 `implemented`로
+  맞췄다. 두 scenario의 ranking·public Answer/note·전체 vertical/성능 소유권은
+  RCL-006~008·REL-003에 남는다.
+- 최신 `main` `51523f3` 위 semantic rebase에서 RCL-003 FTS와 RCL-004 overview facet,
+  REC-004 shared writer connection seam, RCL-004 `DONE`/PR #45와 REC-005
+  `IN_PROGRESS`/PR #44 상태를 보존했다. RCL-005 21/21, RCL-004 15/15,
+  RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, PRJ-002 7/7,
+  PRJ-003 9/9, PRJ-005 11/11,
+  PRJ-007 19/19, PRJ-008 8/8과 REC-001/002/003 13/13·13/13·17/17도 회귀했고 REC-004
+  통합 gate는 70/70이다. 전체 fast는 51개 파일 409/409, PRJ-010은 39/39, spike는
+  25/25다. roadmap evidence 67/67·ADR 17/17·scenario 24/24·link 415와 dependency audit
+  0을 확인했다.
+- 최신 main 재통합 뒤 독립 최종 review가 HIGH/MEDIUM/LOW finding 0건과 focused 21/21,
+  전체 fast 51개 파일 409/409, PRJ-010 39/39 및 모든 공통 gate를 재현했다.
+  [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)이 구현·remediation·검증과
+  이 완료 상태를 `main`에 함께 고정한다.
 
 ### RCL-006 — ranking·상충·문장 조합
 

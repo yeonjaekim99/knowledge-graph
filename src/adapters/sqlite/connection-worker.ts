@@ -52,6 +52,7 @@ import {
 import { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
 import { RECALL_FTS_SQL_SOURCE } from "./recall-fts-sql.js";
 import { RECALL_OVERVIEW_SQL_SOURCE } from "./recall-overview-sql.js";
+import { RECALL_TRAVERSAL_SQL_SOURCE } from "./recall-traversal-sql.js";
 
 interface SqliteRunMetadata {
   readonly changes: number;
@@ -2550,6 +2551,8 @@ function executeRead(
 }
 
 function dropRecallTempAggregate(database: SqliteDatabaseConnection): void {
+  database.exec(RECALL_TRAVERSAL_SQL_SOURCE.dropTempLinks);
+  database.exec(RECALL_TRAVERSAL_SQL_SOURCE.dropTempIncident);
   database.exec(RECALL_SNAPSHOT_SQL_SOURCE.dropTempAggregate);
 }
 
@@ -2576,6 +2579,8 @@ function beginRecallSnapshot(
     database
       .prepare(RECALL_SNAPSHOT_SQL_SOURCE.createTempAggregate)
       .run({ now: evaluationNow, scope_key: scopeKey });
+    database.exec(RECALL_TRAVERSAL_SQL_SOURCE.createTempLinks);
+    database.exec(RECALL_TRAVERSAL_SQL_SOURCE.createTempIncident);
     if (!database.inTransaction) {
       throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
     }
@@ -2942,6 +2947,39 @@ function readRecallSnapshotOverview(
   });
 }
 
+function readRecallSnapshotTraversalState(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  entityId: string,
+): Readonly<{
+  entityRow: Readonly<Record<string, unknown>> | null;
+  linkRows: readonly Readonly<Record<string, unknown>>[];
+  incidentRows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction ||
+    !/^e[1-9][0-9]*\.[0-9]+$/u.test(entityId)
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+  return Object.freeze({
+    entityRow: rowOrNull(
+      database.prepare(RECALL_TRAVERSAL_SQL_SOURCE.selectEntity).get(entityId),
+    ),
+    linkRows: rows(
+      database.prepare(RECALL_TRAVERSAL_SQL_SOURCE.selectLinks).all(entityId),
+    ),
+    incidentRows: rows(
+      database
+        .prepare(RECALL_TRAVERSAL_SQL_SOURCE.selectIncidents)
+        .all(entityId),
+    ),
+  });
+}
+
 function endRecallSnapshot(
   database: SqliteDatabaseConnection,
   state: WorkerRecallSnapshotState,
@@ -3171,6 +3209,33 @@ function handleRequest(
         recallState,
         request.snapshotId,
         request.limit,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-traversal") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = readRecallSnapshotTraversalState(
+        database,
+        recallState,
+        request.snapshotId,
+        request.entityId,
       );
       post({ type: "success", requestId: request.requestId, result });
     } catch (error) {

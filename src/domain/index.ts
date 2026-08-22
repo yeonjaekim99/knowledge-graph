@@ -35,6 +35,26 @@ export {
   extractRecallQueryTerms,
   resolveRecallSurfaceSeeds,
 } from "./recall-query-surface.js";
+export {
+  RecallGraphTraversalError,
+  compareRecallTraversalClaims,
+  truncateRecallSeedDisplay,
+  validateRecallGraphTraversalInput,
+  validateRecallTraversalNeighborhood,
+} from "./recall-graph-traversal.js";
+export type {
+  RecallGraphSeed,
+  RecallGraphTraversalErrorCode,
+  RecallGraphTraversalInput,
+  RecallGraphTraversalResult,
+  RecallReachedClaim,
+  RecallTraversalClaimReference,
+  RecallTraversalEntity,
+  RecallTraversalLink,
+  RecallTraversalNeighborhood,
+  RecallTraversalParent,
+  ValidatedRecallGraphTraversalInput,
+} from "./recall-graph-traversal.js";
 export type {
   RecallQuerySurfaceErrorCode,
   RecallQuerySurfaceSelection,

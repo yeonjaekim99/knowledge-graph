@@ -19,6 +19,13 @@ import {
   type RecallTruncationReason,
 } from "../../application/ports/recall-read-port.js";
 import {
+  RecallGraphTraversalError,
+  validateRecallTraversalNeighborhood,
+  type RecallTraversalClaimReference,
+  type RecallTraversalLink,
+  type RecallTraversalNeighborhood,
+} from "../../domain/recall-graph-traversal.js";
+import {
   RecallQuerySurfaceError,
   resolveRecallSurfaceSeeds,
   type RecallQueryTerm,
@@ -67,6 +74,41 @@ const SURFACE_REDIRECT_ROW_KEYS: readonly string[] = Object.freeze([
   "recall_surface_redirect_new_id",
   "recall_surface_redirect_old_id",
   "recall_surface_redirect_reason",
+]);
+const TRAVERSAL_ENTITY_ROW_KEYS: readonly string[] = Object.freeze([
+  "recall_traversal_entity_id",
+  "recall_traversal_entity_merged_into",
+  "recall_traversal_entity_name",
+  "recall_traversal_entity_scope_key",
+]);
+const TRAVERSAL_CLAIM_ROW_KEYS: readonly string[] = Object.freeze([
+  "recall_traversal_claim_id",
+  "recall_traversal_claim_origin_seq",
+  "recall_traversal_claim_scope_key",
+  "recall_traversal_claim_state",
+  "recall_traversal_last_seen_at",
+  "recall_traversal_object_id",
+  "recall_traversal_object_merged_into",
+  "recall_traversal_object_name",
+  "recall_traversal_object_scope_key",
+  "recall_traversal_strongest_rank",
+  "recall_traversal_subject_id",
+  "recall_traversal_subject_merged_into",
+  "recall_traversal_subject_name",
+  "recall_traversal_subject_scope_key",
+  "recall_traversal_support_count",
+]);
+const TRAVERSAL_LINK_ROW_KEYS: readonly string[] = Object.freeze(
+  [
+    ...TRAVERSAL_CLAIM_ROW_KEYS,
+    "recall_traversal_from_id",
+    "recall_traversal_to_id",
+  ].sort(),
+);
+const TRAVERSAL_RESULT_KEYS: readonly string[] = Object.freeze([
+  "entityRow",
+  "incidentRows",
+  "linkRows",
 ]);
 
 const FTS_CANDIDATE_ROW_KEYS: readonly string[] = Object.freeze(
@@ -197,6 +239,10 @@ function invalidOverviewCandidate(): never {
   throw new RecallReadError("INVALID_RECALL_OVERVIEW_CANDIDATE");
 }
 
+function invalidTraversalState(): never {
+  throw new RecallReadError("INVALID_RECALL_TRAVERSAL_STATE");
+}
+
 function snapshotExactRecord(
   value: unknown,
   expectedKeys: readonly string[],
@@ -316,6 +362,112 @@ function snapshotExactArray(
     return Object.freeze(snapshot);
   } catch {
     return invalid();
+  }
+}
+
+function exactTraversalRow(
+  value: unknown,
+  expectedKeys: readonly string[],
+): Readonly<Record<string, unknown>> {
+  return snapshotExactRecord(value, expectedKeys, invalidTraversalState);
+}
+
+function decodeTraversalClaim(
+  value: unknown,
+  context: RecallReadContext,
+  link: boolean,
+): RecallTraversalClaimReference | RecallTraversalLink {
+  const row = exactTraversalRow(
+    value,
+    link ? TRAVERSAL_LINK_ROW_KEYS : TRAVERSAL_CLAIM_ROW_KEYS,
+  );
+  const objectId = row["recall_traversal_object_id"];
+  const objectName = row["recall_traversal_object_name"];
+  const objectScope = row["recall_traversal_object_scope_key"];
+  const objectMergedInto = row["recall_traversal_object_merged_into"];
+  if (
+    row["recall_traversal_claim_scope_key"] !== context.scopeKey ||
+    row["recall_traversal_claim_state"] !== "active" ||
+    row["recall_traversal_subject_scope_key"] !== context.scopeKey ||
+    row["recall_traversal_subject_merged_into"] !== null ||
+    (objectId === null
+      ? objectName !== null || objectScope !== null || objectMergedInto !== null
+      : objectScope !== context.scopeKey || objectMergedInto !== null)
+  ) {
+    return invalidTraversalState();
+  }
+  const reference: RecallTraversalClaimReference = Object.freeze({
+    claimId: row["recall_traversal_claim_id"] as string,
+    subjectId: row["recall_traversal_subject_id"] as string,
+    subjectName: row["recall_traversal_subject_name"] as string,
+    objectId: objectId as string | null,
+    objectName: objectName as string | null,
+    supportCount: row["recall_traversal_support_count"] as number,
+    strongestRank: row["recall_traversal_strongest_rank"] as 1 | 2 | 3,
+    lastSeenAt: row["recall_traversal_last_seen_at"] as number,
+    originSeq: row["recall_traversal_claim_origin_seq"] as number,
+  });
+  if (!link) {
+    return reference;
+  }
+  return Object.freeze({
+    ...reference,
+    fromId: row["recall_traversal_from_id"] as string,
+    toId: row["recall_traversal_to_id"] as string,
+  });
+}
+
+function decodeTraversalState(
+  entityId: string,
+  raw: unknown,
+  context: RecallReadContext,
+): RecallTraversalNeighborhood {
+  const envelope = snapshotExactRecord(
+    raw,
+    TRAVERSAL_RESULT_KEYS,
+    invalidTraversalState,
+  );
+  const entityValue = envelope["entityRow"];
+  if (entityValue === null) {
+    return invalidTraversalState();
+  }
+  const entity = exactTraversalRow(entityValue, TRAVERSAL_ENTITY_ROW_KEYS);
+  const linkRows = snapshotExactArray(
+    envelope["linkRows"],
+    31,
+    invalidTraversalState,
+  );
+  const incidentRows = snapshotExactArray(
+    envelope["incidentRows"],
+    31,
+    invalidTraversalState,
+  );
+  if (
+    entity["recall_traversal_entity_id"] !== entityId ||
+    entity["recall_traversal_entity_scope_key"] !== context.scopeKey ||
+    entity["recall_traversal_entity_merged_into"] !== null
+  ) {
+    return invalidTraversalState();
+  }
+  try {
+    return validateRecallTraversalNeighborhood(
+      {
+        entity: {
+          entityId: entity["recall_traversal_entity_id"],
+          entityName: entity["recall_traversal_entity_name"],
+        },
+        links: linkRows.map((row) =>
+          decodeTraversalClaim(row, context, true)),
+        incidents: incidentRows.map((row) =>
+          decodeTraversalClaim(row, context, false)),
+      },
+      entityId,
+    );
+  } catch (error: unknown) {
+    if (error instanceof RecallGraphTraversalError) {
+      return invalidTraversalState();
+    }
+    throw error;
   }
 }
 
@@ -1269,6 +1421,16 @@ class SqliteRecallReadPort implements RecallReadPort {
               } catch {
                 return invalidOverviewCandidate();
               }
+            },
+            readTraversalNeighborhood: async (entityId: string) => {
+              if (!/^e[1-9][0-9]*\.[0-9]+$/u.test(entityId)) {
+                return invalidTraversalState();
+              }
+              return decodeTraversalState(
+                entityId,
+                await snapshot.readRawTraversalState(entityId),
+                context,
+              );
             },
           });
           return operation(source);

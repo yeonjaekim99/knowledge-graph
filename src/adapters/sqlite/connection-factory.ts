@@ -26,6 +26,7 @@ import {
   type SqliteRecallOverviewRowsResult,
   type SqliteRecallSnapshotBeginResult,
   type SqliteRecallSurfaceStateRowsResult,
+  type SqliteRecallTraversalStateRowsResult,
   type SqliteTransactionCommand,
   type SqliteWriteEntityDraftInput,
   type SqliteWriteEntityDraftResolution,
@@ -131,6 +132,13 @@ function snapshotRecallSurfaceNorms(value: unknown): readonly string[] {
     result.push(item);
   }
   return Object.freeze(result);
+}
+
+function snapshotRecallEntityId(value: unknown): string {
+  if (typeof value !== "string" || !/^e[1-9][0-9]*\.[0-9]+$/u.test(value)) {
+    return invalidCommand("SQLITE_QUERY_FAILED");
+  }
+  return value;
 }
 
 class SqliteWorkerClient {
@@ -251,6 +259,17 @@ class SqliteWorkerClient {
       snapshotId,
       limit,
     }) as Promise<SqliteRecallOverviewRowsResult>;
+  }
+
+  public readRecallTraversalState(
+    snapshotId: number,
+    entityId: string,
+  ): Promise<SqliteRecallTraversalStateRowsResult> {
+    return this.#request({
+      type: "recall-snapshot-traversal",
+      snapshotId,
+      entityId: snapshotRecallEntityId(entityId),
+    }) as Promise<SqliteRecallTraversalStateRowsResult>;
   }
 
   public endRecallSnapshot(
@@ -473,6 +492,11 @@ class SqliteWorkerClient {
           readonly limit: number;
         }
       | {
+          readonly type: "recall-snapshot-traversal";
+          readonly snapshotId: number;
+          readonly entityId: string;
+        }
+      | {
           readonly type: "recall-snapshot-end";
           readonly snapshotId: number;
           readonly commit: boolean;
@@ -655,6 +679,15 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
           limit,
         );
       },
+      readRawTraversalState: async (entityId: string) => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+        return this.#client.readRecallTraversalState(
+          started.snapshotId,
+          entityId,
+        );
+      },
     });
 
     try {
@@ -691,6 +724,9 @@ export interface SqliteRecallSnapshotSource {
   readRawOverviewState(
     limit: number,
   ): Promise<SqliteRecallOverviewRowsResult>;
+  readRawTraversalState(
+    entityId: string,
+  ): Promise<SqliteRecallTraversalStateRowsResult>;
 }
 
 export type SqliteRecallSnapshotOperation<Result> = (

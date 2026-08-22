@@ -50,6 +50,9 @@
 | `pnpm test:rcl-003` | safe quoted FTS와 graph/raw candidate 변환·21/20·read-only fixture |
 | `pnpm verify:rcl-003` | architecture/type/build와 RCL-003 unit·SQLite target |
 | `pnpm verify:rec-004` | architecture/type/build, PRJ-005/009 회귀와 REC-004 SQLite target |
+| `pnpm test:rcl-005` | bounded 양방향 BFS·literal incident·path/hops와 S12/S13 file SQLite fixture |
+| `pnpm typecheck:rcl-005` | RCL-005 typed traversal input/source/result와 overview depth 경계 compile fixture |
+| `pnpm verify:rcl-005` | RCL-005 architecture/type/build와 focused target |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -190,3 +193,19 @@ then getter와 thenable rejection에 payload-bearing typed/ordinary error를 주
 application/adapter 오류가 되고 원 identity·message·cause·extra field가 남지 않는 것도 확인한다.
 claim ranking·남는 칸 조립·public `entry: "overview"`와 final Answer는
 RCL-006~008 소유이므로 S19/S22 manifest는 계속 `planned`다.
+
+RCL-005는 RCL-001의 request-local TEMP valid aggregate를 양방향 entity link와 literal 포함
+incident view로 확장하고, typed source 위에서 depth 1~3 BFS를 수행한다. unit fixture는
+canonical one-visit, multi-seed 최단/seed/숫자 edge order, cycle, 별칭·FTS·overview path와
+실제 hops, 31→30 독립 절단을 고정한다. S12/S13 file SQLite target은 scope·expiry 제외,
+한 WAL snapshot, callback 종료 capability, read-only permanent dump/`data_version`과 손상
+redaction을 검증한다. domain/SQLite raw envelope·row·array/accessor는 descriptor-only
+bounded snapshot 뒤 fresh fixed error로 닫히고, source가 던진 typed error payload도 보존하지
+않는다. source method는 한 번만 lookup해 receiver와 묶으며 property trap·method failure·
+Promise rejection·hostile thenable settlement도 원본 payload 없는 fresh fixed error로 바꾼다.
+input branch/key는 같은 descriptor snapshot에서 결정하고 entity-object incident는 같은 root
+link에 완전히 포함되어야 한다. 긴 FTS 표시는 80-code-point 예산에서 marker를 먼저 예약하며,
+canonical name과 동일한 81-code-point surface는 truncation 전에 raw equality를 비교해
+한 번만 표시한다. 따라서 manifest 상태가 `implemented`다. 이 상태는 RCL-005 traversal seam의
+production target이 존재한다는 뜻이며 ranking·public Answer/note와 완성 recall vertical은
+RCL-006~008, 성능은 RCL-009/REL-003에 남는다.
