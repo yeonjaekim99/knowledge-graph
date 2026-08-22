@@ -245,6 +245,76 @@ test("a long surface identical to the canonical name is displayed once before tr
   assert.equal(result.reached[0].hops, 0);
 });
 
+test("a long FTS display reserves its marker inside the eighty-code-point budget", async () => {
+  const display = "가".repeat(81);
+  const literal = claim("c1.0", "e1.0", "canonical", null, null);
+  const result = await traverseRecallGraph(
+    sourceFrom([
+      ["e1.0", neighborhood("e1.0", "canonical", [], [literal])],
+    ]),
+    {
+      entry: "fts",
+      depth: 1,
+      seeds: [{ entityId: "e1.0", display }],
+    },
+  );
+  const expectedDisplay = `${"가".repeat(73)}… (FTS)`;
+
+  assert.equal([...expectedDisplay].length, 80);
+  assert.equal(result.reached[0].path, `${expectedDisplay} → canonical`);
+  assert.equal(result.reached[0].hops, 0);
+});
+
+test("traversal input branch and exact keys use one descriptor snapshot", async () => {
+  const reads = new Map();
+  const input = new Proxy(
+    { entry: "overview", seeds: [] },
+    {
+      getOwnPropertyDescriptor(target, property) {
+        const count = (reads.get(property) ?? 0) + 1;
+        reads.set(property, count);
+        if (count > 1) {
+          throw new Error("do-not-resnapshot-rcl-005-input");
+        }
+        return Reflect.getOwnPropertyDescriptor(target, property);
+      },
+    },
+  );
+
+  const result = await traverseRecallGraph(sourceFrom([]), input);
+
+  assert.deepEqual(result.parents, []);
+  assert.deepEqual(result.reached, []);
+  assert.deepEqual(result.truncation, { links: false, incidents: false });
+  assert.deepEqual([...reads.entries()], [["entry", 1], ["seeds", 1]]);
+});
+
+test("an entity-object incident omitted from the same root links fails closed", async () => {
+  const omitted = claim("c1.0", "e1.0", "root", "e2.0", "hidden");
+
+  await assert.rejects(
+    traverseRecallGraph(
+      sourceFrom([
+        ["e1.0", neighborhood("e1.0", "root", [], [omitted])],
+      ]),
+      {
+        entry: "surface",
+        depth: 1,
+        seeds: [{ entityId: "e1.0", display: "root" }],
+      },
+    ),
+    (error) => {
+      const expected = new RecallGraphTraversalError("INVALID_TRAVERSAL_STATE");
+      assert.ok(error instanceof RecallGraphTraversalError);
+      assert.equal(error.code, expected.code);
+      assert.equal(error.name, expected.name);
+      assert.equal(error.message, expected.message);
+      assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+      return true;
+    },
+  );
+});
+
 test("depth three never stops early and an unvisited entity-object endpoint can produce four hops", async () => {
   const c1 = claim("c1.0", "e1.0", "A", "e2.0", "B");
   const c2 = claim("c2.0", "e2.0", "B", "e3.0", "C");
