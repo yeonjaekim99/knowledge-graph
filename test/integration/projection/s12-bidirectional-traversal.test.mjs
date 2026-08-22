@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { test } from "node:test";
 
 import { RecallReadError } from "../../../dist/application/ports/recall-read-port.js";
-import { traverseRecallGraph } from "../../../dist/application/recall-graph-traversal.js";
+import {
+  RecallGraphTraversalError,
+  traverseRecallGraph,
+} from "../../../dist/application/recall-graph-traversal.js";
 import { RECALL_TRAVERSAL_SQL_SOURCE } from "../../../dist/adapters/sqlite/index.js";
 import {
   RCL_005_NOW,
@@ -28,11 +31,11 @@ function smuggledReadError(code, marker) {
   return error;
 }
 
-function assertFreshReadError(error, injected, code, marker) {
-  const expected = new RecallReadError(code);
-  assert.ok(error instanceof RecallReadError);
+function assertFreshTraversalStateError(error, injected, marker) {
+  const expected = new RecallGraphTraversalError("INVALID_TRAVERSAL_STATE");
+  assert.ok(error instanceof RecallGraphTraversalError);
   assert.notStrictEqual(error, injected);
-  assert.equal(error.code, code);
+  assert.equal(error.code, "INVALID_TRAVERSAL_STATE");
   assert.equal(error.name, expected.name);
   assert.equal(error.message, expected.message);
   assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
@@ -245,8 +248,8 @@ test("S12 cross-scope entity corruption fails closed, redacts payload, and clean
         seeds: [{ entityId: "e1.0", display: "safe" }],
       })),
     (error) => {
-      assert.ok(error instanceof RecallReadError);
-      assert.equal(error.code, "INVALID_RECALL_TRAVERSAL_STATE");
+      assert.ok(error instanceof RecallGraphTraversalError);
+      assert.equal(error.code, "INVALID_TRAVERSAL_STATE");
       assert.equal(error.message.includes(secret), false);
       assert.equal(JSON.stringify(error).includes(secret), false);
       assert.equal("cause" in error, false);
@@ -325,10 +328,9 @@ test("S12 traversal adapter snapshots raw envelope, row, array, and accessors in
     await assert.rejects(
       traverseInjectedState(factory, rawState),
       (error) =>
-        assertFreshReadError(
+        assertFreshTraversalStateError(
           error,
           injected,
-          "INVALID_RECALL_TRAVERSAL_STATE",
           marker,
         ),
       boundary,

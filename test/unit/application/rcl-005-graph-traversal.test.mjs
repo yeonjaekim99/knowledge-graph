@@ -5,6 +5,7 @@ import {
   RecallGraphTraversalError,
   traverseRecallGraph,
 } from "../../../dist/application/recall-graph-traversal.js";
+import { RecallReadError } from "../../../dist/application/ports/recall-read-port.js";
 
 const NOW = 1_700_100_000;
 
@@ -95,6 +96,28 @@ function assertFreshTraversalError(error, injected, code, marker) {
   assert.doesNotMatch(error.message, new RegExp(marker, "u"));
   assert.equal(JSON.stringify(error), JSON.stringify(expected));
   return true;
+}
+
+function smuggledSourceError(kind, marker) {
+  const error =
+    kind === "read"
+      ? new RecallReadError("INVALID_RECALL_TRAVERSAL_STATE")
+      : new Error(`ordinary-${marker}`);
+  error.name = `Smuggled${marker}`;
+  error.message = `smuggled-message-${marker}`;
+  error.cause = { token: marker };
+  error.prefix = marker;
+  error.suffix = marker;
+  error.secret = marker;
+  return error;
+}
+
+function traversalRequest() {
+  return {
+    entry: "surface",
+    depth: 1,
+    seeds: [{ entityId: "e1.0", display: "safe" }],
+  };
 }
 
 test("incoming traversal and literal collection preserve alias, FTS, overview path, and real hops", async () => {
@@ -500,6 +523,87 @@ test("typed traversal failures from the source are replaced by a fresh fixed sta
       ),
   );
 });
+
+for (const boundary of [
+  "property-getter",
+  "proxy-get",
+  "method-invocation",
+  "promise-settlement",
+  "thenable-assimilation",
+]) {
+  test(`source ${boundary} failures become fresh fixed traversal state errors`, async () => {
+    const marker = `do-not-smuggle-rcl-005-source-${boundary}`;
+    const injected = smuggledSourceError(
+      boundary === "proxy-get" || boundary === "promise-settlement"
+        ? "read"
+        : "ordinary",
+      marker,
+    );
+    const base = {
+      listValidClaimAggregates: async () => Object.freeze([]),
+      resolveSurfaceSeeds: async (terms) =>
+        Object.freeze({ terms, seeds: Object.freeze([]), truncated: false }),
+    };
+    let source;
+    if (boundary === "property-getter") {
+      source = { ...base };
+      Object.defineProperty(source, "readTraversalNeighborhood", {
+        enumerable: true,
+        get() {
+          throw injected;
+        },
+      });
+    } else if (boundary === "proxy-get") {
+      source = new Proxy(
+        { ...base, readTraversalNeighborhood() {} },
+        {
+          get(target, property, receiver) {
+            if (property === "readTraversalNeighborhood") {
+              throw injected;
+            }
+            return Reflect.get(target, property, receiver);
+          },
+        },
+      );
+    } else if (boundary === "method-invocation") {
+      source = {
+        ...base,
+        readTraversalNeighborhood() {
+          throw injected;
+        },
+      };
+    } else if (boundary === "promise-settlement") {
+      source = {
+        ...base,
+        readTraversalNeighborhood() {
+          return Promise.reject(injected);
+        },
+      };
+    } else {
+      source = {
+        ...base,
+        readTraversalNeighborhood() {
+          return Object.defineProperty({}, "then", {
+            get() {
+              throw injected;
+            },
+          });
+        },
+      };
+    }
+
+    await assert.rejects(
+      traverseRecallGraph(source, traversalRequest()),
+      (error) =>
+        assertFreshTraversalError(
+          error,
+          injected,
+          "INVALID_TRAVERSAL_STATE",
+          marker,
+        ),
+    );
+  });
+}
 
 test("input and neighborhood traps are descriptor-only and become fresh fixed errors", async () => {
   const inputMarker = "do-not-smuggle-rcl-005-input-proxy";
