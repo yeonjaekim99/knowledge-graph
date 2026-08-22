@@ -13,6 +13,8 @@ import {
 } from "../domain/recall-graph-traversal.js";
 
 const FANOUT_LIMIT = 30;
+const FTS_DISPLAY_SUFFIX = " (FTS)";
+const MAX_SEED_DISPLAY_CODE_POINTS = 80;
 
 interface ParentState {
   readonly entityId: string;
@@ -39,6 +41,17 @@ interface TraversalReaderBinding {
 
 function invalidState(): never {
   throw new RecallGraphTraversalError("INVALID_TRAVERSAL_STATE");
+}
+
+function ftsSeedDisplay(value: string): string {
+  const points = [...value];
+  const suffixPoints = [...FTS_DISPLAY_SUFFIX];
+  const prefixBudget = MAX_SEED_DISPLAY_CODE_POINTS - suffixPoints.length;
+  const prefix =
+    points.length <= prefixBudget
+      ? value
+      : `${points.slice(0, prefixBudget - 1).join("")}…`;
+  return `${prefix}${FTS_DISPLAY_SUFFIX}`;
 }
 
 function bindTraversalReader(source: unknown): TraversalReaderBinding {
@@ -141,7 +154,7 @@ function pathFor(
     return invalidState();
   }
   if (entry === "fts") {
-    pathParts.unshift(truncateRecallSeedDisplay(`${rawDisplay} (FTS)`));
+    pathParts.unshift(ftsSeedDisplay(rawDisplay));
   } else if (entry === "surface" && rawDisplay !== firstName) {
     pathParts.unshift(truncateRecallSeedDisplay(rawDisplay));
   }

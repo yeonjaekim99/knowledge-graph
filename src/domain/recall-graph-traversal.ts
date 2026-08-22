@@ -73,7 +73,14 @@ function exactDataRecord(
   expectedKeys: readonly string[],
   code: RecallGraphTraversalErrorCode,
 ): Readonly<Record<string, unknown>> {
-  const result = plainDataRecord(value, code);
+  return exactSnapshotKeys(plainDataRecord(value, code), expectedKeys, code);
+}
+
+function exactSnapshotKeys(
+  result: Readonly<Record<string, unknown>>,
+  expectedKeys: readonly string[],
+  code: RecallGraphTraversalErrorCode,
+): Readonly<Record<string, unknown>> {
   const keys = Object.keys(result).sort();
   const expected = expectedKeys.slice().sort();
   if (
@@ -223,12 +230,12 @@ function validatedSeed(value: unknown): RecallGraphSeed {
 export function validateRecallGraphTraversalInput(
   value: unknown,
 ): ValidatedRecallGraphTraversalInput {
-  const loose = plainDataRecord(value, "INVALID_TRAVERSAL_INPUT");
-  const entry = loose["entry"];
+  const input = plainDataRecord(value, "INVALID_TRAVERSAL_INPUT");
+  const entry = input["entry"];
   const expectedKeys =
     entry === "overview" ? ["entry", "seeds"] : ["depth", "entry", "seeds"];
-  const input = exactDataRecord(
-    value,
+  exactSnapshotKeys(
+    input,
     expectedKeys,
     "INVALID_TRAVERSAL_INPUT",
   );
@@ -427,6 +434,23 @@ function assertOrdered(
   }
 }
 
+function sameClaimReference(
+  left: RecallTraversalClaimReference,
+  right: RecallTraversalClaimReference,
+): boolean {
+  return (
+    left.claimId === right.claimId &&
+    left.subjectId === right.subjectId &&
+    left.subjectName === right.subjectName &&
+    left.objectId === right.objectId &&
+    left.objectName === right.objectName &&
+    left.supportCount === right.supportCount &&
+    left.strongestRank === right.strongestRank &&
+    left.lastSeenAt === right.lastSeenAt &&
+    left.originSeq === right.originSeq
+  );
+}
+
 export function validateRecallTraversalNeighborhood(
   value: unknown,
   expectedEntityId: unknown,
@@ -486,6 +510,14 @@ export function validateRecallTraversalNeighborhood(
   );
   assertOrdered(links);
   assertOrdered(incidents);
+  for (const incident of incidents) {
+    if (
+      incident.objectId !== null &&
+      !links.some((link) => sameClaimReference(link, incident))
+    ) {
+      return reject("INVALID_TRAVERSAL_STATE");
+    }
+  }
   return Object.freeze({ entity, links, incidents });
 }
 
