@@ -112,26 +112,33 @@ accessor를 실행하지 않고 Proxy/descriptor 예외 및 smuggled `RecallRead
 
 ## TDD와 로컬 검증
 
-test-only commit `c4cfb7b`에서 기존 `pnpm run build`는 성공했고, 새 focused command는 아직 없는
+test-only commit `f94d06b`에서 기존 `pnpm run build`는 성공했고, 새 focused command는 아직 없는
 `dist/application/recall-overview.js`를 import하다 두 test module이 0/2 RED였다. 이 commit은
 숫자 entity ID tie-break, 10+1/limit+1 sentinel, raw-only scope, graph duplicate 우선,
 fixed snapshot·read-only, stale capability와 hostile payload redaction을 먼저 고정했다.
 
-제품 구현 commit `9c7c767` 뒤 `pnpm run verify:rcl-004`는 architecture/type/build와 application
+제품 구현 commit `e5fe29c` 뒤 `pnpm run verify:rcl-004`는 architecture/type/build와 application
 3개, file-backed SQLite 10개, 총 13/13 GREEN이다. 관련 회귀는 RCL-001 10/10, RCL-002 15/15,
-RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8을 통과했다. 전체 fast suite는
-최초 46개 파일 336/336, PRJ-010 독립 reference parity는 39/39, behavior spike는 25/25다.
+RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8을 통과했다.
 
 독립 review는 application의 `selectOverviewCandidates` 호출과 adapter의
 `readRawOverviewState` await가 보호 경계 밖에 있어, 동기 throw나 Promise/thenable rejection의
 원 error identity·message·cause·추가 payload가 그대로 노출되는 MEDIUM 결함을 발견했다.
-test-only `12eb3bc`는 두 경계 각각에서 sync throw, Promise rejection, throwing `then` getter를
-payload-bearing typed/ordinary error로 주입해 focused 13/15 RED를 재현했다. fix `5a28f1b`는
+test-only `ea9e260`은 두 경계 각각에서 sync throw, Promise rejection, throwing `then` getter를
+payload-bearing typed/ordinary error로 주입해 focused 13/15 RED를 재현했다. fix `b5c5d3f`는
 호출과 await를 각 safe boundary 안으로 옮기고 application이 허용된 candidate code만 own data
 descriptor로 분류한 뒤에도 항상 새 고정 오류를 만들도록 했다. hostile thenable이 `then`에서
 직접 reject하는 경우까지 추가해 focused 15/15 GREEN이며 원 identity, name, message, cause와
-extra field를 보존하지 않는다. remediation 뒤 최종 전체 fast suite는 46개 파일 338/338이고
-관련 RCL/STO/PRJ 회귀, PRJ-010 39/39와 behavior spike 25/25도 다시 통과했다.
+extra field를 보존하지 않는다.
+
+최신 `origin/main` `25eeb72` 위 semantic rebase는 REC-004 writer resolver의 connection
+factory/protocol/worker/index와 REC-005 planning을 보존한 채 overview read facet만 합쳤다. rebase된
+RED/GREEN/docs 흐름은 `f94d06b` → `e5fe29c` → `5085680` → `ea9e260` → `b5c5d3f` →
+`3c40ccf`다. 결합 상태에서 RCL-004 focused 15/15, REC-004 focused 50/50을 포함한
+`verify:rec-004` 70/70, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7,
+STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39를 통과했다. 최종 전체 fast suite는 48개 파일
+388/388이고 behavior spike 25/25, roadmap audit 67/67, production dependency audit 0건과
+diff/clean gate도 통과했다.
 
 문서 상태는 독립 재review와 PR/main merge가 끝나기 전까지 `IN_PROGRESS`와 미체크 완료 항목을
 유지한다. S19/S22 public scenario도 final claim/raw Answer와 golden이 아직 없으므로 `planned`다.

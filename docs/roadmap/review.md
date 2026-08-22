@@ -278,6 +278,7 @@
 | REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 17/17, 전체 fast 39개 파일 285/285, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16·typed detector error 16/17 RED를 닫았고 독립 review finding HIGH 0/MEDIUM 0 |
 | RCL-002 branch gate | PASS — architecture/type/build, RCL-002 15/15·REC-001 13/13·REC-002 13/13·REC-003 17/17·RCL-001 10/10, 전체 fast 42개 파일 302/302, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | RCL-003 branch gate | PASS — architecture/type/build, RCL-003 21/21·RCL-002 15/15·RCL-001 10/10·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 44개 파일 323/323, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 2,100 support·21 candidate probe 및 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
+| RCL-004 branch gate | PASS — 최신 main `25eeb72` 위 semantic rebase, RCL-004 15/15·REC-004 focused 50/50을 포함한 verify 70/70·RCL-001 10/10·RCL-002 15/15·RCL-003 21/21·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 48개 파일 388/388, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; REC-004 writer resolver·REC-005 planning 보존, 독립 재review 대기 |
 | 변경 범위 | PASS — REC-003 sanitation·RCL-003 FTS와 REC-004 writer resolver를 기존 REC-001/RCL-001 snapshot 경계에 병존시키고, dedupe·journal record service·BFS/ranking/Answer·MCP handler·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사
