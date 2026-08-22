@@ -1,1 +1,9 @@
-export type { UseCase } from "./application/index.js";
+export type {
+  AcceptedRecordClaimStatus,
+  ClaimDraft,
+  MemoryRecordInput,
+  RecordClaimResult,
+  RecordClaimStatus,
+  RecordResult,
+  UseCase,
+} from "./application/index.js";
