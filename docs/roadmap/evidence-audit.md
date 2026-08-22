@@ -100,7 +100,7 @@
 - [x] `REC-001` | baseline: ADR-013과 S03/S11/S14/S16/S18이 record 입력·결과 의미를 확인했고 `E-SCHEMA`가 규범 source·type/runtime seam을 제공한다. | production: PR #32의 `E-RECORD-CONTRACT`에서 실제 Record JSON Schema, 추론 DTO와 domain 결과 불변식을 구현했다.
 - [x] `REC-002` | baseline: S18이 대표 signature·entropy와 한국어 인접 token 위험을 확인했다. | production: `E-SECRET-DETECTOR`에서 provider registry, ASCII/Unicode marker 경계, Unicode entropy·context allowlist와 원문을 복사하지 않는 전체 masking 위치 결과를 구현하고 독립 review·PR 증거를 고정했다.
 - [x] `REC-003` | baseline: S18이 journal 전 raw masking과 의미 draft 부분 거부를 확인했다. | production: `E-RECORD-SANITIZER`에서 필드별 positional sanitation, 안전한 부분 성공 plan과 detector·재해석 fail-closed를 구현했다. 실제 transaction append와 저장 매체 전체 scan은 REC-006/008에 남긴다.
-- [x] `REC-004` | baseline: S21과 S08이 confirmed alias 기반 entity 해석을 확인했다. | production: write-time 다의 surface 해석과 actionable ambiguity를 구현한다.
+- [x] `REC-004` | baseline: S21과 S08이 confirmed alias 기반 entity 해석을 확인했다. | production: [transaction-bound resolver](../implementation/rec-004-write-entity-resolver.md)와 file-backed [resolver](../../test/integration/sqlite/rec-004-write-entity-resolver.test.mjs)·[finalization](../../test/integration/sqlite/rec-004-write-entity-finalization.test.mjs) fixture가 write-time 전체 surface→redirect→exact-name 해석, draft-local actionable ambiguity, scope 비누출, DB-global occurrence seq, survivor compact finalization, exact append body/seq binding과 constraint 재조회 수렴을 구현했다. input/result Proxy·session 오류와 SQLite 오류 identity는 fresh canonical failure로 닫았고, 후속 review의 임의 note payload·원본 draft 대비 object/field shape MEDIUM 및 malformed kind LOW도 expected-draft parity·고정 note 재구성·adapter/worker Unicode scalar 검사로 보완했다. custom `Symbol.species` 객체가 public Promise를 대체하는 후속 MEDIUM도 native async settlement bridge와 fresh failure reconstruction으로 닫았다. 새 독립 최종 review의 HIGH/MEDIUM/LOW 0건과 [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)이 영속 증거다.
 - [x] `REC-005` | baseline: S03/S18이 duplicate draft·occurrence index·부분 성공 의미를 확인했다. | production: 의미 검증·dedupe·입력/저장 index mapping을 구현한다.
 - [x] `REC-006` | baseline: S02/S06/S24가 append/project와 다중 사건 rollback 원자성을 확인했다. | production: statement append·증분 projection·RecordResult를 한 transaction에 구현한다.
 - [x] `REC-007` | baseline: S11/S14~S16이 raw-only TTL·기본값·승인된 reinterpret 의미를 확인했고 `E-RUNTIME`이 canonical approval-token generator를 제공한다. | production: defaulting, request retry 의미와 scope/target/payload/through-seq에 묶인 approval record 경로를 구현한다.
@@ -154,15 +154,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 30/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
-  `PRJ-001`~`010`, `REC-001`~`REC-003`과 `RCL-001`~`RCL-003`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 31/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
+  `PRJ-001`~`010`, `REC-001`~`REC-004`와 `RCL-001`~`RCL-003`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-003`과
-  `RCL-001`~`RCL-003`은 완료됐고 `REC-004`, `RCL-004`, `RCL-005`는 owner와 격리
-  branch에서 진행 중이다.
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-004`와
+  `RCL-001`~`RCL-003`은 완료됐고 `RCL-004`, `RCL-005`는 owner와
+  격리 branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

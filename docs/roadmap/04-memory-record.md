@@ -1,7 +1,7 @@
 # Phase 04 — memory_record 수직 경로
 
 - 상태: `IN_PROGRESS`
-- 진행률: 3/8
+- 진행률: 4/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
 - 선행 증거 감사: [Phase 04 baseline과 production gap](evidence-audit.md#phase-04-record)
@@ -18,7 +18,7 @@
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `DONE` | `log0629` | FND-003 | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [구현 결정](../implementation/rec-002-secret-detector.md) |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `DONE` | `log0629` | REC-001, REC-002 | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [구현 결정](../implementation/rec-003-record-sanitizer.md) |
-| REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
+| REC-004 | write entity 해석과 모호성 처리 | `DONE` | `log0629` | REC-001, PRJ-005 | [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43), [구현 결정](../implementation/rec-004-write-entity-resolver.md) |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
 | REC-006 | statement append·project·결과 원자성 | `TODO` | `unassigned` | REC-005, STO-007, PRJ-009 | — |
 | REC-007 | raw-only·기본값·재시도 의미 | `TODO` | `unassigned` | REC-006, PRJ-008 | — |
@@ -161,20 +161,68 @@
 
 ### REC-004 — write entity 해석과 모호성 처리
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rec-004-write-entity-resolver`
+- PR: [#43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)
 - 근거: ADR-003, ADR-008, ADR-013
 - 선행 작업: REC-001, PRJ-005
 - 결과물: transaction-bound draft entity resolver
 
 완료 체크:
 
-- [ ] surface 전체 후보→canonical→exact normal name 순서로 해석한다.
-- [ ] 후보가 여러 개면 임의 선택하지 않고 그 draft만 actionable ambiguous로 거부한다.
-- [ ] 다른 scope의 ID/후보 존재를 응답에서 드러내지 않는다.
-- [ ] write lock 안에서 constraint 충돌 후 재조회해 동시 동일 이름을 하나로 수렴시킨다.
-- [ ] kind 불일치와 alias homonym을 자동 merge/split하지 않는다.
+- [x] surface 전체 후보→canonical→exact normal name 순서로 해석한다.
+- [x] 후보가 여러 개면 임의 선택하지 않고 그 draft만 actionable ambiguous로 거부한다.
+- [x] 다른 scope의 ID/후보 존재를 응답에서 드러내지 않는다.
+- [x] write lock 안에서 constraint 충돌 후 재조회해 동시 동일 이름을 하나로 수렴시킨다.
+- [x] kind는 well-formed Unicode scalar만 adapter/worker에서 받고, 불일치와 alias homonym을
+  자동 merge/split하지 않는다.
+- [x] DB-global next journal seq와 REC-005 survivor finalization 뒤에만 compact occurrence ID를 확정한다.
+- [x] finalized statement body와 실제 append seq가 다르면 projection 전에 전체 transaction을 닫는다.
+- [x] session result의 object ID presence와 rejected field를 원본 draft와 대조하고 고정 ambiguity
+  note만 새 결과에 재구성한다.
+- [x] session Promise의 custom `Symbol.species` 반환 객체를 폐기하고 resolve/finalize public
+  boundary는 native Promise의 검증된 동결 결과 또는 fresh fixed/canonical 오류만 반환한다.
+
+완료 증거:
+
+- [구현 결정](../implementation/rec-004-write-entity-resolver.md)은 기존 atomic dispatcher의
+  `BEGIN IMMEDIATE` 안에 prepare→draft resolve→survivor finalize→append 단계를 두되, pre-resolution
+  entity/surface/redirect stage를 append 직전 outer savepoint로 전부 rollback하도록 고정했다.
+- production adapter는 PRJ-005 resolver를 재사용해 same-scope surface 전체 후보를 redirect
+  terminal로 바꾼 뒤 exact normal-name 하나만 tie-break한다. 남은 ambiguity는 정렬된 안전한
+  후보와 retry note로 해당 draft만 거부하며 object 실패 시 nested savepoint가 그 draft의
+  subject/alias stage도 되돌린다.
+- occurrence candidate는 caller 입력이 아니라 잠금 안의 DB-global next seq에서 발급한다.
+  ambiguity 뒤 position을 되돌리고, REC-005가 고른 survivor subset만 outer savepoint에서 다시
+  해석해 rejected/duplicate 위치를 compact한다. finalization의 exact statement body와 실제 append
+  seq가 어긋나면 journal/projection 전에 fail-closed한다.
+- file-backed [REC-004 integration test](../../test/integration/sqlite/rec-004-write-entity-resolver.test.mjs)는
+  정상 redirect/신규 object, exact tie-break·ambiguity, 앞·뒤 draft 격리, alias homonym,
+  trigger로 만든 실제 unique collision 재조회, cross-scope redaction·queue 회복과 append 없는
+  commit 차단을 검증한다.
+- 최초 RED는 production module 부재로 `ERR_MODULE_NOT_FOUND` 0/1이었고 구현 뒤 target은
+  8/8 GREEN이었다. 독립 review 보완 RED는 finalizer export 부재 0/1이었고, 보완 뒤 REC-004
+  adapter의 Proxy/accessor·session 오류 객체 누출을 독립 재검토에서 추가로 찾아 tests-only
+  19개 중 6 pass/13 fail과 21개 중 18 pass/3 fail RED로 고정했다. exact descriptor snapshot과
+  fresh fixed input/result error로 닫았다. 최종 독립 review에서 canonical own shape여도 원본
+  SQLite error identity가 poisoned prototype·transparent Proxy getter를 유지하고 invalid runtime
+  code를 통과시키는 경계를 찾아, tests-only 33개 중 28 pass/5 fail RED와 allowed code/retry
+  descriptor snapshot→fresh canonical reconstruction의 33/33 GREEN으로 닫았다. 이어진
+  review에서 rejected note payload와 원본 draft 대비 object/field shape 불일치 MEDIUM, kind
+  lone surrogate LOW를 찾았다. tests-only `39c4a00`의 27/35 RED를 expected-draft parity·고정
+  note reconstruction과 adapter/worker Unicode scalar 검사 `cb5f2ec`으로 35/35 GREEN으로
+  닫았다. 그 뒤 REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신
+  main에 semantic rebase했다. 이 상태의 독립 재검토가 session Promise subclass의 custom
+  `Symbol.species` 객체가 public return과 settlement를 대체하는 MEDIUM 경계를 찾았다.
+  tests-only `b179166`의 36/42 RED를 native async settlement bridge `68ff959`로 닫아
+  42/42 GREEN을 만들었다. 관련 PRJ-005/009 포함 70/70, 전체 fast 46 files·373/373,
+  RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4,
+  PRJ-008 8/8, PRJ-010 39/39, spike 25/25,
+  roadmap 67/67과 production audit 0건을 재확인했다. 새 독립 최종 review는 HEAD
+  `2a579c0`에서 HIGH/MEDIUM/LOW 0건, focused 50/50과 위 전체 gate를 재현했다.
+  [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)이 구현·review·검증과
+  상태 증거를 `main`에 함께 고정해 REC-004를 완료한다.
 
 ### REC-005 — draft 의미 검증·중복 제거·index mapping
 

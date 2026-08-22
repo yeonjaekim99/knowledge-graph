@@ -312,6 +312,62 @@ export interface SqliteProjectionDispatchBeginResult {
   readonly previousLastSeq: number;
 }
 
+/**
+ * A writer-owned dispatch snapshot captured before any journal row is added.
+ * The open transaction may only be committed after a non-empty append and
+ * projection publish; entity-resolution staging alone is rollback-only.
+ */
+export interface SqliteProjectionDispatchPrepareResult {
+  readonly dispatchId: number;
+  readonly current: ProjectionSnapshot;
+  readonly meta: SqliteProjectionMetaSnapshot | null;
+  readonly projectionValid: boolean;
+  readonly previousLastSeq: number;
+  readonly expectedJournalSeq: number;
+}
+
+export interface SqliteWriteEntityReferenceInput {
+  readonly name: string;
+  readonly kind: string | null;
+  readonly aliases: readonly string[];
+}
+
+export interface SqliteWriteEntityDraftInput {
+  readonly draftIndex: number;
+  readonly subject: SqliteWriteEntityReferenceInput;
+  readonly object: SqliteWriteEntityReferenceInput | null;
+}
+
+export interface SqliteWriteEntityAmbiguousCandidate {
+  readonly entityId: string;
+  readonly name: string;
+}
+
+export interface SqliteWriteEntityResolvedDraft {
+  readonly draftIndex: number;
+  readonly status: "resolved";
+  readonly subjectId: string;
+  readonly objectId: string | null;
+}
+
+export interface SqliteWriteEntityRejectedDraft {
+  readonly draftIndex: number;
+  readonly status: "rejected";
+  readonly reason: "ambiguous_entity";
+  readonly field: "subject" | "object";
+  readonly candidates: readonly SqliteWriteEntityAmbiguousCandidate[];
+  readonly note: string;
+}
+
+export type SqliteWriteEntityDraftResolution =
+  | SqliteWriteEntityResolvedDraft
+  | SqliteWriteEntityRejectedDraft;
+
+export interface SqliteWriteEntityFinalizationResult {
+  readonly expectedJournalSeq: number;
+  readonly drafts: readonly SqliteWriteEntityResolvedDraft[];
+}
+
 export type SqliteProjectionPublishMode = "incremental" | "replay";
 
 export interface SqliteProjectionDispatchCommitResult
@@ -347,6 +403,34 @@ export interface SqliteWorkerProjectionDispatchBeginRequest {
   readonly events: readonly SqliteProjectionDispatchAppendEvent[];
 }
 
+export interface SqliteWorkerProjectionDispatchPrepareRequest {
+  readonly type: "projection-dispatch-prepare";
+  readonly requestId: number;
+  readonly scopeKey: string;
+}
+
+export interface SqliteWorkerProjectionDispatchResolveEntitiesRequest {
+  readonly type: "projection-dispatch-resolve-entities";
+  readonly requestId: number;
+  readonly dispatchId: number;
+  readonly drafts: readonly SqliteWriteEntityDraftInput[];
+}
+
+export interface SqliteWorkerProjectionDispatchFinalizeEntitiesRequest {
+  readonly type: "projection-dispatch-finalize-entities";
+  readonly requestId: number;
+  readonly dispatchId: number;
+  readonly survivorDraftIndexes: readonly number[];
+  readonly statementBodyJson: string;
+}
+
+export interface SqliteWorkerProjectionDispatchAppendRequest {
+  readonly type: "projection-dispatch-append";
+  readonly requestId: number;
+  readonly dispatchId: number;
+  readonly events: readonly SqliteProjectionDispatchAppendEvent[];
+}
+
 export interface SqliteWorkerProjectionDispatchCommitRequest {
   readonly type: "projection-dispatch-commit";
   readonly requestId: number;
@@ -370,6 +454,10 @@ export type SqliteWorkerRequest =
   | SqliteWorkerProjectionReplayCommitRequest
   | SqliteWorkerProjectionReplayRollbackRequest
   | SqliteWorkerProjectionDispatchBeginRequest
+  | SqliteWorkerProjectionDispatchPrepareRequest
+  | SqliteWorkerProjectionDispatchResolveEntitiesRequest
+  | SqliteWorkerProjectionDispatchFinalizeEntitiesRequest
+  | SqliteWorkerProjectionDispatchAppendRequest
   | SqliteWorkerProjectionDispatchCommitRequest
   | SqliteWorkerRecallSnapshotBeginRequest
   | SqliteWorkerRecallSnapshotReadRequest

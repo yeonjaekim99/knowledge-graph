@@ -38,6 +38,7 @@
 | `pnpm test:prj-009` | 증분 dispatcher·full replay·atomic publish·commit gate |
 | `pnpm test:prj-010` | S01~S24 projection prefix, S23 288-prefix metamorphic, S24 process crash |
 | `pnpm test:rec-001` | record input/draft/result schema, Unicode scalar·trim bounds와 result index 계약 |
+| `pnpm test:rec-004` | writer transaction의 entity 해석·ambiguity·global seq·survivor finalization·append parity |
 | `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
 | `pnpm test:rcl-001` | recall input/result 계약, request snapshot과 scope/fixed-now TEMP aggregate |
 | `pnpm test:rec-002` | versioned secret signature·entropy·allowlist와 safe positional result |
@@ -48,6 +49,7 @@
 | `pnpm verify:rcl-002` | RCL-002 architecture/type/build와 focused target |
 | `pnpm test:rcl-003` | safe quoted FTS와 graph/raw candidate 변환·21/20·read-only fixture |
 | `pnpm verify:rcl-003` | architecture/type/build와 RCL-003 unit·SQLite target |
+| `pnpm verify:rec-004` | architecture/type/build, PRJ-005/009 회귀와 REC-004 SQLite target |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -163,3 +165,15 @@ dump/data_version 불변, Proxy가 던진 typed error 객체의 재사용 금지
 draft index와 21번째 sentinel/missing-support의 fail-closed를 검증한다. 최종 Answer와 overview가
 아직 없으므로 S11/S22 manifest는
 `planned`다.
+
+REC-004는 PRJ-005 entity resolver를 managed SQLite writer transaction에 연결한다. file-backed
+fixture는 surface 전체 후보의 redirect·exact-name 순서, draft-local ambiguity rollback,
+scope 비누출, 실제 unique constraint collision 뒤 재조회, kind·alias homonym 보존과 append 전
+provisional projection rollback을 검증한다. 별도 finalization fixture는 DB-global seq,
+rejected/duplicate survivor compact ID와 exact body/actual seq binding, Proxy/accessor 및 session
+failure의 fresh payload-redacted error 경계를 고정한다. Promise subclass의 custom
+`Symbol.species` 반환 객체는 public resolve/finalize Promise가 될 수 없고 native async bridge가
+검증된 동결 결과 또는 fresh 오류만 정착시킨다. SQLite 오류는 원본 identity·prototype·Proxy를
+버리고 allowed code/retry 의미만 fresh canonical 객체로 복원한다. duplicate survivor를
+고르는 정책과 input/stored index mapping은 REC-005, 공개 record 결과·statement 작성은 REC-006의
+후속 수직 경로에 남는다.

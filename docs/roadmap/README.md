@@ -2,7 +2,7 @@
 
 > 기준일: 2026-08-23
 > 범위: Recall v1 production 구현
-> 현재 상태: **Phase 04와 Phase 06 병렬 진행 중 · REC-001~003/RCL-001~003 완료, REC-004/RCL-004/RCL-005 진행 중**
+> 현재 상태: **Phase 04와 Phase 06 병렬 진행 중 · REC-001~004/RCL-001~003 완료, RCL-004/RCL-005 진행 중**
 
 이 디렉터리는 [Accepted ADR](../adr/README.md)을 팀이 실행할 수 있는 작업 순서와
 체크리스트로 바꾼다. ADR은 **왜와 무엇을**, 이 로드맵은 **순서·담당·완료 증거를**
@@ -14,16 +14,17 @@
 | 구분 | 완료 | 전체 | 판정 |
 |---|---:|---:|---|
 | 구현 준비 | 7 | 7 | 완료 |
-| 제품 구현 | 30 | 66 | 진행 중 |
-| 전체 | 37 | 73 | Phase 04·06 병렬 진행 중 |
+| 제품 구현 | 31 | 66 | 진행 중 |
+| 전체 | 38 | 73 | Phase 04·06 병렬 진행 중 |
 
 진행률은 수동 퍼센트가 아니라 `DONE 작업 수 / 전체 작업 수`로만 표시한다. 상세 문서의
 작업 상태와 증거가 원본이며 이 표는 각 PR에서 함께 갱신하는 roll-up이다.
 
 REC-003은 [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), RCL-002는
 [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), RCL-003은
-[PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)의 구현·독립 review·전체
-회귀와 상태 증거로 완료했다. REC-004, RCL-004와 RCL-005는 격리 branch에서 진행하며, 병합 시점마다
+[PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), REC-004는
+[PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)의 구현·독립 review·전체
+회귀와 상태 증거로 완료했다. RCL-004와 RCL-005는 격리 branch에서 진행하며, 병합 시점마다
 phase 상세 상태를 기준으로 이 표를 다시 계산한다.
 
 [Evidence-gap audit](evidence-audit.md)의 `[x]`는 제품 작업별 선행 증거 대조가 끝났다는
@@ -47,7 +48,7 @@ service가 모두 준비된 뒤 시작한다.
 | 01 | [개발 기반](01-foundation.md) | `DONE` | 6/6 | Phase 00 `DONE` | 기술 선택, 모듈 경계, 로컬 검증 기반 |
 | 02 | [SQLite·저널](02-storage.md) | `DONE` | 8/8 | Phase 01 `DONE` | migration, scope, writer, journal |
 | 03 | [투영·재생](03-projection.md) | `DONE` | 10/10 | Phase 02 `DONE` | 증분/전체 replay parity |
-| 04 | [`memory_record`](04-memory-record.md) | `IN_PROGRESS` | 3/8 | Phase 03 `DONE` | 안전한 기록 수직 경로 |
+| 04 | [`memory_record`](04-memory-record.md) | `IN_PROGRESS` | 4/8 | Phase 03 `DONE` | 안전한 기록 수직 경로 |
 | 05 | [`memory_revise`](05-memory-revise.md) | `TODO` | 0/7 | Phase 04 `DONE` | 철회·교정·병합·별칭 |
 | 06 | [`memory_recall`](06-memory-recall.md) | `IN_PROGRESS` | 3/9 | Phase 03 `DONE` | FTS·그래프·랭킹·응답 |
 | 07 | [MCP 통합](07-mcp-integration.md) | `TODO` | 0/8 | Phase 04~06 `DONE` | 공개 tool 계약과 client 검증 |

@@ -6,6 +6,18 @@ import type {
   ProjectionReplayJournalEvent,
   ProjectionSnapshot,
 } from "../../domain/projection-replay.js";
+import {
+  EntityProjectionError,
+  resolveEntityReference,
+  strongestSurfaceOrigin,
+} from "../../domain/projection-entities.js";
+import {
+  ProjectionIdentifierError,
+} from "../../domain/projection-identifiers.js";
+import {
+  ProjectionRuleError,
+  normalizeV1,
+} from "../../domain/projection-rules.js";
 
 import {
   SQLITE_CONNECTION_POLICY,
@@ -19,6 +31,7 @@ import {
   type SqliteProjectionDispatchAppendEvent,
   type SqliteProjectionDispatchBeginResult,
   type SqliteProjectionDispatchCommitResult,
+  type SqliteProjectionDispatchPrepareResult,
   type SqliteProjectionMetaSnapshot,
   type SqliteProjectionPublishMode,
   type SqliteProjectionReplayBeginResult,
@@ -27,6 +40,10 @@ import {
   type SqliteReadResult,
   type SqliteRunResult,
   type SqliteTransactionCommand,
+  type SqliteWriteEntityDraftInput,
+  type SqliteWriteEntityDraftResolution,
+  type SqliteWriteEntityFinalizationResult,
+  type SqliteWriteEntityResolvedDraft,
   type SqliteWorkerData,
   type SqliteWorkerRequest,
   type SqliteWorkerErrorCode,
@@ -78,14 +95,37 @@ class WorkerConnectionFailure extends Error {
 }
 
 interface ActiveProjectionReplay {
+  readonly kind: "replay";
   readonly replayId: number;
   readonly scopeKey: string;
   readonly events: readonly ProjectionReplayJournalEvent[];
   readonly current: ProjectionSnapshot;
 }
 
+interface ActiveProjectionDispatch {
+  readonly kind: "dispatch";
+  readonly replayId: number;
+  readonly scopeKey: string;
+  readonly events: readonly ProjectionReplayJournalEvent[];
+  readonly current: ProjectionSnapshot;
+  readonly meta: SqliteProjectionMetaSnapshot | null;
+  readonly projectionValid: boolean;
+  readonly previousLastSeq: number;
+  readonly expectedJournalSeq: number;
+  readonly resolutionSavepointOpen: boolean;
+  readonly resolutionCompleted: boolean;
+  readonly resolutionDrafts: readonly ValidatedWriteEntityDraft[] | null;
+  readonly resolutionResults:
+    | readonly SqliteWriteEntityDraftResolution[]
+    | null;
+  readonly finalizationCompleted: boolean;
+  readonly finalizedDrafts: readonly FinalizedWriteEntityDraft[] | null;
+  readonly finalizedBodyJson: string | null;
+  readonly appendedEvents: readonly ProjectionReplayJournalEvent[];
+}
+
 interface WorkerProjectionReplayState {
-  active: ActiveProjectionReplay | null;
+  active: ActiveProjectionReplay | ActiveProjectionDispatch | null;
 }
 
 interface ActiveRecallSnapshot {
@@ -565,6 +605,7 @@ function beginProjectionReplay(
     const events = projectionJournalEvents(database, scopeKey);
     const meta = projectionMeta(database, scopeKey);
     replayState.active = Object.freeze({
+      kind: "replay",
       replayId,
       scopeKey,
       events,
@@ -584,23 +625,10 @@ function beginProjectionReplay(
   }
 }
 
-function beginProjectionDispatch(
-  database: SqliteDatabaseConnection,
-  databasePath: string,
-  replayState: WorkerProjectionReplayState,
-  dispatchId: number,
-  scopeKey: string,
+function validateProjectionDispatchEvents(
   appendEvents: readonly SqliteProjectionDispatchAppendEvent[],
-): SqliteProjectionDispatchBeginResult {
-  if (
-    replayState.active !== null ||
-    !Number.isSafeInteger(dispatchId) ||
-    dispatchId <= 0 ||
-    typeof scopeKey !== "string" ||
-    !REPLAY_SCOPE_PATTERN.test(scopeKey) ||
-    !Array.isArray(appendEvents) ||
-    appendEvents.length === 0
-  ) {
+): void {
+  if (!Array.isArray(appendEvents) || appendEvents.length === 0) {
     throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
   }
   const ids = new Set<string>();
@@ -626,6 +654,54 @@ function beginProjectionDispatch(
     }
     ids.add(event.eventId);
   }
+}
+
+function expectedNextJournalSeq(
+  database: SqliteDatabaseConnection,
+): number {
+  const maximumRow = database
+    .prepare("SELECT MAX(seq) AS value FROM journal")
+    .get() as Readonly<Record<string, unknown>> | undefined;
+  const sequenceRow = database
+    .prepare("SELECT seq AS value FROM sqlite_sequence WHERE name='journal'")
+    .get() as Readonly<Record<string, unknown>> | undefined;
+  const maximum = maximumRow?.["value"];
+  const sequence = sequenceRow?.["value"];
+
+  if (maximum === null) {
+    if (sequenceRow !== undefined) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    return 1;
+  }
+  if (
+    !Number.isSafeInteger(maximum) ||
+    Number(maximum) <= 0 ||
+    !Number.isSafeInteger(sequence) ||
+    Number(sequence) !== Number(maximum) ||
+    Number(maximum) >= Number.MAX_SAFE_INTEGER
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  return Number(maximum) + 1;
+}
+
+function prepareProjectionDispatch(
+  database: SqliteDatabaseConnection,
+  databasePath: string,
+  replayState: WorkerProjectionReplayState,
+  dispatchId: number,
+  scopeKey: string,
+): SqliteProjectionDispatchPrepareResult {
+  if (
+    replayState.active !== null ||
+    !Number.isSafeInteger(dispatchId) ||
+    dispatchId <= 0 ||
+    typeof scopeKey !== "string" ||
+    !REPLAY_SCOPE_PATTERN.test(scopeKey)
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
 
   let transactionStarted = false;
   try {
@@ -633,11 +709,113 @@ function beginProjectionDispatch(
     transactionStarted = true;
     database.pragma("defer_foreign_keys = ON");
     assertSafeSidecars(databasePath);
-    const previousEvents = projectionJournalEvents(database, scopeKey);
-    const previousLastSeq = previousEvents.at(-1)?.seq ?? 0;
+    const events = projectionJournalEvents(database, scopeKey);
+    const previousLastSeq = events.at(-1)?.seq ?? 0;
+    const expectedJournalSeq = expectedNextJournalSeq(database);
     const current = projectionSnapshot(database, scopeKey);
     const meta = projectionMeta(database, scopeKey);
     const projectionValid = projectionScopeIsValid(database, scopeKey, current);
+    database.exec("SAVEPOINT recall_record_entity_resolution");
+    replayState.active = Object.freeze({
+      kind: "dispatch",
+      replayId: dispatchId,
+      scopeKey,
+      events,
+      current,
+      meta,
+      projectionValid,
+      previousLastSeq,
+      expectedJournalSeq,
+      resolutionSavepointOpen: true,
+      resolutionCompleted: false,
+      resolutionDrafts: null,
+      resolutionResults: null,
+      finalizationCompleted: false,
+      finalizedDrafts: null,
+      finalizedBodyJson: null,
+      appendedEvents: Object.freeze([]),
+    });
+    return Object.freeze({
+      dispatchId,
+      current,
+      meta,
+      projectionValid,
+      previousLastSeq,
+      expectedJournalSeq,
+    });
+  } catch (error) {
+    if (transactionStarted && database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The original failure owns the public result.
+      }
+    }
+    replayState.active = null;
+    throw error;
+  }
+}
+
+function rollbackResolutionStaging(
+  database: SqliteDatabaseConnection,
+  active: ActiveProjectionDispatch,
+): ActiveProjectionDispatch {
+  if (!active.resolutionSavepointOpen) {
+    return active;
+  }
+  database.exec(
+    "ROLLBACK TO recall_record_entity_resolution; RELEASE recall_record_entity_resolution",
+  );
+  return Object.freeze({
+    ...active,
+    resolutionSavepointOpen: false,
+  });
+}
+
+function appendPreparedProjectionDispatch(
+  database: SqliteDatabaseConnection,
+  replayState: WorkerProjectionReplayState,
+  dispatchId: number,
+  appendEvents: readonly SqliteProjectionDispatchAppendEvent[],
+): SqliteProjectionDispatchBeginResult {
+  const currentActive = replayState.active;
+  if (
+    currentActive === null ||
+    currentActive.kind !== "dispatch" ||
+    currentActive.replayId !== dispatchId ||
+    !database.inTransaction ||
+    currentActive.appendedEvents.length !== 0
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  validateProjectionDispatchEvents(appendEvents);
+  if (
+    currentActive.resolutionCompleted &&
+    (!currentActive.finalizationCompleted ||
+      currentActive.finalizedDrafts === null ||
+      currentActive.finalizedBodyJson === null)
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  if (
+    currentActive.finalizationCompleted &&
+    (currentActive.finalizedDrafts === null ||
+      currentActive.finalizedBodyJson === null ||
+      !appendMatchesFinalizedEntityDrafts(
+        appendEvents,
+        currentActive.finalizedDrafts,
+        currentActive.expectedJournalSeq,
+      ) ||
+      appendEvents[0]?.bodyJson !== currentActive.finalizedBodyJson ||
+      expectedNextJournalSeq(database) !== currentActive.expectedJournalSeq)
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+
+  try {
+    const active = rollbackResolutionStaging(database, currentActive);
+    replayState.active = active;
+    const ids = new Set(appendEvents.map((event) => event.eventId));
     const values = appendEvents.map(() => "(?, ?, ?, ?, ?, ?, ?, ?, ?)").join(", ");
     const sql = [
       "WITH candidate(id, scope_key, kind, body, actor, branch, session, created_at, ordinal) AS (",
@@ -652,7 +830,7 @@ function beginProjectionDispatch(
     for (const [index, event] of appendEvents.entries()) {
       parameters.push(
         event.eventId,
-        scopeKey,
+        active.scopeKey,
         event.kind,
         event.bodyJson,
         event.actor,
@@ -668,8 +846,8 @@ function beginProjectionDispatch(
     }
     const events =
       inserted.length === 0
-        ? previousEvents
-        : projectionJournalEvents(database, scopeKey);
+        ? active.events
+        : projectionJournalEvents(database, active.scopeKey);
     const appendedById = new Map(
       events
         .filter((event) => ids.has(event.eventId))
@@ -682,28 +860,36 @@ function beginProjectionDispatch(
     ) {
       throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
     }
+    const committedAppendEvents = Object.freeze(
+      inserted.length === 0
+        ? []
+        : (appendedEvents as readonly ProjectionReplayJournalEvent[]),
+    );
+    if (
+      inserted.length > 0 &&
+      active.finalizationCompleted &&
+      (committedAppendEvents.length !== 1 ||
+        committedAppendEvents[0]?.seq !== active.expectedJournalSeq)
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
     replayState.active = Object.freeze({
-      replayId: dispatchId,
-      scopeKey,
+      ...active,
       events,
-      current,
+      appendedEvents: committedAppendEvents,
     });
     return Object.freeze({
       dispatchId,
       collision: inserted.length === 0,
       events,
-      appendedEvents: Object.freeze(
-        inserted.length === 0
-          ? []
-          : (appendedEvents as readonly ProjectionReplayJournalEvent[]),
-      ),
-      current,
-      meta,
-      projectionValid,
-      previousLastSeq,
+      appendedEvents: committedAppendEvents,
+      current: active.current,
+      meta: active.meta,
+      projectionValid: active.projectionValid,
+      previousLastSeq: active.previousLastSeq,
     });
   } catch (error) {
-    if (transactionStarted && database.inTransaction) {
+    if (database.inTransaction) {
       try {
         database.exec("ROLLBACK");
       } catch {
@@ -713,6 +899,831 @@ function beginProjectionDispatch(
     replayState.active = null;
     throw error;
   }
+}
+
+function beginProjectionDispatch(
+  database: SqliteDatabaseConnection,
+  databasePath: string,
+  replayState: WorkerProjectionReplayState,
+  dispatchId: number,
+  scopeKey: string,
+  appendEvents: readonly SqliteProjectionDispatchAppendEvent[],
+): SqliteProjectionDispatchBeginResult {
+  prepareProjectionDispatch(
+    database,
+    databasePath,
+    replayState,
+    dispatchId,
+    scopeKey,
+  );
+  return appendPreparedProjectionDispatch(
+    database,
+    replayState,
+    dispatchId,
+    appendEvents,
+  );
+}
+
+const WRITE_ENTITY_SUBJECT_NOTE =
+  "subject matches multiple entities; retry with an exact canonical name or confirm an alias or merge";
+const WRITE_ENTITY_OBJECT_NOTE =
+  "object matches multiple entities; retry with an exact canonical name or confirm an alias or merge";
+
+interface ValidatedWriteEntityReference {
+  readonly name: string;
+  readonly normalName: string;
+  readonly kind: string | null;
+  readonly aliases: readonly Readonly<{ name: string; normalName: string }>[];
+}
+
+interface ValidatedWriteEntityDraft {
+  readonly draftIndex: number;
+  readonly subject: ValidatedWriteEntityReference;
+  readonly object: ValidatedWriteEntityReference | null;
+}
+
+interface FinalizedWriteEntityDraft {
+  readonly draftIndex: number;
+  readonly subject: ValidatedWriteEntityReference;
+  readonly object: ValidatedWriteEntityReference | null;
+  readonly subjectCandidateId: string;
+  readonly objectCandidateId: string | null;
+  readonly resolution: SqliteWriteEntityResolvedDraft;
+}
+
+function writeEntityText(
+  value: unknown,
+  maximumCodePoints: number,
+): Readonly<{ name: string; normalName: string }> {
+  if (typeof value !== "string") {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const name = value.trim();
+  if (
+    Array.from(name).length === 0 ||
+    Array.from(name).length > maximumCodePoints
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  try {
+    return Object.freeze({ name, normalName: normalizeV1(name) });
+  } catch (error: unknown) {
+    if (error instanceof ProjectionRuleError) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    throw error;
+  }
+}
+
+function writeEntityKind(value: unknown): string | null {
+  if (value === null) {
+    return null;
+  }
+  if (typeof value !== "string" || !value.isWellFormed()) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const kind = value.trim().normalize("NFKC").toLowerCase();
+  if (Array.from(kind).length === 0 || Array.from(kind).length > 64) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  return kind;
+}
+
+function validateWriteEntityReference(
+  value: unknown,
+): ValidatedWriteEntityReference {
+  if (
+    value === null ||
+    typeof value !== "object" ||
+    Array.isArray(value) ||
+    Reflect.ownKeys(value).some((key) => typeof key !== "string")
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const input = value as Readonly<Record<string, unknown>>;
+  const keys = Object.keys(input).sort();
+  if (
+    keys.length !== 3 ||
+    keys[0] !== "aliases" ||
+    keys[1] !== "kind" ||
+    keys[2] !== "name"
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const name = writeEntityText(input["name"], 1_024);
+  if (!Array.isArray(input["aliases"]) || input["aliases"].length > 20) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const aliases = input["aliases"].map((alias) => writeEntityText(alias, 256));
+  return Object.freeze({
+    name: name.name,
+    normalName: name.normalName,
+    kind: writeEntityKind(input["kind"]),
+    aliases: Object.freeze(aliases),
+  });
+}
+
+function validateWriteEntityDrafts(
+  value: unknown,
+): readonly ValidatedWriteEntityDraft[] {
+  if (!Array.isArray(value) || value.length > 100) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const seenIndexes = new Set<number>();
+  let previousIndex = -1;
+  const drafts = value.map((item) => {
+    if (item === null || typeof item !== "object" || Array.isArray(item)) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    const input = item as Readonly<Record<string, unknown>>;
+    const keys = Object.keys(input).sort();
+    if (
+      keys.length !== 3 ||
+      keys[0] !== "draftIndex" ||
+      keys[1] !== "object" ||
+      keys[2] !== "subject" ||
+      !Number.isSafeInteger(input["draftIndex"]) ||
+      Number(input["draftIndex"]) < 0 ||
+      seenIndexes.has(Number(input["draftIndex"])) ||
+      Number(input["draftIndex"]) <= previousIndex
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    const draftIndex = Number(input["draftIndex"]);
+    seenIndexes.add(draftIndex);
+    previousIndex = draftIndex;
+    return Object.freeze({
+      draftIndex,
+      subject: validateWriteEntityReference(input["subject"]),
+      object:
+        input["object"] === null
+          ? null
+          : validateWriteEntityReference(input["object"]),
+    });
+  });
+  return Object.freeze(drafts);
+}
+
+function writeEntityReferenceState(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+  name: string,
+): ReturnType<typeof resolveEntityReference> {
+  const snapshot = projectionSnapshot(database, scopeKey);
+  const entityRedirects = snapshot.idRedirects.filter(
+    (redirect) => redirect.kind === "entity",
+  );
+  const anchorIds = new Set(snapshot.entities.map((entity) => entity.id));
+  for (const redirect of entityRedirects) {
+    anchorIds.add(redirect.oldId);
+    anchorIds.add(redirect.newId);
+  }
+  try {
+    return resolveEntityReference({
+      scopeKey,
+      name,
+      entityAnchors: [...anchorIds].map((id) => ({
+        id,
+        kind: "entity",
+        scopeKey,
+      })),
+      entities: snapshot.entities,
+      surfaceForms: snapshot.surfaceForms,
+      idRedirects: entityRedirects,
+    });
+  } catch (error: unknown) {
+    if (
+      error instanceof EntityProjectionError ||
+      error instanceof ProjectionIdentifierError ||
+      error instanceof ProjectionRuleError
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    throw error;
+  }
+}
+
+function entityOriginSeq(candidateId: string): number {
+  const match = /^e([1-9][0-9]*)\.[0-9]+$/u.exec(candidateId);
+  if (match?.[1] === undefined) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const value = Number(match[1]);
+  if (!Number.isSafeInteger(value) || value <= 0) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  return value;
+}
+
+function upsertWriteSurface(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+  surfaceNorm: string,
+  entityId: string,
+  incomingOrigin: "name" | "agent_supplied",
+): void {
+  const existing = database
+    .prepare(
+      "SELECT origin FROM surface_forms WHERE scope_key=? AND surface_norm=? AND entity_id=?",
+    )
+    .get(scopeKey, surfaceNorm, entityId) as
+    | Readonly<Record<string, unknown>>
+    | undefined;
+  const origin =
+    existing === undefined
+      ? incomingOrigin
+      : strongestSurfaceOrigin(existing["origin"], incomingOrigin);
+  database
+    .prepare(
+      [
+        "INSERT INTO surface_forms(scope_key, surface_norm, entity_id, origin) VALUES (?, ?, ?, ?)",
+        "ON CONFLICT(scope_key, surface_norm, entity_id) DO UPDATE SET origin=excluded.origin",
+      ].join(" "),
+    )
+    .run(scopeKey, surfaceNorm, entityId, origin);
+}
+
+function stageCandidateRedirect(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+  candidateId: string,
+  canonicalId: string,
+): void {
+  if (candidateId === canonicalId) {
+    return;
+  }
+  const candidateEntity = database
+    .prepare("SELECT scope_key FROM entities WHERE id=?")
+    .get(candidateId) as Readonly<Record<string, unknown>> | undefined;
+  if (candidateEntity !== undefined) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const inserted = database
+    .prepare(
+      "INSERT OR IGNORE INTO id_redirects(old_id, new_id, kind, reason) VALUES (?, ?, 'entity', 'deduplicated')",
+    )
+    .run(candidateId, canonicalId);
+  if (inserted.changes === 1) {
+    return;
+  }
+  const existing = database
+    .prepare("SELECT new_id, kind FROM id_redirects WHERE old_id=?")
+    .get(candidateId) as Readonly<Record<string, unknown>> | undefined;
+  if (
+    existing === undefined ||
+    existing["kind"] !== "entity" ||
+    existing["new_id"] !== canonicalId
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const target = database
+    .prepare(
+      "SELECT scope_key, merged_into FROM entities WHERE id=?",
+    )
+    .get(canonicalId) as Readonly<Record<string, unknown>> | undefined;
+  if (
+    target === undefined ||
+    target["scope_key"] !== scopeKey ||
+    target["merged_into"] !== null
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+}
+
+type StagedWriteEntityReference =
+  | Readonly<{ status: "resolved"; entityId: string }>
+  | Readonly<{
+      status: "ambiguous";
+      candidates: readonly Readonly<{ entityId: string; name: string }>[];
+    }>;
+
+function stageWriteEntityReference(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+  reference: ValidatedWriteEntityReference,
+  candidateId: string,
+): StagedWriteEntityReference {
+  let resolution = writeEntityReferenceState(database, scopeKey, reference.name);
+  if (resolution.status === "ambiguous") {
+    return Object.freeze({
+      status: "ambiguous",
+      candidates: resolution.candidates,
+    });
+  }
+
+  let entityId: string;
+  let nameOrigin: "name" | "agent_supplied";
+  if (resolution.status === "resolved") {
+    entityId = resolution.entityId;
+    nameOrigin = "agent_supplied";
+  } else {
+    const inserted = database
+      .prepare(
+        "INSERT OR IGNORE INTO entities(id, scope_key, name, normal_name, kind, merged_into, origin_seq) VALUES (?, ?, ?, ?, ?, NULL, ?)",
+      )
+      .run(
+        candidateId,
+        scopeKey,
+        reference.name,
+        reference.normalName,
+        reference.kind,
+        entityOriginSeq(candidateId),
+      );
+    resolution = writeEntityReferenceState(database, scopeKey, reference.name);
+    if (resolution.status !== "resolved") {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    entityId = resolution.entityId;
+    nameOrigin = inserted.changes === 1 ? "name" : "agent_supplied";
+  }
+
+  stageCandidateRedirect(
+    database,
+    scopeKey,
+    candidateId,
+    entityId,
+  );
+  upsertWriteSurface(
+    database,
+    scopeKey,
+    reference.normalName,
+    entityId,
+    nameOrigin,
+  );
+  return Object.freeze({ status: "resolved", entityId });
+}
+
+function applyWriteEntityAliases(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+  reference: ValidatedWriteEntityReference,
+  entityId: string,
+): void {
+  const seen = new Set<string>();
+  for (const alias of reference.aliases) {
+    if (seen.has(alias.normalName)) {
+      continue;
+    }
+    seen.add(alias.normalName);
+    upsertWriteSurface(
+      database,
+      scopeKey,
+      alias.normalName,
+      entityId,
+      "agent_supplied",
+    );
+  }
+}
+
+function rejectAmbiguousWriteDraft(
+  database: SqliteDatabaseConnection,
+  draftIndex: number,
+  field: "subject" | "object",
+  candidates: readonly Readonly<{ entityId: string; name: string }>[],
+): SqliteWriteEntityDraftResolution {
+  database.exec(
+    "ROLLBACK TO recall_record_entity_draft; RELEASE recall_record_entity_draft",
+  );
+  return Object.freeze({
+    draftIndex,
+    status: "rejected",
+    reason: "ambiguous_entity",
+    field,
+    candidates: Object.freeze(
+      candidates.map((candidate) =>
+        Object.freeze({
+          entityId: candidate.entityId,
+          name: candidate.name,
+        }),
+      ),
+    ),
+    note:
+      field === "subject" ? WRITE_ENTITY_SUBJECT_NOTE : WRITE_ENTITY_OBJECT_NOTE,
+  });
+}
+
+interface StagedWriteEntityDrafts {
+  readonly results: readonly SqliteWriteEntityDraftResolution[];
+  readonly finalized: readonly FinalizedWriteEntityDraft[];
+}
+
+function occurrenceCandidateId(seq: number, position: number): string {
+  if (
+    !Number.isSafeInteger(seq) ||
+    seq <= 0 ||
+    !Number.isSafeInteger(position) ||
+    position < 0
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  return `e${seq}.${position}`;
+}
+
+function stageWriteEntityDrafts(
+  database: SqliteDatabaseConnection,
+  scopeKey: string,
+  expectedJournalSeq: number,
+  drafts: readonly ValidatedWriteEntityDraft[],
+  allowAmbiguity: boolean,
+): StagedWriteEntityDrafts {
+  const results: SqliteWriteEntityDraftResolution[] = [];
+  const finalized: FinalizedWriteEntityDraft[] = [];
+  let entityPosition = 0;
+
+  for (const draft of drafts) {
+    const subjectCandidateId = occurrenceCandidateId(
+      expectedJournalSeq,
+      entityPosition,
+    );
+    const objectCandidateId =
+      draft.object === null
+        ? null
+        : occurrenceCandidateId(expectedJournalSeq, entityPosition + 1);
+    database.exec("SAVEPOINT recall_record_entity_draft");
+    try {
+      const subject = stageWriteEntityReference(
+        database,
+        scopeKey,
+        draft.subject,
+        subjectCandidateId,
+      );
+      if (subject.status === "ambiguous") {
+        if (!allowAmbiguity) {
+          throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+        }
+        results.push(
+          rejectAmbiguousWriteDraft(
+            database,
+            draft.draftIndex,
+            "subject",
+            subject.candidates,
+          ),
+        );
+        continue;
+      }
+      const object =
+        draft.object === null || objectCandidateId === null
+          ? null
+          : stageWriteEntityReference(
+              database,
+              scopeKey,
+              draft.object,
+              objectCandidateId,
+            );
+      if (object?.status === "ambiguous") {
+        if (!allowAmbiguity) {
+          throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+        }
+        results.push(
+          rejectAmbiguousWriteDraft(
+            database,
+            draft.draftIndex,
+            "object",
+            object.candidates,
+          ),
+        );
+        continue;
+      }
+      applyWriteEntityAliases(database, scopeKey, draft.subject, subject.entityId);
+      if (draft.object !== null && object?.status === "resolved") {
+        applyWriteEntityAliases(
+          database,
+          scopeKey,
+          draft.object,
+          object.entityId,
+        );
+      }
+      database.exec("RELEASE recall_record_entity_draft");
+      const resolution: SqliteWriteEntityResolvedDraft = Object.freeze({
+        draftIndex: draft.draftIndex,
+        status: "resolved",
+        subjectId: subject.entityId,
+        objectId:
+          object === null || object.status !== "resolved"
+            ? null
+            : object.entityId,
+      });
+      results.push(resolution);
+      finalized.push(
+        Object.freeze({
+          draftIndex: draft.draftIndex,
+          subject: draft.subject,
+          object: draft.object,
+          subjectCandidateId,
+          objectCandidateId,
+          resolution,
+        }),
+      );
+      entityPosition += draft.object === null ? 1 : 2;
+    } catch (error) {
+      try {
+        database.exec(
+          "ROLLBACK TO recall_record_entity_draft; RELEASE recall_record_entity_draft",
+        );
+      } catch {
+        // The primary validation or SQLite failure owns the public result.
+      }
+      throw error;
+    }
+  }
+
+  return Object.freeze({
+    results: Object.freeze(results),
+    finalized: Object.freeze(finalized),
+  });
+}
+
+function resolveWriteEntityDrafts(
+  database: SqliteDatabaseConnection,
+  replayState: WorkerProjectionReplayState,
+  dispatchId: number,
+  draftValues: readonly SqliteWriteEntityDraftInput[],
+): readonly SqliteWriteEntityDraftResolution[] {
+  const active = replayState.active;
+  if (
+    active === null ||
+    active.kind !== "dispatch" ||
+    active.replayId !== dispatchId ||
+    !database.inTransaction ||
+    !active.resolutionSavepointOpen ||
+    active.resolutionCompleted ||
+    active.appendedEvents.length !== 0
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+
+  try {
+    const drafts = validateWriteEntityDrafts(draftValues);
+    const staged = stageWriteEntityDrafts(
+      database,
+      active.scopeKey,
+      active.expectedJournalSeq,
+      drafts,
+      true,
+    );
+    replayState.active = Object.freeze({
+      ...active,
+      resolutionCompleted: true,
+      resolutionDrafts: drafts,
+      resolutionResults: staged.results,
+    });
+    return staged.results;
+  } catch (error) {
+    if (database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The original failure owns the public result.
+      }
+    }
+    replayState.active = null;
+    throw error;
+  }
+}
+
+function validateSurvivorDraftIndexes(
+  value: unknown,
+  drafts: readonly ValidatedWriteEntityDraft[],
+  results: readonly SqliteWriteEntityDraftResolution[],
+): readonly number[] {
+  if (!Array.isArray(value) || value.length > drafts.length) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  const resultByIndex = new Map(results.map((result) => [result.draftIndex, result]));
+  const draftPositionByIndex = new Map(
+    drafts.map((draft, position) => [draft.draftIndex, position]),
+  );
+  const indexes: number[] = [];
+  let previousPosition = -1;
+  for (const item of value) {
+    if (!Number.isSafeInteger(item)) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    const draftIndex = Number(item);
+    const position = draftPositionByIndex.get(draftIndex);
+    const result = resultByIndex.get(draftIndex);
+    if (
+      position === undefined ||
+      position <= previousPosition ||
+      result?.status !== "resolved"
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    previousPosition = position;
+    indexes.push(draftIndex);
+  }
+  return Object.freeze(indexes);
+}
+
+function finalizeWriteEntityDrafts(
+  database: SqliteDatabaseConnection,
+  replayState: WorkerProjectionReplayState,
+  dispatchId: number,
+  survivorDraftIndexValues: readonly number[],
+  statementBodyJson: unknown,
+): SqliteWriteEntityFinalizationResult {
+  const active = replayState.active;
+  if (
+    active === null ||
+    active.kind !== "dispatch" ||
+    active.replayId !== dispatchId ||
+    !database.inTransaction ||
+    !active.resolutionSavepointOpen ||
+    !active.resolutionCompleted ||
+    active.resolutionDrafts === null ||
+    active.resolutionResults === null ||
+    active.finalizationCompleted ||
+    active.appendedEvents.length !== 0
+  ) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+
+  try {
+    const survivorDraftIndexes = validateSurvivorDraftIndexes(
+      survivorDraftIndexValues,
+      active.resolutionDrafts,
+      active.resolutionResults,
+    );
+    const survivorSet = new Set(survivorDraftIndexes);
+    const survivors = active.resolutionDrafts.filter((draft) =>
+      survivorSet.has(draft.draftIndex),
+    );
+
+    database.exec(
+      "ROLLBACK TO recall_record_entity_resolution; RELEASE recall_record_entity_resolution; SAVEPOINT recall_record_entity_resolution",
+    );
+    const staged = stageWriteEntityDrafts(
+      database,
+      active.scopeKey,
+      active.expectedJournalSeq,
+      survivors,
+      false,
+    );
+    if (
+      staged.results.length !== survivors.length ||
+      staged.finalized.length !== survivors.length ||
+      staged.results.some((result) => result.status !== "resolved")
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    if (
+      typeof statementBodyJson !== "string" ||
+      !statementBodyMatchesFinalizedEntityDrafts(
+        statementBodyJson,
+        staged.finalized,
+        active.expectedJournalSeq,
+      )
+    ) {
+      throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+    }
+    const drafts = Object.freeze(
+      staged.results as readonly SqliteWriteEntityResolvedDraft[],
+    );
+    replayState.active = Object.freeze({
+      ...active,
+      finalizationCompleted: true,
+      finalizedDrafts: staged.finalized,
+      finalizedBodyJson: statementBodyJson,
+    });
+    return Object.freeze({
+      expectedJournalSeq: active.expectedJournalSeq,
+      drafts,
+    });
+  } catch (error) {
+    if (database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The original failure owns the public result.
+      }
+    }
+    replayState.active = null;
+    throw error;
+  }
+}
+
+function storedAliases(value: unknown): readonly string[] {
+  if (value === undefined) {
+    return Object.freeze([]);
+  }
+  if (!Array.isArray(value) || value.length > 20) {
+    throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
+  }
+  return Object.freeze(value.map((item) => writeEntityText(item, 256).name));
+}
+
+function storedKind(value: unknown): string | null {
+  return value === undefined ? null : writeEntityKind(value);
+}
+
+function sameValidatedReference(
+  source: Readonly<Record<string, unknown>>,
+  prefix: "subject" | "object",
+  expected: ValidatedWriteEntityReference,
+): boolean {
+  const name = writeEntityText(source[prefix], 1_024).name;
+  const kind = storedKind(source[`${prefix}_kind`]);
+  const aliases = storedAliases(source[`${prefix}_aliases`]);
+  return (
+    name === expected.name &&
+    kind === expected.kind &&
+    aliases.length === expected.aliases.length &&
+    aliases.every((alias, index) => alias === expected.aliases[index]?.name)
+  );
+}
+
+function appendMatchesFinalizedEntityDrafts(
+  appendEvents: readonly SqliteProjectionDispatchAppendEvent[],
+  finalizedDrafts: readonly FinalizedWriteEntityDraft[],
+  expectedJournalSeq: number,
+): boolean {
+  if (appendEvents.length !== 1 || appendEvents[0]?.kind !== "statement") {
+    return false;
+  }
+  return statementBodyMatchesFinalizedEntityDrafts(
+    appendEvents[0].bodyJson,
+    finalizedDrafts,
+    expectedJournalSeq,
+  );
+}
+
+function statementBodyMatchesFinalizedEntityDrafts(
+  statementBodyJson: string,
+  finalizedDrafts: readonly FinalizedWriteEntityDraft[],
+  expectedJournalSeq: number,
+): boolean {
+  let body: unknown;
+  try {
+    body = JSON.parse(statementBodyJson) as unknown;
+  } catch {
+    return false;
+  }
+  if (body === null || typeof body !== "object" || Array.isArray(body)) {
+    return false;
+  }
+  const parsed = (body as Readonly<Record<string, unknown>>)["parsed"];
+  if (!Array.isArray(parsed) || parsed.length !== finalizedDrafts.length) {
+    return false;
+  }
+  try {
+    let entityPosition = 0;
+    for (let index = 0; index < parsed.length; index += 1) {
+      const value = parsed[index];
+      const finalized = finalizedDrafts[index];
+      if (
+        value === null ||
+        typeof value !== "object" ||
+        Array.isArray(value) ||
+        finalized === undefined
+      ) {
+        return false;
+      }
+      const draft = value as Readonly<Record<string, unknown>>;
+      if (
+        finalized.subjectCandidateId !==
+          occurrenceCandidateId(expectedJournalSeq, entityPosition) ||
+        finalized.objectCandidateId !==
+          (finalized.object === null
+            ? null
+            : occurrenceCandidateId(expectedJournalSeq, entityPosition + 1)) ||
+        finalized.resolution.draftIndex !== finalized.draftIndex
+      ) {
+        return false;
+      }
+      if (!sameValidatedReference(draft, "subject", finalized.subject)) {
+        return false;
+      }
+      const hasObject = Object.hasOwn(draft, "object");
+      const hasObjectValue = Object.hasOwn(draft, "object_value");
+      if (hasObject === hasObjectValue) {
+        return false;
+      }
+      if (finalized.object === null) {
+        if (
+          hasObject ||
+          Object.hasOwn(draft, "object_kind") ||
+          Object.hasOwn(draft, "object_aliases")
+        ) {
+          return false;
+        }
+      } else if (
+        !hasObject ||
+        !sameValidatedReference(draft, "object", finalized.object)
+      ) {
+        return false;
+      }
+      entityPosition += finalized.object === null ? 1 : 2;
+    }
+  } catch (error: unknown) {
+    if (
+      error instanceof WorkerConnectionFailure ||
+      error instanceof ProjectionRuleError
+    ) {
+      return false;
+    }
+    throw error;
+  }
+  return true;
 }
 
 function deleteScopeProjection(
@@ -1205,6 +2216,7 @@ function commitProjectionReplay(
   const active = replayState.active;
   if (
     active === null ||
+    active.kind !== "replay" ||
     active.replayId !== replayId ||
     !database.inTransaction ||
     typeof rulesVersion !== "string" ||
@@ -1284,8 +2296,11 @@ function commitProjectionDispatch(
   const active = replayState.active;
   if (
     active === null ||
+    active.kind !== "dispatch" ||
     active.replayId !== dispatchId ||
     !database.inTransaction ||
+    active.resolutionSavepointOpen ||
+    active.appendedEvents.length === 0 ||
     (mode !== "incremental" && mode !== "replay") ||
     typeof rulesVersion !== "string" ||
     rulesVersion.length === 0 ||
@@ -2179,6 +3194,116 @@ function handleRequest(
         replayState,
         request.requestId,
         request.scopeKey,
+        request.events,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "projection-dispatch-prepare") {
+    if (data.role !== "writer" || replayState.active !== null) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = prepareProjectionDispatch(
+        database,
+        data.databasePath,
+        replayState,
+        request.requestId,
+        request.scopeKey,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "projection-dispatch-resolve-entities") {
+    if (data.role !== "writer") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = resolveWriteEntityDrafts(
+        database,
+        replayState,
+        request.dispatchId,
+        request.drafts,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "projection-dispatch-finalize-entities") {
+    if (data.role !== "writer") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = finalizeWriteEntityDrafts(
+        database,
+        replayState,
+        request.dispatchId,
+        request.survivorDraftIndexes,
+        request.statementBodyJson,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "SQLITE_TRANSACTION_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "projection-dispatch-append") {
+    if (data.role !== "writer") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "SQLITE_TRANSACTION_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = appendPreparedProjectionDispatch(
+        database,
+        replayState,
+        request.dispatchId,
         request.events,
       );
       post({ type: "success", requestId: request.requestId, result });

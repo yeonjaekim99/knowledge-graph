@@ -38,3 +38,24 @@ invalid draft index는 fail closed하고 dead·expired·cross-scope 대조군은
 typed Proxy error identity와 임의 payload도 adapter 밖으로 전달하지 않는다. bounded 21개 모두의
 support를 검증하므로 used parsed candidate의 support 누락과 malformed 21번째 sentinel은 실패하고,
 정상 sentinel은 truncation 확인에만 쓰이며 앞 20개 결과에는 들어가지 않는다.
+
+REC-004의
+[`rec-004-write-entity-resolver.test.mjs`](rec-004-write-entity-resolver.test.mjs)는 managed
+writer가 `BEGIN IMMEDIATE`를 보유한 동안 surface 전체 후보→redirect terminal→exact
+normal-name 순서로 entity를 해석하는지 검증한다. ambiguity는 nested draft savepoint만
+되돌리고, scope 밖 후보는 노출하지 않으며, `INSERT OR IGNORE` 충돌 뒤 재조회로 수렴한다.
+해석용 provisional entity/surface/redirect는 append 전에 outer savepoint로 전부 되돌려
+journal 없는 projection-only commit 경로가 생기지 않게 한다.
+
+[`rec-004-write-entity-finalization.test.mjs`](rec-004-write-entity-finalization.test.mjs)는 다른
+scope의 journal까지 포함한 DB-global AUTOINCREMENT 다음 seq, ambiguity·REC-005 survivor 제거 뒤
+compact occurrence ID, exact finalization/append body와 actual seq binding을 검증한다. kind의 독립
+trim→NFKC→lowercase 경계, ambiguity candidate의 중복·numeric order·shape와
+`sqlite_sequence` drift도 payload를 노출하지 않고 fail-closed하는지 확인한다. input/result
+Proxy·accessor와 session call/rejection/thenable은 원본 message·cause·prefix·suffix를 버린 새
+고정 error가 된다. Promise subclass/custom `Symbol.species`가 만든 반환 객체도 public
+resolve/finalize Promise로 노출하지 않고 native async settlement bridge에서 폐기하며, 성공은
+검증·동결하고 settlement 실패는 새 고정 오류로 바꾼다. factory 의미를 가진 오류도 원본
+identity·poisoned prototype·transparent Proxy를 재사용하지 않고 allowed code/retry own
+descriptor에서 fresh canonical `SqliteConnectionError`로 복원하며, invalid code를 거부하고
+`SQLITE_BUSY` retry metadata를 유지하는지도 고정한다.
