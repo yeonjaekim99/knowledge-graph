@@ -148,13 +148,22 @@ export interface EffectiveEventRetractionEvent {
   }>;
 }
 
-export interface EffectiveDecisionEvent {
-  readonly kind: "merge" | "alias";
+interface EffectiveDecisionEventBase {
   readonly eventId: string;
   readonly actualSeq: number;
   readonly orderSeq: number;
   readonly bodyJson: string;
 }
+
+export interface EffectiveMergeEvent extends EffectiveDecisionEventBase {
+  readonly kind: "merge";
+}
+
+export interface EffectiveAliasEvent extends EffectiveDecisionEventBase {
+  readonly kind: "alias";
+}
+
+export type EffectiveDecisionEvent = EffectiveMergeEvent | EffectiveAliasEvent;
 
 export type EffectiveProjectionEvent =
   | EffectiveStatementEvent
