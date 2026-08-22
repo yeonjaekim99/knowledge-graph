@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-22
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#25 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01·02 종료 · Phase 03 5/10 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#26 누적 게시·로컬 검증과 2026-08-22 scope 재검토
+- 결과: **Phase 01·02 종료 · Phase 03 6/10 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 19/66, Phase 01·02 `DONE`, Phase 03 5/10, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 20/66, Phase 01·02 `DONE`, Phase 03 6/10, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -103,6 +103,11 @@
     남은 ambiguity는 임의 선택 없이 fail closed한다. confirmed origin과 후속 entity 해석은
     primitive까지 검증했지만 실제 alias event·철회와 record/revise/SQLite parity가 남아
     S08/S21은 `planned`를 유지했다.
+24. PRJ-006은 모든 actual draft에 claim/support anchor를 만들고 canonical entity를 포함한
+    identity의 numeric-earliest ID를 상태와 무관하게 재사용한다. `describes` 선 supersede,
+    claim cutoff와 event 철회 복원, backdated reinterpret와 effective first/last seen을 독립
+    fixture로 고정했다. TTL aggregate·merge/alias·SQLite prefix parity는 PRJ-007~010에 남겨
+    structural reducer 통과를 전체 projection 완료로 과장하지 않았다.
 
 ## 의도적으로 남은 상태
 
@@ -115,8 +120,8 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 5/10이다. 다음 dependency-ready
-  작업은 claim·support·카디널리티 상태 전이인 `PRJ-006`이다.
+- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 6/10이다. 다음 dependency-ready
+  작업은 `PRJ-007` merge·alias rewrite와 `PRJ-008` TTL·aggregate다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -127,11 +132,11 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~008·PRJ-001~005 로컬 gate | PASS — PRJ-005 11/11, PRJ-004 14/14, architecture/type/build와 Node test 142/142 |
-| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 142/142와 roadmap audit 재현 |
+| STO-001~008·PRJ-001~006 로컬 gate | PASS — PRJ-006 13/13, PRJ-005 11/11, PRJ-004 14/14, architecture/type/build와 Node test 155/155 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 155/155와 roadmap audit 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — domain entity/surface/kind reducer·pre-scan anchor seam·unit fixture·문서만 추가, DB mutation·claim/merge/alias event·public memory/MCP wiring·자동 CI 변경 없음 |
+| 변경 범위 | PASS — domain claim/support/cardinality reducer·PRJ-004/005 seam·unit fixture·문서만 추가, DB mutation·merge/alias·expiry aggregate·public memory/MCP wiring·자동 CI 변경 없음 |
 
 ## 게시 전 재현 검사
 
