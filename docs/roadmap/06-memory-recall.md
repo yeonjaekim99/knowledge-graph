@@ -57,8 +57,8 @@
   aggregate fail-closed를 검증했다. callback 중 concurrent WAL commit 전후 두 read가 같은
   snapshot이고 다음 호출에서만 변경·expiry가 보였다.
 - 성공/실패 recall 전후 journal/projection/FTS canonical dump와 외부 reader `data_version`이
-  변하지 않았다. STO-002 5/5와 PRJ-008 8/8도 회귀했다.
-- 전체 fast suite 36개 파일 242/242, PRJ-010 reference parity 39/39, behavior spike 25/25,
+  변하지 않았다. STO-002 7/7과 PRJ-008 8/8도 회귀했다.
+- 전체 fast suite 37개 파일 255/255, PRJ-010 reference parity 39/39, behavior spike 25/25,
   roadmap evidence 67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를
   확인했다.
 - term/surface/FTS/overview/BFS/ranking/Answer assembly/MCP wiring과 성능은 구현하지 않았고
