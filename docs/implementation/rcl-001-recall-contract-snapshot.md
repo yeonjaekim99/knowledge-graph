@@ -31,12 +31,14 @@ MCP adapter의 `createMcpJsonSchemaContract`에 넘긴다. 별도 DTO interface�
 - query는 양끝 whitespace를 제거한 뒤 Unicode 문자 기준 1~4,096자이고 terms는 최대
   10개·각 1~256자, depth는 1~3, limit은 1~50이다.
 - schema의 default annotation과 runtime 반환은 `mode=search`, `depth=2`, `limit=10`,
-  `detail=brief`로 일치한다. overview에는 depth 기본을 만들지 않는다.
+  `detail=brief`로 일치한다. MCP SDK가 직접 소비하는 Standard Schema validate와 helper가
+  같은 canonical default 함수를 통과하며 overview에는 depth 기본을 만들지 않는다.
 - `RecallResult`는 claim/raw answer를 닫힌 union으로 두고 canonical ID, UTC 초 단위 `Z` 시각,
   provenance/support/detail 구조, 0~4 hops와 answer 50개·detail statement 100개 상한을
   검증한다.
-- validation 실패는 FND-004의 `JsonSchemaValidationError` code/boundary/issue count만 남기며
-  submitted value나 SDK issue payload를 보관하지 않는다.
+- Standard Schema validation 실패 result는 issue와 path를 바꾸지 않고 그대로 반환한다.
+  application helper 경계는 FND-004의 `JsonSchemaValidationError` code/boundary/issue count만
+  남기며 submitted value나 SDK issue payload를 보관하지 않는다.
 
 `json-schema-to-ts`는 default annotation이 있는 optional property를 기본 설정에서 required로
 추론한다. public input type은 같은 schema type에서 **type-space로 default annotation key만
@@ -122,6 +124,9 @@ trimmed Unicode 4,096자와 hops 상한 fixture도 기존 동작에 대해 8/10 
 동일 trim 보장과 UTC calendar date 유효성은 각각 3/4 focused RED 뒤 4/4로 닫았다.
 독립 리뷰에서 발견한 frontier path 상한은 `hops=4` 허용·`hops=5` 거부 fixture가 기존
 schema에 대해 3/4 RED인 것을 확인한 뒤 maximum을 4로 바로잡아 4/4 GREEN으로 닫았다.
+MCP-003이 직접 소비할 Standard Schema 성공값의 default 누락도 padded search와 overview
+fixture가 3/4 RED로 재현했다. Standard Schema와 helper를 한 canonical default 경로로 합치고
+실패 result는 무변형 반환해 focused 4/4 GREEN으로 닫았다.
 
 재현 명령은 다음과 같다.
 

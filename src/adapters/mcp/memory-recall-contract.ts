@@ -7,6 +7,7 @@ import {
 
 import {
   createMcpJsonSchemaContract,
+  JsonSchemaValidationError,
   type McpJsonSchemaContract,
   type SchemaValidationBoundary,
 } from "./json-schema-contract.js";
@@ -40,16 +41,28 @@ function withTrimmedQuery(value: unknown): unknown {
 
 const schemaStandardProperties =
   typedSchemaMemoryRecallInputContract.standardSchema["~standard"];
+
+async function validateCanonicalMemoryRecallInput(
+  value: unknown,
+  options?: Parameters<typeof schemaStandardProperties.validate>[1],
+) {
+  const result = await schemaStandardProperties.validate(
+    withTrimmedQuery(value),
+    options,
+  );
+  if ("issues" in result) {
+    return result;
+  }
+  return Object.freeze({ value: withInputDefaults(result.value) });
+}
+
 const normalizedMemoryRecallStandardSchema: McpJsonSchemaContract<
   typeof memoryRecallInputDefinition.schema,
   MemoryRecallInput
 >["standardSchema"] = Object.freeze({
   "~standard": Object.freeze({
     ...schemaStandardProperties,
-    validate: (
-      value: unknown,
-      options?: Parameters<typeof schemaStandardProperties.validate>[1],
-    ) => schemaStandardProperties.validate(withTrimmedQuery(value), options),
+    validate: validateCanonicalMemoryRecallInput,
   }),
 });
 
@@ -59,11 +72,13 @@ export const memoryRecallInputContract: McpJsonSchemaContract<
 > = Object.freeze({
   definition: memoryRecallInputDefinition,
   standardSchema: normalizedMemoryRecallStandardSchema,
-  validate: (value: unknown, boundary: SchemaValidationBoundary) =>
-    typedSchemaMemoryRecallInputContract.validate(
-      withTrimmedQuery(value),
-      boundary,
-    ),
+  async validate(value: unknown, boundary: SchemaValidationBoundary) {
+    const result = await validateCanonicalMemoryRecallInput(value);
+    if ("issues" in result) {
+      throw new JsonSchemaValidationError(boundary, result.issues.length);
+    }
+    return result.value;
+  },
 });
 
 export const recallResultContract: McpJsonSchemaContract<
@@ -96,8 +111,7 @@ function withInputDefaults(input: MemoryRecallInput): MemoryRecallInput {
 export async function validateMemoryRecallInput(
   value: unknown,
 ): Promise<MemoryRecallInput> {
-  const input = await memoryRecallInputContract.validate(value, "input");
-  return withInputDefaults(input);
+  return memoryRecallInputContract.validate(value, "input");
 }
 
 export function validateRecallResult(value: unknown): Promise<RecallResult> {

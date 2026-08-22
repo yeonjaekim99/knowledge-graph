@@ -40,6 +40,29 @@ test("search and overview use one frozen discriminated input schema with normati
   );
   assert.equal(Object.isFrozen(memoryRecallInputDefinition.schema), true);
 
+  const standardSearch = await memoryRecallInputContract.standardSchema[
+    "~standard"
+  ].validate({ query: "  padded search  " });
+  assert.equal(standardSearch.issues, undefined);
+  assert.deepEqual(standardSearch.value, {
+    mode: "search",
+    query: "padded search",
+    depth: 2,
+    limit: 10,
+    detail: "brief",
+  });
+
+  const standardOverview = await memoryRecallInputContract.standardSchema[
+    "~standard"
+  ].validate({ mode: "overview" });
+  assert.equal(standardOverview.issues, undefined);
+  assert.deepEqual(standardOverview.value, {
+    mode: "overview",
+    limit: 10,
+    detail: "brief",
+  });
+  assert.equal("depth" in standardOverview.value, false);
+
   assert.deepEqual(await validateMemoryRecallInput({ query: "인증" }), {
     mode: "search",
     query: "인증",

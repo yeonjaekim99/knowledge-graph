@@ -148,7 +148,9 @@
     data_version 불변을 추가했다. term/FTS, traversal/ranking/Answer와 S09/S10/S19 public
     golden은 RCL-002~008에 남겼다. 독립 리뷰에서 depth 3 frontier incident의 반대 entity를
     path에 덧붙이면 `hops=4`가 된다는 ADR-012 경계를 확인해 output 상한을 4로 정정하고 5를
-    거부하는 contract 회귀를 추가했다.
+    거부하는 contract 회귀를 추가했다. MCP SDK가 Standard Schema를 직접 소비할 때 AJV default
+    annotation이 값을 채우지 않는 경계도 merge review에서 확인해, direct validate와 helper를
+    같은 canonical default 경로로 묶고 overview에는 불필요한 depth가 생기지 않게 고정했다.
 
 ## 의도적으로 남은 상태
 
