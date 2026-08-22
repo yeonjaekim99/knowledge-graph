@@ -32,64 +32,54 @@ test("user strings become at most ten ordered quoted phrase literals", () => {
 
   assert.equal(plan.kind, "query");
   assert.deepEqual(
-    plan.terms.map(({ display, normalized, phraseLiteral }) => ({
+    plan.terms.map(({ display, phraseLiteral }) => ({
       display,
-      normalized,
       phraseLiteral,
     })),
     [
       {
         display: "alpha OR beta",
-        normalized: "alphaorbeta",
         phraseLiteral: "\"alpha OR beta\"",
       },
       {
         display: "NEAR(foo)",
-        normalized: "near(foo)",
         phraseLiteral: "\"NEAR(foo)\"",
       },
       {
         display: "a\"b",
-        normalized: "a\"b",
         phraseLiteral: "\"a\"\"b\"",
       },
       {
         display: "제어문자검색",
-        normalized: "제어문자검색",
         phraseLiteral: "\"제어문자검색\"",
       },
       {
         display: "인증서버",
-        normalized: "인증서버",
         phraseLiteral: "\"인증서버\"",
       },
       {
         display: "😀😃😄",
-        normalized: "😀😃😄",
         phraseLiteral: "\"😀😃😄\"",
       },
       {
         display: "ＦＯＯ",
-        normalized: "foo",
         phraseLiteral: "\"ＦＯＯ\"",
       },
       {
         display: "foo",
-        normalized: "foo",
         phraseLiteral: "\"foo\"",
       },
       {
         display: "literal*glob",
-        normalized: "literal*glob",
         phraseLiteral: "\"literal*glob\"",
       },
       {
         display: "column:value",
-        normalized: "column:value",
         phraseLiteral: "\"column:value\"",
       },
     ],
   );
+  assert.equal("normalized" in plan.terms[0], false);
   assert.equal(
     plan.matchExpression,
     plan.terms.map((term) => term.phraseLiteral).join(" OR "),
@@ -110,12 +100,12 @@ test("user strings become at most ten ordered quoted phrase literals", () => {
   assert.equal(Array.from(fullQuery.terms[0].display).length, 4_096);
 });
 
-test("only normalized candidates with at least three Unicode code points reach trigram FTS", () => {
+test("only sanitized bound phrases with at least three Unicode code points reach trigram FTS", () => {
   const skipped = prepareRecallFtsQuery([
     "가",
     "ab",
-    "Ａ_Ｂ",
-    "\u0000- _\u001f",
+    "㍿",
+    "\u0000-_\u001f",
   ]);
 
   assert.deepEqual(skipped, {
@@ -135,6 +125,13 @@ test("only normalized candidates with at least three Unicode code points reach t
   const emoji = prepareRecallFtsQuery(["😀😃", "😀😃😄"]);
   assert.equal(emoji.kind, "query");
   assert.deepEqual(emoji.terms.map((term) => term.display), ["😀😃😄"]);
+
+  const compatibilityBoundaries = prepareRecallFtsQuery(["a\u0301b", "㍿"]);
+  assert.equal(compatibilityBoundaries.kind, "query");
+  assert.deepEqual(
+    compatibilityBoundaries.terms.map((term) => term.display),
+    ["a\u0301b"],
+  );
 });
 
 test("the internal capability rejects malformed or over-cap candidate collections without echoing them", () => {
@@ -169,4 +166,26 @@ test("the internal capability rejects malformed or over-cap candidate collection
     );
   }
   assert.equal(accessorRead, false);
+
+  const trapMarker = "do-not-echo-rcl-003-proxy-trap";
+  const trappedArray = new Proxy([], {
+    get(target, property, receiver) {
+      if (property === "length") {
+        throw new Error(trapMarker);
+      }
+      return Reflect.get(target, property, receiver);
+    },
+    getOwnPropertyDescriptor() {
+      throw new Error(trapMarker);
+    },
+  });
+  assert.throws(
+    () => prepareRecallFtsQuery(trappedArray),
+    (error) => {
+      assert.ok(readError("INVALID_RECALL_FTS_REQUEST")(error));
+      assert.doesNotMatch(error.message, new RegExp(trapMarker, "u"));
+      assert.equal(JSON.stringify(error).includes(trapMarker), false);
+      return true;
+    },
+  );
 });

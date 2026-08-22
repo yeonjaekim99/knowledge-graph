@@ -204,6 +204,53 @@ function search(factory, terms, scopeKey = SCOPE, evaluationNow = NOW) {
   );
 }
 
+async function searchInjectedFtsResult(factory, rawResult) {
+  const reader = await factory.openReader();
+  Object.defineProperty(reader, "withRecallSnapshot", {
+    configurable: true,
+    value: async (_scopeKey, _evaluationNow, operation) =>
+      operation(
+        Object.freeze({
+          assertActive() {},
+          async listRawAggregateRows() {
+            return Object.freeze([]);
+          },
+          async searchRawFtsRows() {
+            return rawResult;
+          },
+        }),
+      ),
+  });
+  const injectedFactory = Object.freeze({
+    async openReader() {
+      return reader;
+    },
+  });
+  return search(injectedFactory, ["proxy search"]);
+}
+
+function validCandidateRow(overrides = {}) {
+  return {
+    recall_fts_created_at: NOW - 1,
+    recall_fts_event_id: eventId(1),
+    recall_fts_has_valid_graph_duplicate: 0,
+    recall_fts_journal_scope_key: SCOPE,
+    recall_fts_parsed_count: 0,
+    recall_fts_parsed_type: "array",
+    recall_fts_phrase_index: 0,
+    recall_fts_provenance: "observed",
+    recall_fts_rank: -1,
+    recall_fts_raw_text: "proxy search",
+    recall_fts_raw_text_type: "text",
+    recall_fts_recorded_at: NOW - 1,
+    recall_fts_statement_expires_at: null,
+    recall_fts_statement_scope_key: SCOPE,
+    recall_fts_statement_seq: 1,
+    recall_fts_statement_state: "live",
+    ...overrides,
+  };
+}
+
 function permanentDump(database) {
   const tables = [
     "journal",
@@ -305,6 +352,38 @@ test("quoted phrases neutralize operators, quotes, controls, Korean, and emoji i
       [eventId(11), "xyz"],
     ]),
   );
+});
+
+test("the trigram gate follows the sanitized phrase actually bound to MATCH", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  await factory.enqueueWriteTransaction([
+    ...rawStatementCommands({ seq: 1, rawText: "a\u0301b" }),
+    ...rawStatementCommands({ seq: 2, rawText: "㍿" }),
+  ]);
+
+  const combining = await search(factory, ["a\u0301b"]);
+  assert.equal(combining.kind, "searched");
+  assert.deepEqual(
+    combining.rawCandidates.map((candidate) => candidate.eventId),
+    [eventId(1)],
+  );
+
+  const compatibilityExpansion = await search(factory, ["㍿"]);
+  assert.deepEqual(compatibilityExpansion, {
+    kind: "skipped",
+    terms: [],
+    seeds: [],
+    reachedClaims: [],
+    rawCandidates: [],
+    truncation: { reasons: [] },
+    notes: [
+      {
+        code: "fts_terms_too_short",
+        text: RECALL_FTS_NOTE_TEXT.fts_terms_too_short,
+      },
+    ],
+  });
 });
 
 test("valid graph supports produce ordered endpoint seeds and fanout-independent reached pins while graph duplicates suppress raw", async (t) => {
@@ -519,6 +598,72 @@ test("21 matching statements use 20 in rank/seq order and expose deterministic t
   assert.equal(nextCall.rawCandidates[0].statementSeq, 22);
 });
 
+test("globally suppressed duplicate raw statements do not starve an older eligible graph hit", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  await factory.enqueueWriteTransaction([
+    ...graphStatementCommands({
+      seq: 1,
+      rawText: "eligible duplicate search",
+      claimId: "c1.0",
+      subjectId: "e1.0",
+      objectId: "e1.1",
+    }),
+    ...Array.from({ length: 20 }, (_, index) =>
+      rawStatementCommands({
+        seq: index + 2,
+        rawText: "eligible duplicate search",
+      }),
+    ).flat(),
+  ]);
+
+  const result = await search(factory, ["eligible duplicate search"]);
+  assert.deepEqual(
+    result.seeds.map((seed) => [seed.entityId, seed.endpoint]),
+    [
+      ["e1.0", "subject"],
+      ["e1.1", "object"],
+    ],
+  );
+  assert.deepEqual(
+    result.reachedClaims.map((candidate) => candidate.claimId),
+    ["c1.0"],
+  );
+  assert.deepEqual(result.rawCandidates, []);
+  assert.deepEqual(result.truncation, { reasons: [] });
+  assert.deepEqual(result.notes, []);
+});
+
+test("dead parsed statements do not consume the eligible FTS candidate cap", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  await factory.enqueueWriteTransaction([
+    ...graphStatementCommands({
+      seq: 1,
+      rawText: "eligible parsed search",
+      claimId: "c1.0",
+      subjectId: "e1.0",
+      objectId: "e1.1",
+    }),
+    ...Array.from({ length: 20 }, (_, index) =>
+      graphStatementCommands({
+        seq: index + 2,
+        rawText: "eligible parsed search",
+        claimState: "retracted",
+        supportLive: 0,
+      }),
+    ).flat(),
+  ]);
+
+  const result = await search(factory, ["eligible parsed search"]);
+  assert.deepEqual(
+    result.reachedClaims.map((candidate) => candidate.claimId),
+    ["c1.0"],
+  );
+  assert.deepEqual(result.rawCandidates, []);
+  assert.deepEqual(result.truncation, { reasons: [] });
+});
+
 test("all sub-trigram candidates skip FTS with an actionable none-note seam", async (t) => {
   const { factory } = await fixture();
   t.after(() => factory.close());
@@ -529,7 +674,7 @@ test("all sub-trigram candidates skip FTS with an actionable none-note seam", as
     return source.searchFtsCandidates([
       "가",
       "ab",
-      "Ａ_Ｂ",
+      "㍿",
       "\u0000-_\u001f",
     ]);
   });
@@ -576,4 +721,54 @@ test("malformed candidate state fails closed without echoing stored text or driv
       return true;
     },
   );
+});
+
+test("malformed candidate proxies and accessors fail with a payload-redacted typed error", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  const privateMarker = "do-not-echo-rcl-003-proxy-row";
+  let accessorRead = false;
+  const accessorRow = validCandidateRow();
+  Object.defineProperty(accessorRow, "recall_fts_raw_text", {
+    enumerable: true,
+    get() {
+      accessorRead = true;
+      throw new Error(privateMarker);
+    },
+  });
+  const trappedRows = new Proxy([], {
+    get(target, property, receiver) {
+      if (property === "length") {
+        throw new Error(privateMarker);
+      }
+      return Reflect.get(target, property, receiver);
+    },
+    getOwnPropertyDescriptor() {
+      throw new Error(privateMarker);
+    },
+  });
+  const trappedRow = new Proxy(validCandidateRow(), {
+    ownKeys() {
+      throw new Error(privateMarker);
+    },
+  });
+
+  for (const candidateRows of [trappedRows, [trappedRow], [accessorRow]]) {
+    await assert.rejects(
+      searchInjectedFtsResult(factory, {
+        queryUnavailable: false,
+        candidateRows,
+        supportRows: [],
+      }),
+      (error) => {
+        assert.ok(error instanceof RecallReadError);
+        assert.equal(error.code, "INVALID_RECALL_FTS_CANDIDATE");
+        assert.equal("cause" in error, false);
+        assert.doesNotMatch(error.message, new RegExp(privateMarker, "u"));
+        assert.equal(JSON.stringify(error).includes(privateMarker), false);
+        return true;
+      },
+    );
+  }
+  assert.equal(accessorRead, false);
 });
