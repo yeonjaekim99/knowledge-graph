@@ -39,29 +39,33 @@ function plainDataRecord(
   value: unknown,
   code: RecallGraphTraversalErrorCode,
 ): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return reject(code);
-  }
-  const prototype: unknown = Object.getPrototypeOf(value);
-  if (prototype !== Object.prototype && prototype !== null) {
-    return reject(code);
-  }
-  const result: Record<string, unknown> = {};
-  for (const key of Reflect.ownKeys(value)) {
-    if (typeof key !== "string") {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
       return reject(code);
     }
-    const descriptor = Object.getOwnPropertyDescriptor(value, key);
-    if (
-      descriptor === undefined ||
-      descriptor.enumerable !== true ||
-      !("value" in descriptor)
-    ) {
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
       return reject(code);
     }
-    result[key] = descriptor.value;
+    const result: Record<string, unknown> = {};
+    for (const key of Reflect.ownKeys(value)) {
+      if (typeof key !== "string") {
+        return reject(code);
+      }
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !("value" in descriptor)
+      ) {
+        return reject(code);
+      }
+      result[key] = descriptor.value;
+    }
+    return Object.freeze(result);
+  } catch {
+    return reject(code);
   }
-  return result;
 }
 
 function exactDataRecord(
@@ -83,35 +87,51 @@ function exactDataRecord(
 
 function plainDataArray(
   value: unknown,
+  maximumLength: number,
   code: RecallGraphTraversalErrorCode,
 ): readonly unknown[] {
-  if (!Array.isArray(value)) {
-    return reject(code);
-  }
-  const result: unknown[] = [];
-  for (let index = 0; index < value.length; index += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+  try {
+    if (!Array.isArray(value)) {
+      return reject(code);
+    }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     if (
-      descriptor === undefined ||
-      descriptor.enumerable !== true ||
-      !("value" in descriptor)
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      Number(lengthDescriptor.value) < 0 ||
+      Number(lengthDescriptor.value) > maximumLength
     ) {
       return reject(code);
     }
-    result.push(descriptor.value);
-  }
-  const expectedKeys = new Set([
-    "length",
-    ...Array.from({ length: value.length }, (_, index) => String(index)),
-  ]);
-  if (
-    Reflect.ownKeys(value).some(
-      (key) => typeof key !== "string" || !expectedKeys.has(key),
-    )
-  ) {
+    const length = Number(lengthDescriptor.value);
+    const expectedKeys = new Set([
+      "length",
+      ...Array.from({ length }, (_, index) => String(index)),
+    ]);
+    if (
+      Reflect.ownKeys(value).some(
+        (key) => typeof key !== "string" || !expectedKeys.has(key),
+      )
+    ) {
+      return reject(code);
+    }
+    const result: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !("value" in descriptor)
+      ) {
+        return reject(code);
+      }
+      result.push(descriptor.value);
+    }
+    return Object.freeze(result);
+  } catch {
     return reject(code);
   }
-  return Object.freeze(result);
 }
 
 function canonicalIdentifier(
@@ -215,10 +235,11 @@ export function validateRecallGraphTraversalInput(
   if (entry !== "surface" && entry !== "fts" && entry !== "overview") {
     return reject("INVALID_TRAVERSAL_INPUT");
   }
-  const rawSeeds = plainDataArray(input["seeds"], "INVALID_TRAVERSAL_INPUT");
-  if (rawSeeds.length > MAX_TRAVERSAL_SEEDS) {
-    return reject("INVALID_TRAVERSAL_INPUT");
-  }
+  const rawSeeds = plainDataArray(
+    input["seeds"],
+    MAX_TRAVERSAL_SEEDS,
+    "INVALID_TRAVERSAL_INPUT",
+  );
   const seeds = Object.freeze(rawSeeds.map(validatedSeed));
   if (entry === "overview") {
     return Object.freeze({ entry, depth: 0, seeds });
@@ -440,17 +461,16 @@ export function validateRecallTraversalNeighborhood(
       "INVALID_TRAVERSAL_STATE",
     ),
   });
-  const rawLinks = plainDataArray(input["links"], "INVALID_TRAVERSAL_STATE");
-  const rawIncidents = plainDataArray(
-    input["incidents"],
+  const rawLinks = plainDataArray(
+    input["links"],
+    MAX_NEIGHBORHOOD_ROWS,
     "INVALID_TRAVERSAL_STATE",
   );
-  if (
-    rawLinks.length > MAX_NEIGHBORHOOD_ROWS ||
-    rawIncidents.length > MAX_NEIGHBORHOOD_ROWS
-  ) {
-    return reject("INVALID_TRAVERSAL_STATE");
-  }
+  const rawIncidents = plainDataArray(
+    input["incidents"],
+    MAX_NEIGHBORHOOD_ROWS,
+    "INVALID_TRAVERSAL_STATE",
+  );
   const links = Object.freeze(rawLinks.map((row) => validatedLink(row, rootId)));
   const incidents = Object.freeze(
     rawIncidents.map((row) => {

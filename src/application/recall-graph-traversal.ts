@@ -117,14 +117,10 @@ function pathFor(
   if (rawDisplay === undefined) {
     return invalidState();
   }
-  const seedDisplay =
-    entry === "overview"
-      ? firstName
-      : entry === "fts"
-        ? truncateRecallSeedDisplay(`${rawDisplay} (FTS)`)
-        : truncateRecallSeedDisplay(rawDisplay);
-  if (seedDisplay !== pathParts[0]) {
-    pathParts.unshift(seedDisplay);
+  if (entry === "fts") {
+    pathParts.unshift(truncateRecallSeedDisplay(`${rawDisplay} (FTS)`));
+  } else if (entry === "surface" && rawDisplay !== firstName) {
+    pathParts.unshift(truncateRecallSeedDisplay(rawDisplay));
   }
 
   let hops = Math.max(0, chain.length - 1);
@@ -210,10 +206,18 @@ export async function traverseRecallGraph(
   for (let currentDepth = 0; currentDepth <= input.depth; currentDepth += 1) {
     const nextFrontier: ParentState[] = [];
     for (const current of frontier) {
-      const neighborhood = validateRecallTraversalNeighborhood(
-        await source.readTraversalNeighborhood(current.entityId),
-        current.entityId,
-      );
+      let neighborhood;
+      try {
+        neighborhood = validateRecallTraversalNeighborhood(
+          await source.readTraversalNeighborhood(current.entityId),
+          current.entityId,
+        );
+      } catch (error: unknown) {
+        if (error instanceof RecallGraphTraversalError) {
+          return invalidState();
+        }
+        throw error;
+      }
       if (
         current.entityName !== null &&
         current.entityName !== neighborhood.entity.entityName

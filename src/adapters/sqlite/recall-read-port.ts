@@ -105,6 +105,11 @@ const TRAVERSAL_LINK_ROW_KEYS: readonly string[] = Object.freeze(
     "recall_traversal_to_id",
   ].sort(),
 );
+const TRAVERSAL_RESULT_KEYS: readonly string[] = Object.freeze([
+  "entityRow",
+  "incidentRows",
+  "linkRows",
+]);
 
 const FTS_CANDIDATE_ROW_KEYS: readonly string[] = Object.freeze(
   [
@@ -364,18 +369,7 @@ function exactTraversalRow(
   value: unknown,
   expectedKeys: readonly string[],
 ): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return invalidTraversalState();
-  }
-  const row = value as Readonly<Record<string, unknown>>;
-  const keys = Object.keys(row).sort();
-  if (
-    keys.length !== expectedKeys.length ||
-    !keys.every((key, index) => key === expectedKeys[index])
-  ) {
-    return invalidTraversalState();
-  }
-  return row;
+  return snapshotExactRecord(value, expectedKeys, invalidTraversalState);
 }
 
 function decodeTraversalClaim(
@@ -425,21 +419,29 @@ function decodeTraversalClaim(
 
 function decodeTraversalState(
   entityId: string,
-  raw: Readonly<{
-    readonly entityRow: Readonly<Record<string, unknown>> | null;
-    readonly linkRows: readonly Readonly<Record<string, unknown>>[];
-    readonly incidentRows: readonly Readonly<Record<string, unknown>>[];
-  }>,
+  raw: unknown,
   context: RecallReadContext,
 ): RecallTraversalNeighborhood {
-  if (
-    raw.entityRow === null ||
-    !Array.isArray(raw.linkRows) ||
-    !Array.isArray(raw.incidentRows)
-  ) {
+  const envelope = snapshotExactRecord(
+    raw,
+    TRAVERSAL_RESULT_KEYS,
+    invalidTraversalState,
+  );
+  const entityValue = envelope["entityRow"];
+  if (entityValue === null) {
     return invalidTraversalState();
   }
-  const entity = exactTraversalRow(raw.entityRow, TRAVERSAL_ENTITY_ROW_KEYS);
+  const entity = exactTraversalRow(entityValue, TRAVERSAL_ENTITY_ROW_KEYS);
+  const linkRows = snapshotExactArray(
+    envelope["linkRows"],
+    31,
+    invalidTraversalState,
+  );
+  const incidentRows = snapshotExactArray(
+    envelope["incidentRows"],
+    31,
+    invalidTraversalState,
+  );
   if (
     entity["recall_traversal_entity_id"] !== entityId ||
     entity["recall_traversal_entity_scope_key"] !== context.scopeKey ||
@@ -454,9 +456,9 @@ function decodeTraversalState(
           entityId: entity["recall_traversal_entity_id"],
           entityName: entity["recall_traversal_entity_name"],
         },
-        links: raw.linkRows.map((row) =>
+        links: linkRows.map((row) =>
           decodeTraversalClaim(row, context, true)),
-        incidents: raw.incidentRows.map((row) =>
+        incidents: incidentRows.map((row) =>
           decodeTraversalClaim(row, context, false)),
       },
       entityId,
