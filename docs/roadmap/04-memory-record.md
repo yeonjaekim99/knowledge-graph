@@ -174,9 +174,12 @@
 - [x] 후보가 여러 개면 임의 선택하지 않고 그 draft만 actionable ambiguous로 거부한다.
 - [x] 다른 scope의 ID/후보 존재를 응답에서 드러내지 않는다.
 - [x] write lock 안에서 constraint 충돌 후 재조회해 동시 동일 이름을 하나로 수렴시킨다.
-- [x] kind 불일치와 alias homonym을 자동 merge/split하지 않는다.
+- [x] kind는 well-formed Unicode scalar만 adapter/worker에서 받고, 불일치와 alias homonym을
+  자동 merge/split하지 않는다.
 - [x] DB-global next journal seq와 REC-005 survivor finalization 뒤에만 compact occurrence ID를 확정한다.
 - [x] finalized statement body와 실제 append seq가 다르면 projection 전에 전체 transaction을 닫는다.
+- [x] session result의 object ID presence와 rejected field를 원본 draft와 대조하고 고정 ambiguity
+  note만 새 결과에 재구성한다.
 
 완료 증거:
 
@@ -202,13 +205,17 @@
   fresh fixed input/result error로 닫았다. 최종 독립 review에서 canonical own shape여도 원본
   SQLite error identity가 poisoned prototype·transparent Proxy getter를 유지하고 invalid runtime
   code를 통과시키는 경계를 찾아, tests-only 33개 중 28 pass/5 fail RED와 allowed code/retry
-  descriptor snapshot→fresh canonical reconstruction의 33/33 GREEN으로 닫았다. 그 뒤
+  descriptor snapshot→fresh canonical reconstruction의 33/33 GREEN으로 닫았다. 이어진
+  review에서 rejected note payload와 원본 draft 대비 object/field shape 불일치 MEDIUM, kind
+  lone surrogate LOW를 찾았다. tests-only `39c4a00`의 27/35 RED를 expected-draft parity·고정
+  note reconstruction과 adapter/worker Unicode scalar 검사 `cb5f2ec`으로 35/35 GREEN으로
+  닫았으며 새 독립 재검토는 아직 대기 중이다. 그 뒤
   REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신 main에
-  semantic rebase했다. 관련 PRJ-005/009 포함 53/53, 전체 fast 46 files·356/356,
+  semantic rebase했다. 관련 PRJ-005/009 포함 63/63, 전체 fast 46 files·366/366,
   RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4,
   PRJ-008 8/8, PRJ-010 39/39, spike 25/25,
-  roadmap 67/67과 production audit 0건을 재확인했다. 미해결 HIGH/MEDIUM finding은 없고
-  PR/main 영속 증거가 추가될 때까지 상태와 phase roll-up은 `IN_PROGRESS`로 유지한다.
+  roadmap 67/67과 production audit 0건을 재확인했다. 독립 재검토와 PR/main 영속 증거가
+  추가될 때까지 상태와 phase roll-up은 `IN_PROGRESS`로 유지한다.
 
 ### REC-005 — draft 의미 검증·중복 제거·index mapping
 

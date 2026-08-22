@@ -5,7 +5,7 @@
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
 - 성격: 작성자 자체 교차 검토, PR #3~#42 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
   REC-004 독립 review·보완·최신 main 결합 재검증
-- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · 차단 결함 0개**
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · REC-004 보완 후 독립 재검토 대기**
 
 ## 검토 결과
 
@@ -223,7 +223,11 @@
     prototype·transparent Proxy가 원본 identity로 재노출되고 invalid runtime code도 통과하는
     경계를 찾아 tests-only 33개 중 28 pass/5 fail RED로 고정했다. allowed code/retry descriptor만
     읽어 fresh canonical error를 재구성하고 `SQLITE_BUSY` retry metadata를 보존해 33/33 GREEN으로
-    닫았다. REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신
+    닫았다. 이어진 review는 임의 rejected note payload, 원본 draft와 다른 object ID presence·
+    rejected field를 허용하는 MEDIUM 경계와 kind lone surrogate를 허용하는 LOW를 찾았다.
+    tests-only `39c4a00`으로 27/35 RED를 고정하고 expected-draft parity, subject/object별 고정
+    note 재구성과 adapter/worker Unicode scalar 검사 `cb5f2ec`으로 35/35 GREEN을 만들었다. 새
+    독립 재검토는 대기 중이다. REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신
     main에 semantic rebase해 script·evidence와 RCL-001/RCL-002/RCL-003 snapshot 공존을
     함께 검증했으며 PR/main 증거 전까지
     REC-004 상태와 roll-up은 바꾸지 않았다.
@@ -257,10 +261,10 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 33/33, 관련 PRJ-005/009 포함 target 53/53, architecture/type/build와 전체 fast 46 files·356/356 |
+| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 35/35, 관련 PRJ-005/009 포함 target 63/63, architecture/type/build와 전체 fast 46 files·366/366; 새 독립 재검토 대기 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
-| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39; Proxy/accessor redaction과 connection-error identity finding을 닫고 독립 재검토 미해결 HIGH/MEDIUM 0건 |
+| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39; Proxy/accessor·connection-error identity와 result parity/note·kind scalar finding을 로컬에서 닫았고 새 독립 재검토 대기 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
