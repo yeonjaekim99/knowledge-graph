@@ -1639,11 +1639,20 @@ class SqliteRecallReadPort implements RecallReadPort {
               suppliedCandidates: readonly RecallRankingReadCandidate[],
               suppliedProbeLimit: number,
             ) => {
-              snapshot.assertActive();
-              const candidates = validateRankingReadRequest(
-                suppliedCandidates,
-                suppliedProbeLimit,
-              );
+              try {
+                snapshot.assertActive();
+              } catch {
+                return invalidRankingState();
+              }
+              let candidates: readonly RecallRankingReadCandidate[];
+              try {
+                candidates = validateRankingReadRequest(
+                  suppliedCandidates,
+                  suppliedProbeLimit,
+                );
+              } catch {
+                return invalidRankingRequest();
+              }
               try {
                 return decodeRankingRows(
                   await snapshot.readRawRankingRows(

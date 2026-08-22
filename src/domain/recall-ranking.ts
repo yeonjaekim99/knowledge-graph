@@ -6,6 +6,7 @@ import {
 import {
   ProjectionRuleError,
   getRelationDefinition,
+  normalizeLiteralIdentity,
   type CanonicalRelation,
 } from "./projection-rules.js";
 import type { RecallReachedClaim } from "./recall-graph-traversal.js";
@@ -154,6 +155,26 @@ function scalarText(
     return reject(code);
   }
   return value;
+}
+
+function canonicalLiteralText(
+  value: unknown,
+  code: RecallRankingErrorCode,
+): string {
+  const literal = scalarText(value, 1_024, code);
+  let normalized: string;
+  try {
+    normalized = normalizeLiteralIdentity(literal);
+  } catch (error: unknown) {
+    if (error instanceof ProjectionRuleError) {
+      return reject(code);
+    }
+    throw error;
+  }
+  if (normalized !== literal) {
+    return reject(code);
+  }
+  return literal;
 }
 
 function safeInteger(
@@ -308,7 +329,7 @@ function validateBriefParts(value: unknown): RecallClaimBriefParts {
   const objectValue =
     row["objectValue"] === null
       ? null
-      : scalarText(row["objectValue"], 1_024, "INVALID_RANKING_STATE");
+      : canonicalLiteralText(row["objectValue"], "INVALID_RANKING_STATE");
   if ((objectName === null) === (objectValue === null)) {
     return reject("INVALID_RANKING_STATE");
   }
@@ -430,6 +451,13 @@ export function validateRecallRankedClaimState(
   const contested = row["contested"];
   const recent = row["recent"];
   if (typeof contested !== "boolean" || typeof recent !== "boolean") {
+    return reject("INVALID_RANKING_STATE");
+  }
+  if (
+    contested &&
+    brief.relation !== "uses" &&
+    brief.relation !== "rejects"
+  ) {
     return reject("INVALID_RANKING_STATE");
   }
   const originSeq = safeInteger(

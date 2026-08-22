@@ -146,34 +146,103 @@ function snapshotRecallEntityId(value: unknown): string {
 function snapshotRecallRankingCandidates(
   value: unknown,
 ): readonly SqliteRecallRankingCandidate[] {
-  if (!Array.isArray(value)) {
-    return invalidCommand("SQLITE_QUERY_FAILED");
-  }
-  const seen = new Set<string>();
-  const result: SqliteRecallRankingCandidate[] = [];
-  for (const item of value) {
+  try {
     if (
-      item === null ||
-      typeof item !== "object" ||
-      Array.isArray(item) ||
-      !("claimId" in item) ||
-      !("depth" in item) ||
-      typeof item.claimId !== "string" ||
-      !/^c[1-9][0-9]*\.[0-9]+$/u.test(item.claimId) ||
-      !Number.isSafeInteger(item.depth) ||
-      Number(item.depth) < 0 ||
-      Number(item.depth) > 3 ||
-      seen.has(item.claimId)
+      !Array.isArray(value) ||
+      Object.getPrototypeOf(value) !== Array.prototype
     ) {
       return invalidCommand("SQLITE_QUERY_FAILED");
     }
-    seen.add(item.claimId);
-    result.push(Object.freeze({
-      claimId: item.claimId,
-      depth: Number(item.depth),
-    }));
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      Number(lengthDescriptor.value) < 1 ||
+      Number(lengthDescriptor.value) > 41_896_500
+    ) {
+      return invalidCommand("SQLITE_QUERY_FAILED");
+    }
+    const length = Number(lengthDescriptor.value);
+    const arrayKeys = Reflect.ownKeys(value);
+    if (
+      arrayKeys.some((key) => typeof key !== "string") ||
+      arrayKeys.length !== length + 1
+    ) {
+      return invalidCommand("SQLITE_QUERY_FAILED");
+    }
+    const seen = new Set<string>();
+    const result: SqliteRecallRankingCandidate[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const itemDescriptor = Object.getOwnPropertyDescriptor(
+        value,
+        String(index),
+      );
+      if (
+        itemDescriptor === undefined ||
+        itemDescriptor.enumerable !== true ||
+        !("value" in itemDescriptor)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const item = itemDescriptor.value;
+      if (
+        item === null ||
+        typeof item !== "object" ||
+        Array.isArray(item)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const itemPrototype = Object.getPrototypeOf(item);
+      if (itemPrototype !== Object.prototype && itemPrototype !== null) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const itemKeys = Reflect.ownKeys(item);
+      if (
+        itemKeys.some((key) => typeof key !== "string") ||
+        itemKeys.length !== 2 ||
+        !itemKeys.includes("claimId") ||
+        !itemKeys.includes("depth")
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const claimIdDescriptor = Object.getOwnPropertyDescriptor(
+        item,
+        "claimId",
+      );
+      const depthDescriptor = Object.getOwnPropertyDescriptor(item, "depth");
+      if (
+        claimIdDescriptor === undefined ||
+        claimIdDescriptor.enumerable !== true ||
+        !("value" in claimIdDescriptor) ||
+        depthDescriptor === undefined ||
+        depthDescriptor.enumerable !== true ||
+        !("value" in depthDescriptor)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const claimId = claimIdDescriptor.value;
+      const depth = depthDescriptor.value;
+      if (
+        typeof claimId !== "string" ||
+        !/^c[1-9][0-9]*\.[0-9]+$/u.test(claimId) ||
+        !Number.isSafeInteger(depth) ||
+        Number(depth) < 0 ||
+        Number(depth) > 3 ||
+        seen.has(claimId)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      seen.add(claimId);
+      result.push(Object.freeze({
+        claimId,
+        depth: Number(depth),
+      }));
+    }
+    return Object.freeze(result);
+  } catch {
+    return invalidCommand("SQLITE_QUERY_FAILED");
   }
-  return Object.freeze(result);
 }
 
 class SqliteWorkerClient {
