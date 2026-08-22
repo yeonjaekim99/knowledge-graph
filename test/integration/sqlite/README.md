@@ -30,5 +30,5 @@ RCL-003의 [`rcl-003-fts-fallback.test.mjs`](rcl-003-fts-fallback.test.mjs)는 �
 bound quoted phrase로 STO-004 contentless FTS를 검색하고 current-scope live/unexpired statement
 21개 중 20개만 변환하는지 검증한다. operator·quote·control·한국어·emoji, entity/literal
 endpoint seed와 reached pin, raw TTL/state와 죽은 parsed claim 비부활, 동일 raw graph duplicate,
-저장 원문의 앞뒤 공백 보존, 반복 order, WAL snapshot, 영구 dump/data_version 및
-payload-redacted corruption을 포함한다.
+NFKC-equivalent 별도 phrase와 정확한 matched term, 저장 원문의 앞뒤 공백 보존, 반복 order,
+WAL snapshot, 영구 dump/data_version 및 payload-redacted corruption을 포함한다.

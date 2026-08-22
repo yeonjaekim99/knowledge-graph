@@ -29,12 +29,13 @@ BFS/ranking/final `RecallResult` 조합은 RCL-005~008, MCP wiring은 MCP-003에
 1. 내부 candidate collection이 배열·문자열·최대 10개 계약인지 검사한다.
 2. C0/C1 제어 문자를 제거하고 양끝을 trim한다.
 3. 기존 ADR-006 `normalizeV1` 결과가 Unicode code point 3개 이상인 후보만 남긴다.
-4. 같은 normalized 값은 첫 candidate만 보존한다.
-5. 표시 문자열의 `"`를 `""`로 escape하고 각각 하나의 quoted phrase literal로 감싼다.
-6. literal들을 고정 ` OR `로 결합하되 전체 표현은 SQL text가 아니라 named binding으로
+4. 표시 문자열의 `"`를 `""`로 escape하고 각각 하나의 quoted phrase literal로 감싼다.
+5. literal들을 고정 ` OR `로 결합하되 전체 표현은 SQL text가 아니라 named binding으로
    worker에 전달한다.
 
-정규화는 길이 gate와 중복 제거에만 쓰며 FTS phrase 자체를 graph identity처럼 바꾸지 않는다.
+정규화는 길이 gate에만 쓰며 FTS phrase 자체를 graph identity처럼 바꾸거나 dedupe하지 않는다.
+`normalizeV1` 결과가 같은 fullwidth/ASCII 표현도 SQLite trigram tokenizer에서는 별개일 수
+있으므로 원래 입력 순서의 두 phrase를 모두 보존한다.
 모든 후보가 3 code point 미만이면 MATCH를 실행하지 않고
 `fts_terms_too_short` code와 더 긴 query/terms를 요청하는 사용자용 note를 반환한다.
 정상 quoted expression에서도 SQLite가 FTS syntax 오류로 판정하면 내부 장애 모양으로
@@ -76,8 +77,9 @@ LIMIT 21
 ```
 
 21번째는 FTS truncation 판정에만 쓰고 앞 20개 statement만 graph/raw 후보로 변환한다.
-각 statement의 첫 matching phrase는 입력 순서대로 별도 bound MATCH probe를 하므로 path용
-표시는 단순히 첫 query term을 추측하지 않는다. SQL source에는 FTS column read와
+각 statement의 첫 matching phrase는 입력 순서대로 별도 bound MATCH probe를 한다. bound
+sequence는 FTS5 rowid constraint에서 정수로 명시해 다른 statement의 phrase hit를 가져오지
+않으므로 path용 표시는 단순히 첫 query term을 추측하지 않는다. SQL source에는 FTS column read와
 INSERT/UPDATE/DELETE/REPLACE가 없다.
 
 ## graph seed와 reached pin
@@ -153,6 +155,12 @@ candidate guard는 hardening commit `4d81a35`에, stored raw text 보존은 `281
 손상으로 오인하는 경계를 발견했다. 기존 SQLite fixture에 exact text assertion을 먼저 넣어
 9/10 RED를 재현하고, trim은 code-point bound 검증에만 사용하며 반환 text는 바꾸지 않도록
 고쳐 다시 10/10 GREEN을 확인했다.
+
+마지막으로 NFKC가 같은 fullwidth/ASCII phrase를 dedupe하면 실제 trigram token 하나를 놓치고,
+숫자 binding을 그대로 쓴 FTS5 rowid probe가 행 제약을 적용하지 않는 것을 실제 SQLite fixture로
+발견했다. compatibility-equivalent 두 원문과 matched-term assertion을 먼저 추가해 8/10 RED를
+확인한 뒤 phrase 순서 보존과 integer rowid constraint를 `cec212d`에서 고쳐 10/10 GREEN으로
+닫았다.
 
 최종 local gate는 architecture/type/build, RCL-003 10/10, RCL-001 10/10, STO-002 7/7,
 STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 39개 파일 265/265, PRJ-010 독립
