@@ -43,7 +43,7 @@ const malformedCandidateSupportExists = [
   ")",
 ].join("\n");
 
-const validGraphDuplicateExists = [
+export const RECALL_VALID_GRAPH_DUPLICATE_EXISTS_SQL: string = [
   "EXISTS (",
   "  SELECT 1",
   "  FROM journal AS duplicate_journal",
@@ -75,6 +75,9 @@ const validGraphDuplicateExists = [
   "        json_array_length(duplicate_journal.body, '$.parsed')",
   ")",
 ].join("\n");
+
+const validGraphDuplicateExists =
+  RECALL_VALID_GRAPH_DUPLICATE_EXISTS_SQL;
 
 const selectCandidateStatements = [
   "SELECT",

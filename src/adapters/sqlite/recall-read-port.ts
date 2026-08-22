@@ -8,6 +8,10 @@ import {
   type RecallFtsReachedClaimCandidate,
   type RecallFtsSeedCandidate,
   type RecallFtsTerm,
+  type RecallOverviewCandidateResult,
+  type RecallOverviewNote,
+  type RecallOverviewSeedCandidate,
+  type RecallRawCandidate,
   type RecallReadContext,
   type RecallReadPort,
   type RecallSnapshotSource,
@@ -22,10 +26,12 @@ import {
   type RecallSurfaceEntityState,
 } from "../../domain/recall-query-surface.js";
 import type { IdentifierRedirectRow } from "../../domain/projection-identifiers.js";
+import { compareOccurrenceIdentifiers } from "../../domain/projection-identifiers.js";
 import {
   createRecallFtsNote,
   prepareRecallFtsQuery,
 } from "../../application/recall-fts-query.js";
+import { createRecallOverviewNote } from "../../application/recall-overview.js";
 
 import {
   runSqliteRecallSnapshot,
@@ -107,6 +113,38 @@ const FTS_RESULT_KEYS: readonly string[] = Object.freeze([
   "queryUnavailable",
   "supportRows",
 ]);
+const OVERVIEW_RESULT_KEYS: readonly string[] = Object.freeze([
+  "entityRows",
+  "rawRows",
+]);
+const OVERVIEW_ENTITY_ROW_KEYS: readonly string[] = Object.freeze(
+  [
+    "recall_overview_entity_id",
+    "recall_overview_entity_incident_count",
+    "recall_overview_entity_merged_into",
+    "recall_overview_entity_name",
+    "recall_overview_entity_recent_at",
+    "recall_overview_entity_scope_key",
+  ].sort(),
+);
+const OVERVIEW_RAW_ROW_KEYS: readonly string[] = Object.freeze(
+  [
+    "recall_overview_created_at",
+    "recall_overview_event_id",
+    "recall_overview_has_valid_graph_duplicate",
+    "recall_overview_journal_scope_key",
+    "recall_overview_parsed_count",
+    "recall_overview_parsed_type",
+    "recall_overview_provenance",
+    "recall_overview_raw_text",
+    "recall_overview_raw_text_type",
+    "recall_overview_recorded_at",
+    "recall_overview_statement_expires_at",
+    "recall_overview_statement_scope_key",
+    "recall_overview_statement_seq",
+    "recall_overview_statement_state",
+  ].sort(),
+);
 const MAX_FTS_SUPPORT_ROWS = 2_100;
 
 interface DecodedFtsStatement {
@@ -132,6 +170,13 @@ interface DecodedFtsSupport {
   readonly objectId: string | null;
 }
 
+interface DecodedOverviewEntity {
+  readonly entityId: string;
+  readonly display: string;
+  readonly incidentClaimCount: number;
+  readonly lastSeenAt: number;
+}
+
 function invalidAggregate(): never {
   throw new RecallReadError("INVALID_RECALL_AGGREGATE");
 }
@@ -142,6 +187,14 @@ function invalidSurfaceState(): never {
 
 function invalidFtsCandidate(): never {
   throw new RecallReadError("INVALID_RECALL_FTS_CANDIDATE");
+}
+
+function invalidOverviewRequest(): never {
+  throw new RecallReadError("INVALID_RECALL_OVERVIEW_REQUEST");
+}
+
+function invalidOverviewCandidate(): never {
+  throw new RecallReadError("INVALID_RECALL_OVERVIEW_CANDIDATE");
 }
 
 function snapshotExactRecord(
@@ -280,6 +333,20 @@ function safeFtsEpoch(value: unknown): number {
   return Number(value);
 }
 
+function safeOverviewEpoch(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 0) {
+    return invalidOverviewCandidate();
+  }
+  return Number(value);
+}
+
+function safeOverviewPositiveInteger(value: unknown): number {
+  if (!Number.isSafeInteger(value) || Number(value) < 1) {
+    return invalidOverviewCandidate();
+  }
+  return Number(value);
+}
+
 function safePositiveInteger(value: unknown): number {
   if (!Number.isSafeInteger(value) || Number(value) < 1) {
     return invalidFtsCandidate();
@@ -296,6 +363,46 @@ function isBoundedStoredRawText(value: string): boolean {
   for (const _codePoint of trimmed) {
     codePoints += 1;
     if (codePoints > 32_768) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isBoundedOverviewText(
+  value: unknown,
+  maximumCodePoints: number,
+): value is string {
+  if (
+    typeof value !== "string" ||
+    !value.isWellFormed() ||
+    value.trim() !== value ||
+    value.length === 0
+  ) {
+    return false;
+  }
+  let count = 0;
+  for (const _codePoint of value) {
+    count += 1;
+    if (count > maximumCodePoints) {
+      return false;
+    }
+  }
+  return true;
+}
+
+function isBoundedOverviewRawText(value: unknown): value is string {
+  if (
+    typeof value !== "string" ||
+    !value.isWellFormed() ||
+    value.trim().length === 0
+  ) {
+    return false;
+  }
+  let count = 0;
+  for (const _codePoint of value.trim()) {
+    count += 1;
+    if (count > 32_768) {
       return false;
     }
   }
@@ -804,6 +911,230 @@ function assembleFtsCandidates(
   );
 }
 
+function decodeOverviewEntityRows(
+  value: unknown,
+  context: RecallReadContext,
+  seedLimit: number,
+): Readonly<{
+  candidates: readonly RecallOverviewSeedCandidate[];
+  truncated: boolean;
+}> {
+  const rows = snapshotExactArray(value, 11, invalidOverviewCandidate);
+  if (rows.length > seedLimit + 1) {
+    return invalidOverviewCandidate();
+  }
+  const decoded: DecodedOverviewEntity[] = [];
+  const seen = new Set<string>();
+  for (const valueRow of rows) {
+    const row = snapshotExactRecord(
+      valueRow,
+      OVERVIEW_ENTITY_ROW_KEYS,
+      invalidOverviewCandidate,
+    );
+    const entityId = row["recall_overview_entity_id"];
+    const display = row["recall_overview_entity_name"];
+    if (
+      typeof entityId !== "string" ||
+      !ENTITY_ID_PATTERN.test(entityId) ||
+      seen.has(entityId) ||
+      !isBoundedOverviewText(display, 1_024) ||
+      row["recall_overview_entity_scope_key"] !== context.scopeKey ||
+      row["recall_overview_entity_merged_into"] !== null
+    ) {
+      return invalidOverviewCandidate();
+    }
+    try {
+      compareOccurrenceIdentifiers(entityId, entityId, "entity");
+    } catch {
+      return invalidOverviewCandidate();
+    }
+    seen.add(entityId);
+    decoded.push(
+      Object.freeze({
+        entityId,
+        display,
+        incidentClaimCount: safeOverviewPositiveInteger(
+          row["recall_overview_entity_incident_count"],
+        ),
+        lastSeenAt: safeOverviewEpoch(
+          row["recall_overview_entity_recent_at"],
+        ),
+      }),
+    );
+  }
+
+  const compareEntities = (
+    left: DecodedOverviewEntity,
+    right: DecodedOverviewEntity,
+  ): number => {
+    if (left.incidentClaimCount !== right.incidentClaimCount) {
+      return left.incidentClaimCount > right.incidentClaimCount ? -1 : 1;
+    }
+    if (left.lastSeenAt !== right.lastSeenAt) {
+      return left.lastSeenAt > right.lastSeenAt ? -1 : 1;
+    }
+    try {
+      return compareOccurrenceIdentifiers(
+        left.entityId,
+        right.entityId,
+        "entity",
+      );
+    } catch {
+      return invalidOverviewCandidate();
+    }
+  };
+  for (let index = 1; index < decoded.length; index += 1) {
+    const previous = decoded[index - 1];
+    const current = decoded[index];
+    if (
+      previous === undefined ||
+      current === undefined ||
+      compareEntities(previous, current) >= 0
+    ) {
+      return invalidOverviewCandidate();
+    }
+  }
+
+  return Object.freeze({
+    candidates: Object.freeze(
+      decoded.slice(0, seedLimit).map((candidate, seedOrder) =>
+        Object.freeze({
+          entityId: candidate.entityId,
+          display: candidate.display,
+          depth: 0 as const,
+          seedOrder,
+          incidentClaimCount: candidate.incidentClaimCount,
+          lastSeenAt: candidate.lastSeenAt,
+        }),
+      ),
+    ),
+    truncated: rows.length === seedLimit + 1,
+  });
+}
+
+function decodeOverviewRawRows(
+  value: unknown,
+  context: RecallReadContext,
+  limit: number,
+): Readonly<{
+  candidates: readonly RecallRawCandidate[];
+  truncated: boolean;
+}> {
+  const rows = snapshotExactArray(value, 51, invalidOverviewCandidate);
+  if (rows.length > limit + 1) {
+    return invalidOverviewCandidate();
+  }
+  const decoded: RecallRawCandidate[] = [];
+  const seenEvents = new Set<string>();
+  const seenSequences = new Set<number>();
+  for (const valueRow of rows) {
+    const row = snapshotExactRecord(
+      valueRow,
+      OVERVIEW_RAW_ROW_KEYS,
+      invalidOverviewCandidate,
+    );
+    const eventId = row["recall_overview_event_id"];
+    const rawText = row["recall_overview_raw_text"];
+    const provenance = row["recall_overview_provenance"];
+    const statementSeq = safeOverviewPositiveInteger(
+      row["recall_overview_statement_seq"],
+    );
+    if (
+      typeof eventId !== "string" ||
+      !EVENT_ID_PATTERN.test(eventId) ||
+      seenEvents.has(eventId) ||
+      seenSequences.has(statementSeq) ||
+      row["recall_overview_raw_text_type"] !== "text" ||
+      !isBoundedOverviewRawText(rawText) ||
+      row["recall_overview_parsed_type"] !== "array" ||
+      row["recall_overview_parsed_count"] !== 0 ||
+      row["recall_overview_has_valid_graph_duplicate"] !== 0 ||
+      row["recall_overview_journal_scope_key"] !== context.scopeKey ||
+      row["recall_overview_statement_scope_key"] !== context.scopeKey ||
+      row["recall_overview_statement_state"] !== "live" ||
+      (provenance !== "user_stated" &&
+        provenance !== "observed" &&
+        provenance !== "inferred")
+    ) {
+      return invalidOverviewCandidate();
+    }
+    const expiry = row["recall_overview_statement_expires_at"];
+    if (
+      expiry !== null &&
+      safeOverviewEpoch(expiry) <= context.evaluationNow
+    ) {
+      return invalidOverviewCandidate();
+    }
+    seenEvents.add(eventId);
+    seenSequences.add(statementSeq);
+    decoded.push(
+      Object.freeze({
+        eventId,
+        text: rawText,
+        createdAt: safeOverviewEpoch(row["recall_overview_created_at"]),
+        recordedAt: safeOverviewEpoch(row["recall_overview_recorded_at"]),
+        provenance,
+        statementSeq,
+      }),
+    );
+  }
+  for (let index = 1; index < decoded.length; index += 1) {
+    const previous = decoded[index - 1];
+    const current = decoded[index];
+    if (
+      previous === undefined ||
+      current === undefined ||
+      previous.createdAt < current.createdAt ||
+      (previous.createdAt === current.createdAt &&
+        previous.statementSeq <= current.statementSeq)
+    ) {
+      return invalidOverviewCandidate();
+    }
+  }
+  return Object.freeze({
+    candidates: Object.freeze(decoded.slice(0, limit)),
+    truncated: rows.length === limit + 1,
+  });
+}
+
+function assembleOverviewCandidates(
+  rawResult: unknown,
+  context: RecallReadContext,
+  limit: number,
+): RecallOverviewCandidateResult {
+  const envelope = snapshotExactRecord(
+    rawResult,
+    OVERVIEW_RESULT_KEYS,
+    invalidOverviewCandidate,
+  );
+  const entities = decodeOverviewEntityRows(
+    envelope["entityRows"],
+    context,
+    Math.min(limit, 10),
+  );
+  const raws = decodeOverviewRawRows(
+    envelope["rawRows"],
+    context,
+    limit,
+  );
+  const reasons: RecallTruncationReason[] = [];
+  const notes: RecallOverviewNote[] = [];
+  if (entities.truncated) {
+    reasons.push("overview_seeds");
+    notes.push(createRecallOverviewNote("overview_seed_limit"));
+  }
+  if (raws.truncated) {
+    reasons.push("overview_raw_candidates");
+    notes.push(createRecallOverviewNote("overview_raw_limit"));
+  }
+  return Object.freeze({
+    seeds: entities.candidates,
+    rawCandidates: raws.candidates,
+    truncation: Object.freeze({ reasons: Object.freeze(reasons) }),
+    notes: Object.freeze(notes),
+  });
+}
+
 class SqliteRecallReadPort implements RecallReadPort {
   readonly #factory: SqliteConnectionFactory;
 
@@ -916,6 +1247,28 @@ class SqliteRecallReadPort implements RecallReadPort {
                 context,
                 plan.terms,
               );
+            },
+            selectOverviewCandidates: async (suppliedLimit: number) => {
+              snapshot.assertActive();
+              if (
+                !Number.isSafeInteger(suppliedLimit) ||
+                suppliedLimit < 1 ||
+                suppliedLimit > 50
+              ) {
+                return invalidOverviewRequest();
+              }
+              const rawResult = await snapshot.readRawOverviewState(
+                suppliedLimit,
+              );
+              try {
+                return assembleOverviewCandidates(
+                  rawResult,
+                  context,
+                  suppliedLimit,
+                );
+              } catch {
+                return invalidOverviewCandidate();
+              }
             },
           });
           return operation(source);

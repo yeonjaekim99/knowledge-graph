@@ -12,7 +12,9 @@ export type RecallReadErrorCode =
   | "INVALID_RECALL_AGGREGATE"
   | "INVALID_RECALL_SURFACE_STATE"
   | "INVALID_RECALL_FTS_REQUEST"
-  | "INVALID_RECALL_FTS_CANDIDATE";
+  | "INVALID_RECALL_FTS_CANDIDATE"
+  | "INVALID_RECALL_OVERVIEW_REQUEST"
+  | "INVALID_RECALL_OVERVIEW_CANDIDATE";
 
 const RECALL_READ_ERROR_MESSAGES: Readonly<
   Record<RecallReadErrorCode, string>
@@ -27,6 +29,10 @@ const RECALL_READ_ERROR_MESSAGES: Readonly<
     "recall FTS requires one validated collection of at most ten text candidates",
   INVALID_RECALL_FTS_CANDIDATE:
     "recall FTS candidate state does not satisfy the read contract",
+  INVALID_RECALL_OVERVIEW_REQUEST:
+    "recall overview requires one validated result limit",
+  INVALID_RECALL_OVERVIEW_CANDIDATE:
+    "recall overview candidate state does not satisfy the read contract",
 });
 
 export class RecallReadError extends Error {
@@ -104,7 +110,28 @@ export interface RecallFtsRawCandidate extends RecallRawCandidate {
   readonly ftsRank: number;
 }
 
-export type RecallTruncationReason = "fts_candidates";
+export interface RecallOverviewSeedCandidate {
+  readonly entityId: string;
+  readonly display: string;
+  readonly depth: 0;
+  readonly seedOrder: number;
+  readonly incidentClaimCount: number;
+  readonly lastSeenAt: UnixEpochSeconds;
+}
+
+export type RecallOverviewNoteCode =
+  | "overview_seed_limit"
+  | "overview_raw_limit";
+
+export interface RecallOverviewNote {
+  readonly code: RecallOverviewNoteCode;
+  readonly text: string;
+}
+
+export type RecallTruncationReason =
+  | "fts_candidates"
+  | "overview_seeds"
+  | "overview_raw_candidates";
 
 export interface RecallTruncationLedger {
   readonly reasons: readonly RecallTruncationReason[];
@@ -118,6 +145,13 @@ export interface RecallFtsCandidateResult {
   readonly rawCandidates: readonly RecallFtsRawCandidate[];
   readonly truncation: RecallTruncationLedger;
   readonly notes: readonly RecallFtsNote[];
+}
+
+export interface RecallOverviewCandidateResult {
+  readonly seeds: readonly RecallOverviewSeedCandidate[];
+  readonly rawCandidates: readonly RecallRawCandidate[];
+  readonly truncation: RecallTruncationLedger;
+  readonly notes: readonly RecallOverviewNote[];
 }
 
 /**
@@ -138,9 +172,16 @@ export interface RecallFtsCandidateSource {
   ): Promise<RecallFtsCandidateResult>;
 }
 
+export interface RecallOverviewCandidateSource {
+  selectOverviewCandidates(
+    limit: number,
+  ): Promise<RecallOverviewCandidateResult>;
+}
+
 export interface RecallSnapshotSource
   extends RecallValidClaimSource,
-    RecallFtsCandidateSource {}
+    RecallFtsCandidateSource,
+    RecallOverviewCandidateSource {}
 
 export type RecallSnapshotOperation<Result> = (
   source: RecallSnapshotSource,

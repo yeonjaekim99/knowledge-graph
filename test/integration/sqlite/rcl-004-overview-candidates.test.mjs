@@ -280,7 +280,7 @@ function smuggledReadError(marker) {
 test("overview SQL is parameterized, TEMP-valid-rooted, numerically ordered, and read-only", () => {
   assert.equal(Object.isFrozen(RECALL_OVERVIEW_SQL_SOURCE), true);
   const sql = Object.values(RECALL_OVERVIEW_SQL_SOURCE).join("\n");
-  assert.match(RECALL_OVERVIEW_SQL_SOURCE.selectEntityCandidates, /JOIN temp\.recall_claim_agg/u);
+  assert.match(RECALL_OVERVIEW_SQL_SOURCE.selectEntityCandidates, /FROM temp\.recall_claim_agg/u);
   assert.match(RECALL_OVERVIEW_SQL_SOURCE.selectEntityCandidates, /COUNT\(DISTINCT/u);
   assert.match(RECALL_OVERVIEW_SQL_SOURCE.selectEntityCandidates, /:overview_seed_probe_limit/u);
   assert.match(RECALL_OVERVIEW_SQL_SOURCE.selectRawCandidates, /:overview_raw_probe_limit/u);

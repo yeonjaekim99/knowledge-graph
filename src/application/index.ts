@@ -9,6 +9,11 @@ export type {
 } from "./memory-recall-contract.js";
 export type { UseCase } from "./use-case.js";
 export {
+  RECALL_OVERVIEW_NOTE_TEXT,
+  createRecallOverviewNote,
+  selectRecallOverviewCandidates,
+} from "./recall-overview.js";
+export {
   RecordContractError,
   assertClaimDraftStructuralContract,
   assertMemoryRecordInputStructuralContract,
