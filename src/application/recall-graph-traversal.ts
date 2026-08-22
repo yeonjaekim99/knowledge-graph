@@ -32,8 +32,31 @@ interface ReachedState {
   readonly discoveryOrder: number;
 }
 
+interface TraversalReaderBinding {
+  readonly receiver: object;
+  readonly read: (entityId: string) => unknown;
+}
+
 function invalidState(): never {
   throw new RecallGraphTraversalError("INVALID_TRAVERSAL_STATE");
+}
+
+function bindTraversalReader(source: unknown): TraversalReaderBinding {
+  try {
+    if (source === null || typeof source !== "object") {
+      return invalidState();
+    }
+    const read: unknown = Reflect.get(source, "readTraversalNeighborhood");
+    if (typeof read !== "function") {
+      return invalidState();
+    }
+    return Object.freeze({
+      receiver: source,
+      read: read as TraversalReaderBinding["read"],
+    });
+  } catch {
+    return invalidState();
+  }
 }
 
 function claimSignature(reference: RecallTraversalClaimReference): string {
@@ -167,13 +190,7 @@ export async function traverseRecallGraph(
   suppliedInput: RecallGraphTraversalInput,
 ): Promise<RecallGraphTraversalResult> {
   const input = validateRecallGraphTraversalInput(suppliedInput);
-  if (
-    source === null ||
-    typeof source !== "object" ||
-    typeof source.readTraversalNeighborhood !== "function"
-  ) {
-    return invalidState();
-  }
+  const traversalReader = bindTraversalReader(source);
 
   const parents = new Map<string, ParentState>();
   const seedDisplayByOrder = new Map<number, string>();
@@ -209,14 +226,15 @@ export async function traverseRecallGraph(
       let neighborhood;
       try {
         neighborhood = validateRecallTraversalNeighborhood(
-          await source.readTraversalNeighborhood(current.entityId),
+          await Reflect.apply(
+            traversalReader.read,
+            traversalReader.receiver,
+            [current.entityId],
+          ),
           current.entityId,
         );
-      } catch (error: unknown) {
-        if (error instanceof RecallGraphTraversalError) {
-          return invalidState();
-        }
-        throw error;
+      } catch {
+        return invalidState();
       }
       if (
         current.entityName !== null &&
