@@ -626,6 +626,43 @@ test("21 matching statements use 20 in rank/seq order and expose deterministic t
   assert.equal(nextCall.rawCandidates[0].statementSeq, 22);
 });
 
+test("a valid graph in the 21st sentinel is validated but never emitted past the first 20 candidates", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  const commonPhrase = "sentinel validation search";
+  await factory.enqueueWriteTransaction([
+    ...graphStatementCommands({
+      seq: 1,
+      rawText: `${commonPhrase} row 01`,
+      claimId: "c1.0",
+      subjectId: "e1.0",
+      objectId: "e1.1",
+    }),
+    ...Array.from({ length: 20 }, (_, index) => {
+      const seq = index + 2;
+      return rawStatementCommands({
+        seq,
+        rawText: `${commonPhrase} row ${String(seq).padStart(2, "0")}`,
+      });
+    }).flat(),
+  ]);
+
+  const result = await search(factory, [commonPhrase]);
+  assert.deepEqual(
+    result.rawCandidates.map((candidate) => candidate.statementSeq),
+    Array.from({ length: 20 }, (_, index) => 21 - index),
+  );
+  assert.deepEqual(result.seeds, []);
+  assert.deepEqual(result.reachedClaims, []);
+  assert.deepEqual(result.truncation, { reasons: ["fts_candidates"] });
+  assert.deepEqual(result.notes, [
+    {
+      code: "fts_candidate_limit",
+      text: RECALL_FTS_NOTE_TEXT.fts_candidate_limit,
+    },
+  ]);
+});
+
 test("globally suppressed duplicate raw statements do not starve an older eligible graph hit", async (t) => {
   const { factory } = await fixture();
   t.after(() => factory.close());
@@ -786,6 +823,87 @@ test("an aggregate-backed out-of-range draft index fails closed while dead, expi
   }
 });
 
+test("an aggregate-backed malformed 21st sentinel fails closed while dead, expired, and cross-scope controls stay ineligible", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  const commonPhrase = "sentinel corruption search";
+  await factory.enqueueWriteTransaction([
+    ...graphStatementCommands({
+      seq: 1,
+      rawText: `${commonPhrase} row 01`,
+      claimId: "c1.0",
+      subjectId: "e1.0",
+      objectId: "e1.1",
+    }),
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET draft_index=1 WHERE claim_id='c1.0'",
+    },
+    ...Array.from({ length: 20 }, (_, index) => {
+      const seq = index + 2;
+      return rawStatementCommands({
+        seq,
+        rawText: `${commonPhrase} row ${String(seq).padStart(2, "0")}`,
+      });
+    }).flat(),
+    ...graphStatementCommands({
+      seq: 22,
+      rawText: `${commonPhrase} expired control`,
+      claimId: "c22.0",
+      subjectId: "e22.0",
+      objectId: "e22.1",
+      expiresAt: NOW,
+    }),
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET draft_index=1 WHERE claim_id='c22.0'",
+    },
+    ...graphStatementCommands({
+      seq: 23,
+      rawText: `${commonPhrase} cross scope control`,
+      scopeKey: OTHER_SCOPE,
+      claimId: "c23.0",
+      subjectId: "e23.0",
+      objectId: "e23.1",
+    }),
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET draft_index=1 WHERE claim_id='c23.0'",
+    },
+  ]);
+
+  await assert.rejects(
+    search(factory, [commonPhrase]),
+    (error) => {
+      assert.ok(error instanceof RecallReadError);
+      assert.equal(error.code, "INVALID_RECALL_FTS_CANDIDATE");
+      assert.equal("cause" in error, false);
+      assert.doesNotMatch(error.message, new RegExp(commonPhrase, "u"));
+      return true;
+    },
+  );
+
+  await factory.enqueueWriteTransaction([
+    {
+      kind: "run",
+      sql: "UPDATE claim_support SET live=0 WHERE claim_id='c1.0'",
+    },
+    {
+      kind: "run",
+      sql: "UPDATE claims SET state='retracted' WHERE id='c1.0'",
+    },
+  ]);
+  const controls = await search(factory, [commonPhrase]);
+  assert.deepEqual(
+    controls.rawCandidates.map((candidate) => candidate.statementSeq),
+    Array.from({ length: 20 }, (_, index) => 21 - index),
+  );
+  assert.deepEqual(controls.seeds, []);
+  assert.deepEqual(controls.reachedClaims, []);
+  assert.deepEqual(controls.truncation, { reasons: [] });
+  assert.deepEqual(controls.notes, []);
+});
+
 test("all sub-trigram candidates skip FTS with an actionable none-note seam", async (t) => {
   const { factory } = await fixture();
   t.after(() => factory.close());
@@ -893,6 +1011,32 @@ test("malformed candidate proxies and accessors fail with a payload-redacted typ
     );
   }
   assert.equal(accessorRead, false);
+});
+
+test("a used parsed candidate cannot silently lose every eligible support row", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  const privateMarker = "do-not-echo-rcl-003-missing-support";
+  await assert.rejects(
+    searchInjectedFtsResult(factory, {
+      queryUnavailable: false,
+      candidateRows: [
+        validCandidateRow({
+          recall_fts_parsed_count: 1,
+          recall_fts_raw_text: privateMarker,
+        }),
+      ],
+      supportRows: [],
+    }),
+    (error) => {
+      assert.ok(error instanceof RecallReadError);
+      assert.equal(error.code, "INVALID_RECALL_FTS_CANDIDATE");
+      assert.equal("cause" in error, false);
+      assert.doesNotMatch(error.message, new RegExp(privateMarker, "u"));
+      assert.equal(JSON.stringify(error).includes(privateMarker), false);
+      return true;
+    },
+  );
 });
 
 test("payload-bearing typed Proxy traps are replaced across envelope, row, and array boundaries", async (t) => {
