@@ -182,6 +182,7 @@ test("depth three never stops early and an unvisited entity-object endpoint can 
   const c3 = claim("c3.0", "e3.0", "C", "e4.0", "D");
   const literal = claim("c4.0", "e4.0", "D", null, null);
   const frontierEdge = claim("c5.0", "e4.0", "D", "e5.0", "E");
+  const backEdge = claim("c6.0", "e4.0", "D", "e2.0", "B");
   const entries = [
     ["e1.0", neighborhood("e1.0", "A", [link(c1, "e1.0", "e2.0")], [c1])],
     [
@@ -207,8 +208,12 @@ test("depth three never stops early and an unvisited entity-object endpoint can 
       neighborhood(
         "e4.0",
         "D",
-        [link(c3, "e4.0", "e3.0"), link(frontierEdge, "e4.0", "e5.0")],
-        [c3, literal, frontierEdge],
+        [
+          link(c3, "e4.0", "e3.0"),
+          link(frontierEdge, "e4.0", "e5.0"),
+          link(backEdge, "e4.0", "e2.0"),
+        ],
+        [c3, literal, frontierEdge, backEdge],
       ),
     ],
   ];
@@ -231,6 +236,8 @@ test("depth three never stops early and an unvisited entity-object endpoint can 
   });
   assert.equal(byClaim.get("c5.0").path, "A → B → C → D → E");
   assert.equal(byClaim.get("c5.0").hops, 4);
+  assert.equal(byClaim.get("c6.0").path, "A → B → C → D → B");
+  assert.equal(byClaim.get("c6.0").hops, 4);
 });
 
 test("multi-seed BFS keeps canonical one-visit and earliest seed then numeric edge order", async () => {
