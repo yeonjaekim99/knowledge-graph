@@ -7,7 +7,7 @@
 - 규범 근거: ADR-001~010, ADR-017
 - 선행 구현: PRJ-009, STO-008
 - 구현 branch: `prj-010-prefix-parity`
-- PR: 게시 후 추가
+- PR: [#30](https://github.com/yeonjaekim99/knowledge-graph/pull/30)
 
 ## 목적과 범위
 
@@ -163,8 +163,19 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 pnpm audit --prod
 ```
 
-완료 시점의 정확한 test 수, clean archive 결과와 PR link는 PR 게시 전 최종 검증 후
-이 문서와 roadmap 증거에 동시에 고정한다.
+완료 시점의 결과는 다음과 같다.
+
+- `pnpm run verify:prj-010`: 39/39
+- `pnpm test`와 `pnpm run verify:local`: 각각 232/232
+- `pnpm test:foundation`: 57/57
+- 독립 behavior spike: 25/25
+- production dependency audit: 알려진 취약점 0개
+- clean source archive: `pnpm 11.22.0` frozen lockfile 설치, 전체 local gate 232/232와
+  roadmap audit 재현
+
+roadmap validator, `git diff --check`와 PR diff 자체 리뷰도 통과했다. clean archive는
+커밋된 source만 `git archive`로 풀어 검증했으므로 작업 tree나 상위 `node_modules`에
+의존하지 않는다.
 
 ## 후속 경계
 

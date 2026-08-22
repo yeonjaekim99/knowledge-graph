@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
-- 상태: `IN_PROGRESS`
-- 진행률: 9/10
+- 상태: `DONE`
+- 진행률: 10/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -24,7 +24,7 @@
 | PRJ-007 | merge·alias와 claim rewrite | `DONE` | `log0629` | PRJ-005, PRJ-006 | [PR #27](https://github.com/yeonjaekim99/knowledge-graph/pull/27) |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `DONE` | `log0629` | PRJ-004, PRJ-006 | [PR #28](https://github.com/yeonjaekim99/knowledge-graph/pull/28) |
 | PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `DONE` | `log0629` | PRJ-003~008 | [PR #29](https://github.com/yeonjaekim99/knowledge-graph/pull/29) |
-| PRJ-010 | prefix oracle·metamorphic·crash parity | `IN_PROGRESS` | `log0629` | PRJ-009, STO-008 | — |
+| PRJ-010 | prefix oracle·metamorphic·crash parity | `DONE` | `log0629` | PRJ-009, STO-008 | [PR #30](https://github.com/yeonjaekim99/knowledge-graph/pull/30) |
 
 ## 상세 체크리스트
 
@@ -335,24 +335,40 @@
 
 ### PRJ-010 — prefix oracle·metamorphic·crash parity
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `prj-010-prefix-parity`
+- PR: [#30](https://github.com/yeonjaekim99/knowledge-graph/pull/30)
 - 근거: ADR-001~010, ADR-017과 behavior spike
 - 선행 작업: PRJ-009, STO-008
 - 결과물: production reducer 회귀 suite
 
 완료 체크:
 
-- [ ] S01~S24를 production API 또는 reducer fixture로 재실행한다.
-- [ ] 모든 operation prefix에서 증분 결과와 같은 prefix full replay 결과가 byte-equivalent다.
-- [ ] event 분해, scope interleave, time shift와 merge/alias undo metamorphic case가 통과한다.
-- [ ] hard process exit 뒤 이전 또는 새 완전 상태만 남고 reopen replay가 같다.
-- [ ] spike와 구현 차이는 ADR에 근거해 설명하고 production에서 spike module을 import하지 않는다.
+- [x] S01~S24를 production API 또는 reducer fixture로 재실행한다.
+- [x] 모든 operation prefix에서 증분 결과와 같은 prefix full replay 결과가 byte-equivalent다.
+- [x] event 분해, scope interleave, time shift와 merge/alias undo metamorphic case가 통과한다.
+- [x] hard process exit 뒤 이전 또는 새 완전 상태만 남고 reopen replay가 같다.
+- [x] spike와 구현 차이는 ADR에 근거해 설명하고 production에서 spike module을 import하지 않는다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-010-prefix-metamorphic-crash-parity.md)에 journal로 환원
+  가능한 S01~S24 범위, 독립 full reducer oracle, metamorphic 관계와 hard-exit 판정을 고정했다.
+- 24개 scenario의 98 operation 전체 prefix와 S23 고정 trace 8개 × 36 operation의 288
+  prefix에서 actual SQLite projection과 독립 full replay canonical byte/checksum이 일치한다.
+- 별도 Node child를 journal INSERT 전·후, projection publish 전, commit 경합과 commit 뒤의
+  8개 지점에서 `SIGKILL`하고 reopen 시 old 또는 complete-new 상태와 full replay parity만 허용했다.
+- 매 prefix와 reopen에서 scope·FK·FTS·support·`describes`·expiry·redirect·meta 불변식을
+  독립 SQL로 확인했으며 production `src/`와 spike module에는 변경이나 import가 없다.
+- `pnpm run verify:prj-010` 39/39, 전체 local gate 232/232, foundation 57/57, 독립 behavior
+  spike 25/25, roadmap audit, clean source archive와 production dependency audit 0건을 통과했다.
+- manifest는 PRJ-010이 완결한 S23/S24만 `implemented`로 전환했다. S01~S22의 공개
+  record/revise/recall 수직 target은 각 REC/REV/RCL owner에게 남겨 projection 증거를 과장하지 않았다.
 
 ## Phase 종료 체크
 
-- [ ] 같은 journal·rules·now가 항상 같은 canonical projection을 만든다.
-- [ ] 모든 증분 prefix가 full replay oracle과 같다.
-- [ ] scope·FK·ID·redirect·support·describes 불변식 위반이 0건이다.
-- [ ] Phase 04와 Phase 06이 같은 projection/aggregate 계약 위에서 병렬 착수할 수 있다.
+- [x] 같은 journal·rules·now가 항상 같은 canonical projection을 만든다.
+- [x] 모든 증분 prefix가 full replay oracle과 같다.
+- [x] scope·FK·ID·redirect·support·describes 불변식 위반이 0건이다.
+- [x] Phase 04와 Phase 06이 같은 projection/aggregate 계약 위에서 병렬 착수할 수 있다.
