@@ -1,10 +1,10 @@
 # 구현 로드맵 자체 리뷰
 
-- 리뷰일: 2026-08-22
+- 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#36 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001/REC-002/RCL-001 완료 · REC-003/REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#38 누적 게시·로컬 검증과 2026-08-23 scope 재검토
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001 완료 · REC-004/RCL-002/RCL-003 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 27/66, Phase 01·02·03과 REC-001/REC-002/RCL-001 `DONE`, REC-003/REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 28/66, Phase 01·02·03과 REC-001~003/RCL-001 `DONE`, REC-004/RCL-002/RCL-003 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -185,7 +185,8 @@
     재해석은 raw-only만 예외로
     허용하고 한 draft라도 거부되면 successor plan 전체를 만들지 않는다. journal/FTS append,
     duplicate/stored index·occurrence와 projection 원자성 및 전체 log/DB leak scan은 REC-005~008에
-    남겨 unit sanitizer 증거를 수직 경로 완료로 과장하지 않는다.
+    남겨 unit sanitizer 증거를 수직 경로 완료로 과장하지 않는다. 최종 독립 재검증과
+    285/285 회귀를 통과한 [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38)을 완료 증거로 고정해 제품 roll-up을 28/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -198,11 +199,12 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001, REC-002와
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001~REC-003과
   RCL-001은 각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32),
   [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36),
-  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로 완료했고, REC-003,
-  REC-004, RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
+  [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38),
+  [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로 완료했고, REC-004,
+  RCL-002와 RCL-003은 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 

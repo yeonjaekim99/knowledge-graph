@@ -54,7 +54,7 @@
 | `E-RECORD-CONTRACT` | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [record 계약 결정](../implementation/rec-001-record-contract.md), [runtime contract test](../../test/contract/mcp/rec-001-record-schema.test.mjs), [type fixture](../../test/unit/application/rec-001-record-contract.type-test.ts) | frozen Record/ClaimDraft/Result source와 추론 DTO, trim 후 Unicode bounds, closed XOR·재해석 pair, schema/rejected 경계, result index coverage와 accepted status precedence | 비밀 탐지·마스킹, entity 해석·dedupe, journal/project application path와 실제 MCP wiring은 REC-002~008/MCP owner |
 | `E-RECALL-FOUNDATION` | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [RCL-001 구현 결정](../implementation/rcl-001-recall-contract-snapshot.md), [contract test](../../test/contract/mcp/rcl-001-memory-recall-contract.test.mjs), [application test](../../test/unit/application/rcl-001-recall-snapshot-service.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-001-recall-snapshot.test.mjs) | 실제 MemoryRecall/RecallResult schema·type·SDK validation, trusted scope/fixed-now capture, 한 readonly WAL transaction의 scope TEMP aggregate와 explicit alias, cleanup·손상 방어·영구 state 불변 | term/surface/FTS/overview/BFS/ranking/Answer assembly와 public recall golden·MCP wiring·성능은 RCL-002~009/MCP owner |
 | `E-SECRET-DETECTOR` | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [detector 구현 결정](../implementation/rec-002-secret-detector.md), [domain test](../../test/unit/domain/rec-002-secret-detector.test.mjs) | versioned provider signature·Unicode entropy·context allowlist, ASCII 경계, UTF-16 위치 전용 frozen result와 payload-redacted typed failure를 제공하는 IO·writer 없는 pure detector | application scan-before-write·raw 마스킹·draft 거부·write rollback은 REC-003, log/DB/FTS 전체 scan과 확장 공식 provider corpus는 REC-008/MCP-005/REL-005 |
-| `E-RECORD-SANITIZER` | [sanitizer 구현 결정](../implementation/rec-003-record-sanitizer.md), [application test](../../test/unit/application/rec-003-record-sanitizer.test.mjs), [type fixture](../../test/unit/application/rec-003-record-sanitizer.type-test.ts) | positional raw class 마스킹·불명확 위치 전체 fallback, 모든 draft 저장 문자열의 부분 거부, immutable original-index plan과 payload-redacted fail-closed·재해석 전체 실패 | journal/FTS append·projection 원자성은 REC-006, 전체 DB/WAL/log/MCP 누출 scan은 REC-008/MCP-005, revise 문자열 처리는 Phase 05 owner |
+| `E-RECORD-SANITIZER` | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [sanitizer 구현 결정](../implementation/rec-003-record-sanitizer.md), [application test](../../test/unit/application/rec-003-record-sanitizer.test.mjs), [type fixture](../../test/unit/application/rec-003-record-sanitizer.type-test.ts) | positional raw class 마스킹·불명확 위치 전체 fallback, 모든 draft 저장 문자열의 부분 거부, immutable original-index plan과 payload-redacted fail-closed·재해석 전체 실패 | journal/FTS append·projection 원자성은 REC-006, 전체 DB/WAL/log/MCP 누출 scan은 REC-008/MCP-005, revise 문자열 처리는 Phase 05 owner |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -152,15 +152,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 27/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
-  `PRJ-001`~`010`, `REC-001`, `REC-002`와 `RCL-001`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 28/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
+  `PRJ-001`~`010`, `REC-001`~`REC-003`과 `RCL-001`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`, `REC-002`와
-  `RCL-001`은 완료됐고 `REC-003`, `REC-004`, `RCL-002`, `RCL-003`은 owner와 격리
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-003`과
+  `RCL-001`은 완료됐고 `REC-004`, `RCL-002`, `RCL-003`은 owner와 격리
   branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

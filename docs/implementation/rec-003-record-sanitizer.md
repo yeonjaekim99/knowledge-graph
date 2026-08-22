@@ -1,6 +1,6 @@
 # REC-003: record raw 마스킹과 draft 부분 거부
 
-- 상태: 구현 완료, PR 병합 전
+- 상태: 완료 · [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38)
 - 작업 ID: `REC-003`
 - 구현 branch: `rec-003-record-sanitizer`
 - 근거: ADR-011, ADR-013, ADR-017
