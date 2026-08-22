@@ -4,7 +4,7 @@
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
 - 성격: 작성자 자체 교차 검토, PR #3~#41 누적 게시·로컬 검증과 2026-08-23 scope 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-005 진행 · 차단 결함 0개**
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 30/66, Phase 01·02·03과 REC-001~003/RCL-001~003 `DONE`, REC-004/RCL-005 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 30/66, Phase 01·02·03과 REC-001~003/RCL-001~003 `DONE`, REC-004/RCL-004/RCL-005 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -225,8 +225,8 @@
   [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38),
   [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34),
   [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39),
-  [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004와
-  RCL-005는 격리 branch에서 병렬 진행한다.
+  [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004,
+  dependency-ready RCL-004와 RCL-005는 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
