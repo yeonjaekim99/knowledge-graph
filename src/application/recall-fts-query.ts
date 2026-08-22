@@ -1,9 +1,12 @@
 import {
   RecallReadError,
+  type RecallFtsCandidateResult,
+  type RecallFtsCandidateSource,
   type RecallFtsNote,
   type RecallFtsNoteCode,
   type RecallFtsTerm,
 } from "./ports/recall-read-port.js";
+import type { RecallQuerySurfaceSelection } from "../domain/recall-query-surface.js";
 
 const FTS_CANDIDATE_LIMIT = 10;
 const FTS_CANDIDATE_MAX_CODE_POINTS = 4_096;
@@ -40,6 +43,20 @@ export type RecallFtsPlan = RecallFtsSkipPlan | RecallFtsQueryPlan;
 
 export function createRecallFtsNote(code: RecallFtsNoteCode): RecallFtsNote {
   return Object.freeze({ code, text: RECALL_FTS_NOTE_TEXT[code] });
+}
+
+/**
+ * Preserves the ordered user-facing terms selected by RCL-002 when a later
+ * search stage chooses the FTS fallback. surfaceNorm is only an exact surface
+ * lookup key and must never replace the phrase SQLite actually matches.
+ */
+export function searchRecallFtsFallback(
+  source: RecallFtsCandidateSource,
+  selection: RecallQuerySurfaceSelection,
+): Promise<RecallFtsCandidateResult> {
+  return source.searchFtsCandidates(
+    selection.terms.map((term) => term.text),
+  );
 }
 
 function invalidRequest(): never {
