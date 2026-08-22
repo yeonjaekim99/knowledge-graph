@@ -65,7 +65,6 @@ export interface RecallFtsNote {
 
 export interface RecallFtsTerm {
   readonly display: string;
-  readonly normalized: string;
   readonly phraseLiteral: string;
 }
 

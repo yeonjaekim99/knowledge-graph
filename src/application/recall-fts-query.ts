@@ -1,8 +1,4 @@
 import {
-  ProjectionRuleError,
-  normalizeV1,
-} from "../domain/projection-rules.js";
-import {
   RecallReadError,
   type RecallFtsNote,
   type RecallFtsNoteCode,
@@ -11,7 +7,7 @@ import {
 
 const FTS_CANDIDATE_LIMIT = 10;
 const FTS_CANDIDATE_MAX_CODE_POINTS = 4_096;
-const FTS_MINIMUM_NORMALIZED_CODE_POINTS = 3;
+const FTS_MINIMUM_DISPLAY_CODE_POINTS = 3;
 const CONTROL_CHARACTER_PATTERN = /[\u0000-\u001f\u007f-\u009f]/gu;
 const EMPTY_TERMS: readonly RecallFtsTerm[] = Object.freeze([]);
 
@@ -19,7 +15,7 @@ export const RECALL_FTS_NOTE_TEXT: Readonly<
   Record<RecallFtsNoteCode, string>
 > = Object.freeze({
   fts_terms_too_short:
-    "FTS 검색은 정규화 후 세 글자 이상의 표현이 필요합니다. 더 긴 query 또는 terms로 다시 검색하세요.",
+    "FTS 검색은 제어 문자 제거 후 세 글자 이상의 표현이 필요합니다. 더 긴 query 또는 terms로 다시 검색하세요.",
   fts_candidate_limit:
     "FTS 후보가 20개로 잘렸습니다. 더 구체적인 query 또는 terms로 다시 검색하세요.",
   fts_query_unavailable:
@@ -70,34 +66,64 @@ function hasAtMostCodePoints(value: string, maximum: number): boolean {
 }
 
 function snapshotCandidateStrings(value: unknown): readonly string[] {
-  if (!Array.isArray(value) || value.length > FTS_CANDIDATE_LIMIT) {
-    return invalidRequest();
-  }
-  const candidates: string[] = [];
-  for (let index = 0; index < value.length; index += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+  try {
+    if (!Array.isArray(value)) {
+      return invalidRequest();
+    }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
     if (
-      descriptor === undefined ||
-      descriptor.enumerable !== true ||
-      !("value" in descriptor) ||
-      typeof descriptor.value !== "string" ||
-      !hasAtMostCodePoints(
-        descriptor.value,
-        FTS_CANDIDATE_MAX_CODE_POINTS,
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      Number(lengthDescriptor.value) < 0 ||
+      Number(lengthDescriptor.value) > FTS_CANDIDATE_LIMIT
+    ) {
+      return invalidRequest();
+    }
+    const length = Number(lengthDescriptor.value);
+    const expectedKeys = new Set([
+      "length",
+      ...Array.from({ length }, (_, index) => String(index)),
+    ]);
+    if (
+      Reflect.ownKeys(value).some(
+        (key) => typeof key !== "string" || !expectedKeys.has(key),
       )
     ) {
       return invalidRequest();
     }
-    candidates.push(descriptor.value);
+
+    const candidates: string[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !("value" in descriptor) ||
+        typeof descriptor.value !== "string" ||
+        !hasAtMostCodePoints(
+          descriptor.value,
+          FTS_CANDIDATE_MAX_CODE_POINTS,
+        )
+      ) {
+        return invalidRequest();
+      }
+      candidates.push(descriptor.value);
+    }
+    return Object.freeze(candidates);
+  } catch (error: unknown) {
+    if (error instanceof RecallReadError) {
+      throw error;
+    }
+    return invalidRequest();
   }
-  return Object.freeze(candidates);
 }
 
 /**
  * Converts bounded user-controlled candidates into FTS5 phrase literals.
- * Display text remains distinct from normalize_v1, which is used only for the
- * trigram length gate. Compatibility-equivalent display strings remain
- * distinct because SQLite's trigram tokenizer does not apply normalize_v1.
+ * The trigram gate measures the sanitized display phrase that is actually
+ * bound to MATCH. Compatibility-equivalent display strings remain distinct
+ * because SQLite's trigram tokenizer does not apply normalize_v1.
  */
 export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
   const candidates = snapshotCandidateStrings(value);
@@ -105,27 +131,14 @@ export function prepareRecallFtsQuery(value: unknown): RecallFtsPlan {
   const terms: RecallFtsTerm[] = [];
   for (const candidate of candidates) {
     const display = sanitizeDisplay(candidate);
-    let normalized: string;
-    try {
-      normalized = normalizeV1(display);
-    } catch (error: unknown) {
-      if (
-        error instanceof ProjectionRuleError &&
-        error.code === "EMPTY_NORMALIZED_VALUE"
-      ) {
-        continue;
-      }
-      throw error;
-    }
     if (
-      Array.from(normalized).length < FTS_MINIMUM_NORMALIZED_CODE_POINTS
+      Array.from(display).length < FTS_MINIMUM_DISPLAY_CODE_POINTS
     ) {
       continue;
     }
     terms.push(
       Object.freeze({
         display,
-        normalized,
         phraseLiteral: quotedPhraseLiteral(display),
       }),
     );

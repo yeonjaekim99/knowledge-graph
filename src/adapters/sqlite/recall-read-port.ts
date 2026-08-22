@@ -102,6 +102,12 @@ const FTS_SUPPORT_ROW_KEYS: readonly string[] = Object.freeze(
     "recall_fts_support_live",
   ].sort(),
 );
+const FTS_RESULT_KEYS: readonly string[] = Object.freeze([
+  "candidateRows",
+  "queryUnavailable",
+  "supportRows",
+]);
+const MAX_FTS_SUPPORT_ROWS = 2_000;
 
 interface DecodedFtsStatement {
   readonly eventId: string;
@@ -138,21 +144,55 @@ function invalidFtsCandidate(): never {
   throw new RecallReadError("INVALID_RECALL_FTS_CANDIDATE");
 }
 
+function snapshotExactRecord(
+  value: unknown,
+  expectedKeys: readonly string[],
+  invalid: () => never,
+): Readonly<Record<string, unknown>> {
+  try {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      return invalid();
+    }
+    const prototype: unknown = Object.getPrototypeOf(value);
+    if (prototype !== Object.prototype && prototype !== null) {
+      return invalid();
+    }
+    const ownKeys = Reflect.ownKeys(value);
+    if (ownKeys.some((key) => typeof key !== "string")) {
+      return invalid();
+    }
+    const keys = (ownKeys as string[]).sort();
+    if (
+      keys.length !== expectedKeys.length ||
+      !keys.every((key, index) => key === expectedKeys[index])
+    ) {
+      return invalid();
+    }
+    const snapshot: Record<string, unknown> = {};
+    for (const key of expectedKeys) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, key);
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !("value" in descriptor)
+      ) {
+        return invalid();
+      }
+      snapshot[key] = descriptor.value;
+    }
+    return Object.freeze(snapshot);
+  } catch (error: unknown) {
+    if (error instanceof RecallReadError) {
+      throw error;
+    }
+    return invalid();
+  }
+}
+
 function exactRow(
   value: unknown,
 ): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return invalidAggregate();
-  }
-  const row = value as Readonly<Record<string, unknown>>;
-  const keys = Object.keys(row).sort();
-  if (
-    keys.length !== ROW_KEYS.length ||
-    !keys.every((key, index) => key === ROW_KEYS[index])
-  ) {
-    return invalidAggregate();
-  }
-  return row;
+  return snapshotExactRecord(value, ROW_KEYS, invalidAggregate);
 }
 
 function exactSurfaceRow(
@@ -177,18 +217,59 @@ function exactFtsRow(
   value: unknown,
   expectedKeys: readonly string[],
 ): Readonly<Record<string, unknown>> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
-    return invalidFtsCandidate();
+  return snapshotExactRecord(value, expectedKeys, invalidFtsCandidate);
+}
+
+function snapshotExactArray(
+  value: unknown,
+  maximumLength: number,
+  invalid: () => never,
+): readonly unknown[] {
+  try {
+    if (!Array.isArray(value)) {
+      return invalid();
+    }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      Number(lengthDescriptor.value) < 0 ||
+      Number(lengthDescriptor.value) > maximumLength
+    ) {
+      return invalid();
+    }
+    const length = Number(lengthDescriptor.value);
+    const expectedKeys = new Set([
+      "length",
+      ...Array.from({ length }, (_, index) => String(index)),
+    ]);
+    if (
+      Reflect.ownKeys(value).some(
+        (key) => typeof key !== "string" || !expectedKeys.has(key),
+      )
+    ) {
+      return invalid();
+    }
+    const snapshot: unknown[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !("value" in descriptor)
+      ) {
+        return invalid();
+      }
+      snapshot.push(descriptor.value);
+    }
+    return Object.freeze(snapshot);
+  } catch (error: unknown) {
+    if (error instanceof RecallReadError) {
+      throw error;
+    }
+    return invalid();
   }
-  const row = value as Readonly<Record<string, unknown>>;
-  const keys = Object.keys(row).sort();
-  if (
-    keys.length !== expectedKeys.length ||
-    !keys.every((key, index) => key === expectedKeys[index])
-  ) {
-    return invalidFtsCandidate();
-  }
-  return row;
 }
 
 function safeEpoch(value: unknown): number {
@@ -413,13 +494,11 @@ function decodeFtsStatements(
   context: RecallReadContext,
   terms: readonly RecallFtsTerm[],
 ): readonly DecodedFtsStatement[] {
-  if (!Array.isArray(value) || value.length > 21) {
-    return invalidFtsCandidate();
-  }
+  const candidates = snapshotExactArray(value, 21, invalidFtsCandidate);
   const seenEvents: Set<string> = new Set();
   const seenSequences: Set<number> = new Set();
   const result: DecodedFtsStatement[] = [];
-  for (const candidate of value) {
+  for (const candidate of candidates) {
     const row = exactFtsRow(candidate, FTS_CANDIDATE_ROW_KEYS);
     const eventId = row["recall_fts_event_id"];
     const rawText = row["recall_fts_raw_text"];
@@ -583,28 +662,26 @@ function assembleFtsCandidates(
   terms: readonly RecallFtsTerm[],
 ): RecallFtsCandidateResult {
   const statements = decodeFtsStatements(candidateRows, context, terms);
-  if (!Array.isArray(supportRows)) {
-    return invalidFtsCandidate();
-  }
+  const supportCandidates = snapshotExactArray(
+    supportRows,
+    MAX_FTS_SUPPORT_ROWS,
+    invalidFtsCandidate,
+  );
   const usedStatements = statements.slice(0, 20);
   const statementsByEvent: Map<string, DecodedFtsStatement> = new Map(
     usedStatements.map((statement) => [statement.eventId, statement]),
   );
   const supportsByEvent: Map<string, DecodedFtsSupport[]> = new Map();
   const supportIdentity: Set<string> = new Set();
-  for (const value of supportRows) {
-    if (value === null || typeof value !== "object" || Array.isArray(value)) {
-      return invalidFtsCandidate();
-    }
-    const eventId = (value as Readonly<Record<string, unknown>>)[
-      "recall_fts_support_event_id"
-    ];
+  for (const value of supportCandidates) {
+    const row = exactFtsRow(value, FTS_SUPPORT_ROW_KEYS);
+    const eventId = row["recall_fts_support_event_id"];
     const statement =
       typeof eventId === "string" ? statementsByEvent.get(eventId) : undefined;
     if (statement === undefined) {
       return invalidFtsCandidate();
     }
-    const support = decodeFtsSupport(value, statement, context);
+    const support = decodeFtsSupport(row, statement, context);
     const identity = `${support.eventId}\u0000${support.claimId}`;
     if (supportIdentity.has(identity)) {
       return invalidFtsCandidate();
@@ -799,21 +876,25 @@ class SqliteRecallReadPort implements RecallReadPort {
                 plan.matchExpression,
                 plan.terms.map((term) => term.phraseLiteral),
               );
-              if (
-                rawResult === null ||
-                typeof rawResult !== "object" ||
-                Object.keys(rawResult).sort().join("\u0000") !==
-                  "candidateRows\u0000queryUnavailable\u0000supportRows" ||
-                typeof rawResult.queryUnavailable !== "boolean" ||
-                !Array.isArray(rawResult.candidateRows) ||
-                !Array.isArray(rawResult.supportRows)
-              ) {
+              const envelope = exactFtsRow(rawResult, FTS_RESULT_KEYS);
+              const queryUnavailable = envelope["queryUnavailable"];
+              if (typeof queryUnavailable !== "boolean") {
                 return invalidFtsCandidate();
               }
-              if (rawResult.queryUnavailable) {
+              const candidateRows = snapshotExactArray(
+                envelope["candidateRows"],
+                21,
+                invalidFtsCandidate,
+              );
+              const supportRows = snapshotExactArray(
+                envelope["supportRows"],
+                MAX_FTS_SUPPORT_ROWS,
+                invalidFtsCandidate,
+              );
+              if (queryUnavailable) {
                 if (
-                  rawResult.candidateRows.length !== 0 ||
-                  rawResult.supportRows.length !== 0
+                  candidateRows.length !== 0 ||
+                  supportRows.length !== 0
                 ) {
                   return invalidFtsCandidate();
                 }
@@ -830,8 +911,8 @@ class SqliteRecallReadPort implements RecallReadPort {
                 );
               }
               return assembleFtsCandidates(
-                rawResult.candidateRows,
-                rawResult.supportRows,
+                candidateRows,
+                supportRows,
                 context,
                 plan.terms,
               );
