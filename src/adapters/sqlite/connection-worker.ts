@@ -53,6 +53,7 @@ import { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
 import { RECALL_FTS_SQL_SOURCE } from "./recall-fts-sql.js";
 import { RECALL_OVERVIEW_SQL_SOURCE } from "./recall-overview-sql.js";
 import { RECALL_TRAVERSAL_SQL_SOURCE } from "./recall-traversal-sql.js";
+import { RECALL_RANKING_SQL_SOURCE } from "./recall-ranking-sql.js";
 
 interface SqliteRunMetadata {
   readonly changes: number;
@@ -2980,6 +2981,63 @@ function readRecallSnapshotTraversalState(
   });
 }
 
+function readRecallSnapshotRankingRows(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  candidates: readonly Readonly<{ readonly claimId: string; readonly depth: number }>[],
+  probeLimit: number,
+): Readonly<{
+  rows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction ||
+    !Array.isArray(candidates) ||
+    candidates.length < 1 ||
+    !Number.isSafeInteger(probeLimit) ||
+    probeLimit < 2 ||
+    probeLimit > 51
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+  const seen = new Set<string>();
+  const reached: Array<Readonly<{ claimId: string; depth: number }>> = [];
+  for (const candidate of candidates) {
+    if (
+      candidate === null ||
+      typeof candidate !== "object" ||
+      Array.isArray(candidate) ||
+      typeof candidate.claimId !== "string" ||
+      !/^c[1-9][0-9]*\.[0-9]+$/u.test(candidate.claimId) ||
+      !Number.isSafeInteger(candidate.depth) ||
+      candidate.depth < 0 ||
+      candidate.depth > 3 ||
+      seen.has(candidate.claimId)
+    ) {
+      throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+    }
+    seen.add(candidate.claimId);
+    reached.push(Object.freeze({
+      claimId: candidate.claimId,
+      depth: candidate.depth,
+    }));
+  }
+  return Object.freeze({
+    rows: rows(
+      database
+        .prepare(RECALL_RANKING_SQL_SOURCE.selectRankedClaims)
+        .all({
+          reached_json: JSON.stringify(reached),
+          scope_key: state.active.scopeKey,
+          now: state.active.evaluationNow,
+          probe_limit: probeLimit,
+        }),
+    ),
+  });
+}
+
 function endRecallSnapshot(
   database: SqliteDatabaseConnection,
   state: WorkerRecallSnapshotState,
@@ -3236,6 +3294,34 @@ function handleRequest(
         recallState,
         request.snapshotId,
         request.entityId,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-ranking") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = readRecallSnapshotRankingRows(
+        database,
+        recallState,
+        request.snapshotId,
+        request.candidates,
+        request.probeLimit,
       );
       post({ type: "success", requestId: request.requestId, result });
     } catch (error) {

@@ -55,6 +55,22 @@ export type {
   RecallTraversalParent,
   ValidatedRecallGraphTraversalInput,
 } from "./recall-graph-traversal.js";
+export {
+  RecallRankingError,
+  compareRecallRankedClaimStates,
+  formatRecallClaimBrief,
+  validateRecallRankedClaimState,
+  validateRecallRankingInput,
+} from "./recall-ranking.js";
+export type {
+  RecallClaimBriefParts,
+  RecallRankedClaimCandidate,
+  RecallRankedClaimState,
+  RecallRankingErrorCode,
+  RecallRankingInput,
+  RecallRankingReadCandidate,
+  ValidatedRecallRankingInput,
+} from "./recall-ranking.js";
 export type {
   RecallQuerySurfaceErrorCode,
   RecallQuerySurfaceSelection,

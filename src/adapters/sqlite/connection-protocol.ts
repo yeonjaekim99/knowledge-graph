@@ -249,6 +249,15 @@ export interface SqliteRecallTraversalStateRowsResult {
   readonly incidentRows: readonly Readonly<Record<string, unknown>>[];
 }
 
+export interface SqliteRecallRankingCandidate {
+  readonly claimId: string;
+  readonly depth: number;
+}
+
+export interface SqliteRecallRankingRowsResult {
+  readonly rows: readonly Readonly<Record<string, unknown>>[];
+}
+
 export interface SqliteWorkerRecallSnapshotBeginRequest {
   readonly type: "recall-snapshot-begin";
   readonly requestId: number;
@@ -289,6 +298,14 @@ export interface SqliteWorkerRecallTraversalStateRequest {
   readonly requestId: number;
   readonly snapshotId: number;
   readonly entityId: string;
+}
+
+export interface SqliteWorkerRecallRankingRequest {
+  readonly type: "recall-snapshot-ranking";
+  readonly requestId: number;
+  readonly snapshotId: number;
+  readonly candidates: readonly SqliteRecallRankingCandidate[];
+  readonly probeLimit: number;
 }
 
 export interface SqliteWorkerRecallSnapshotEndRequest {
@@ -490,6 +507,7 @@ export type SqliteWorkerRequest =
   | SqliteWorkerRecallSnapshotFtsRequest
   | SqliteWorkerRecallSnapshotOverviewRequest
   | SqliteWorkerRecallTraversalStateRequest
+  | SqliteWorkerRecallRankingRequest
   | SqliteWorkerRecallSnapshotEndRequest
   | SqliteWorkerCloseRequest;
 

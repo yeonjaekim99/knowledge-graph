@@ -4,6 +4,11 @@ export {
   traverseRecallGraph,
 } from "./recall-graph-traversal.js";
 export {
+  RecallRankingError,
+  formatRecallClaimBrief,
+  rankRecallClaims,
+} from "./recall-ranking.js";
+export {
   memoryRecallInputDefinition,
   recallResultDefinition,
 } from "./memory-recall-contract.js";

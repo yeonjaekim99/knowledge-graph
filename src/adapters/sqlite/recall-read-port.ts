@@ -26,6 +26,13 @@ import {
   type RecallTraversalNeighborhood,
 } from "../../domain/recall-graph-traversal.js";
 import {
+  RecallRankingError,
+  compareRecallRankedClaimStates,
+  validateRecallRankedClaimState,
+  type RecallRankedClaimState,
+  type RecallRankingReadCandidate,
+} from "../../domain/recall-ranking.js";
+import {
   RecallQuerySurfaceError,
   resolveRecallSurfaceSeeds,
   type RecallQueryTerm,
@@ -110,6 +117,34 @@ const TRAVERSAL_RESULT_KEYS: readonly string[] = Object.freeze([
   "incidentRows",
   "linkRows",
 ]);
+const RANKING_RESULT_KEYS: readonly string[] = Object.freeze(["rows"]);
+const RANKING_ROW_KEYS: readonly string[] = Object.freeze(
+  [
+    "recall_ranking_claim_id",
+    "recall_ranking_claim_scope_key",
+    "recall_ranking_claim_state",
+    "recall_ranking_contested",
+    "recall_ranking_depth",
+    "recall_ranking_last_seen_at",
+    "recall_ranking_object_id",
+    "recall_ranking_object_merged_into",
+    "recall_ranking_object_name",
+    "recall_ranking_object_scope_key",
+    "recall_ranking_object_value",
+    "recall_ranking_origin_seq",
+    "recall_ranking_recent",
+    "recall_ranking_relation",
+    "recall_ranking_relation_label",
+    "recall_ranking_score",
+    "recall_ranking_strongest_rank",
+    "recall_ranking_subject_id",
+    "recall_ranking_subject_merged_into",
+    "recall_ranking_subject_name",
+    "recall_ranking_subject_scope_key",
+    "recall_ranking_support_count",
+    "recall_ranking_total_count",
+  ].sort(),
+);
 
 const FTS_CANDIDATE_ROW_KEYS: readonly string[] = Object.freeze(
   [
@@ -241,6 +276,14 @@ function invalidOverviewCandidate(): never {
 
 function invalidTraversalState(): never {
   throw new RecallReadError("INVALID_RECALL_TRAVERSAL_STATE");
+}
+
+function invalidRankingRequest(): never {
+  throw new RecallReadError("INVALID_RECALL_RANKING_REQUEST");
+}
+
+function invalidRankingState(): never {
+  throw new RecallReadError("INVALID_RECALL_RANKING_STATE");
 }
 
 function snapshotExactRecord(
@@ -469,6 +512,159 @@ function decodeTraversalState(
     }
     throw error;
   }
+}
+
+function validateRankingReadRequest(
+  value: unknown,
+  probeLimit: unknown,
+): readonly RecallRankingReadCandidate[] {
+  if (
+    !Array.isArray(value) ||
+    value.length < 1 ||
+    !Number.isSafeInteger(probeLimit) ||
+    Number(probeLimit) < 2 ||
+    Number(probeLimit) > 51
+  ) {
+    return invalidRankingRequest();
+  }
+  const seen = new Set<string>();
+  const result: RecallRankingReadCandidate[] = [];
+  for (const candidate of value) {
+    if (
+      candidate === null ||
+      typeof candidate !== "object" ||
+      Array.isArray(candidate) ||
+      Object.keys(candidate).sort().join("\u0000") !== "claimId\u0000depth" ||
+      !("claimId" in candidate) ||
+      !("depth" in candidate) ||
+      typeof candidate.claimId !== "string" ||
+      !CLAIM_ID_PATTERN.test(candidate.claimId) ||
+      !Number.isSafeInteger(candidate.depth) ||
+      Number(candidate.depth) < 0 ||
+      Number(candidate.depth) > 3 ||
+      seen.has(candidate.claimId)
+    ) {
+      return invalidRankingRequest();
+    }
+    seen.add(candidate.claimId);
+    result.push(Object.freeze({
+      claimId: candidate.claimId,
+      depth: Number(candidate.depth) as 0 | 1 | 2 | 3,
+    }));
+  }
+  return Object.freeze(result);
+}
+
+function decodeRankingRows(
+  rawResult: unknown,
+  context: RecallReadContext,
+  candidates: readonly RecallRankingReadCandidate[],
+  probeLimit: number,
+): readonly RecallRankedClaimState[] {
+  const envelope = snapshotExactRecord(
+    rawResult,
+    RANKING_RESULT_KEYS,
+    invalidRankingState,
+  );
+  const rawRows = snapshotExactArray(
+    envelope["rows"],
+    51,
+    invalidRankingState,
+  );
+  const expectedCount = Math.min(candidates.length, probeLimit);
+  if (rawRows.length !== expectedCount) {
+    return invalidRankingState();
+  }
+  const expectedDepths = new Map(
+    candidates.map(({ claimId, depth }) => [claimId, depth]),
+  );
+  const seen = new Set<string>();
+  const decoded: RecallRankedClaimState[] = [];
+  for (const rawRow of rawRows) {
+    const row = snapshotExactRecord(
+      rawRow,
+      RANKING_ROW_KEYS,
+      invalidRankingState,
+    );
+    const claimId = row["recall_ranking_claim_id"];
+    const depth = row["recall_ranking_depth"];
+    const objectId = row["recall_ranking_object_id"];
+    const objectName = row["recall_ranking_object_name"];
+    const objectValue = row["recall_ranking_object_value"];
+    const lastSeenAt = row["recall_ranking_last_seen_at"];
+    const recent = row["recall_ranking_recent"];
+    const contested = row["recall_ranking_contested"];
+    if (
+      typeof claimId !== "string" ||
+      seen.has(claimId) ||
+      expectedDepths.get(claimId) !== depth ||
+      row["recall_ranking_claim_scope_key"] !== context.scopeKey ||
+      row["recall_ranking_claim_state"] !== "active" ||
+      row["recall_ranking_subject_scope_key"] !== context.scopeKey ||
+      row["recall_ranking_subject_merged_into"] !== null ||
+      (objectId === null
+        ? objectName !== null ||
+          row["recall_ranking_object_scope_key"] !== null ||
+          row["recall_ranking_object_merged_into"] !== null ||
+          typeof objectValue !== "string"
+        : objectValue !== null ||
+          row["recall_ranking_object_scope_key"] !== context.scopeKey ||
+          row["recall_ranking_object_merged_into"] !== null ||
+          typeof objectName !== "string") ||
+      !Number.isSafeInteger(lastSeenAt) ||
+      Number(lastSeenAt) < 0 ||
+      Number(lastSeenAt) > context.evaluationNow ||
+      (recent !== 0 && recent !== 1) ||
+      (recent === 1) !==
+        (Number(lastSeenAt) >= context.evaluationNow - 2_592_000 &&
+          Number(lastSeenAt) <= context.evaluationNow) ||
+      (contested !== 0 && contested !== 1) ||
+      row["recall_ranking_total_count"] !== candidates.length
+    ) {
+      return invalidRankingState();
+    }
+    let state: RecallRankedClaimState;
+    try {
+      state = validateRecallRankedClaimState({
+        claimId,
+        depth,
+        score: row["recall_ranking_score"],
+        subjectId: row["recall_ranking_subject_id"],
+        subjectName: row["recall_ranking_subject_name"],
+        relation: row["recall_ranking_relation"],
+        objectId,
+        objectName,
+        objectValue,
+        supportCount: row["recall_ranking_support_count"],
+        strongestRank: row["recall_ranking_strongest_rank"],
+        lastSeenAt,
+        relationLabel: row["recall_ranking_relation_label"],
+        contested: contested === 1,
+        recent: recent === 1,
+        originSeq: row["recall_ranking_origin_seq"],
+        totalCount: row["recall_ranking_total_count"],
+      });
+    } catch (error: unknown) {
+      if (error instanceof RecallRankingError) {
+        return invalidRankingState();
+      }
+      throw error;
+    }
+    seen.add(claimId);
+    decoded.push(state);
+  }
+  for (let index = 1; index < decoded.length; index += 1) {
+    const previous = decoded[index - 1];
+    const current = decoded[index];
+    if (
+      previous === undefined ||
+      current === undefined ||
+      compareRecallRankedClaimStates(previous, current) >= 0
+    ) {
+      return invalidRankingState();
+    }
+  }
+  return Object.freeze(decoded);
 }
 
 function safeEpoch(value: unknown): number {
@@ -1431,6 +1627,29 @@ class SqliteRecallReadPort implements RecallReadPort {
                 await snapshot.readRawTraversalState(entityId),
                 context,
               );
+            },
+            selectRankedClaims: async (
+              suppliedCandidates: readonly RecallRankingReadCandidate[],
+              suppliedProbeLimit: number,
+            ) => {
+              snapshot.assertActive();
+              const candidates = validateRankingReadRequest(
+                suppliedCandidates,
+                suppliedProbeLimit,
+              );
+              try {
+                return decodeRankingRows(
+                  await snapshot.readRawRankingRows(
+                    candidates,
+                    suppliedProbeLimit,
+                  ),
+                  context,
+                  candidates,
+                  suppliedProbeLimit,
+                );
+              } catch {
+                return invalidRankingState();
+              }
             },
           });
           return operation(source);
