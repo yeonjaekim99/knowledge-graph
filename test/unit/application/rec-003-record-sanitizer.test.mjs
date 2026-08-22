@@ -411,3 +411,55 @@ test("sanitation snapshots caller-owned raw and drafts before detector execution
   assert.deepEqual(result.approvedDrafts[0].draft.subject_aliases, ["repo"]);
   assert.deepEqual(result.approvedDrafts[0].draft.object_aliases, ["DB"]);
 });
+
+test("detector result and finding accessors are rejected without evaluation", () => {
+  let accessorCalls = 0;
+  const accessorResult = {};
+  Object.defineProperties(accessorResult, {
+    registryVersion: {
+      enumerable: true,
+      get() {
+        accessorCalls += 1;
+        return SECRET_DETECTOR_VERSION;
+      },
+    },
+    findings: {
+      enumerable: true,
+      get() {
+        accessorCalls += 1;
+        return [];
+      },
+    },
+  });
+
+  const accessorFinding = {};
+  for (const [key, value] of Object.entries({
+    secretClass: "github-token",
+    startCodeUnit: 0,
+    endCodeUnit: 1,
+  })) {
+    Object.defineProperty(accessorFinding, key, {
+      enumerable: true,
+      get() {
+        accessorCalls += 1;
+        return value;
+      },
+    });
+  }
+
+  for (const result of [
+    accessorResult,
+    {
+      registryVersion: SECRET_DETECTOR_VERSION,
+      findings: [accessorFinding],
+    },
+  ]) {
+    assert.throws(
+      () => sanitizeMemoryRecordSecrets(input([]), () => result),
+      (error) =>
+        error instanceof RecordSecretSanitizationError &&
+        error.code === "DETECTOR_FAILED",
+    );
+  }
+  assert.equal(accessorCalls, 0);
+});
