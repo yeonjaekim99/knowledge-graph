@@ -19,7 +19,7 @@
 | RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `IN_PROGRESS` | `log0629` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
-| RCL-005 | BFS 이동·수집·경로 복원 | `TODO` | `unassigned` | RCL-001, RCL-002 | — |
+| RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), branch `rcl-005-bfs-traversal` |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
@@ -148,8 +148,10 @@
 
 ### RCL-005 — BFS 이동·수집·경로 복원
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rcl-005-bfs-traversal`
+- Planning PR: [#40](https://github.com/yeonjaekim99/knowledge-graph/pull/40)
 - 근거: ADR-010, ADR-012
 - 선행 작업: RCL-001, RCL-002
 - 결과물: TEMP link/incident views, reached와 parent map
