@@ -979,7 +979,7 @@ function writeEntityKind(value: unknown): string | null {
   if (value === null) {
     return null;
   }
-  if (typeof value !== "string") {
+  if (typeof value !== "string" || !value.isWellFormed()) {
     throw new WorkerConnectionFailure("SQLITE_TRANSACTION_FAILED");
   }
   const kind = value.trim().normalize("NFKC").toLowerCase();

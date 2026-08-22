@@ -32,6 +32,13 @@ const ERROR_MESSAGES: Readonly<Record<WriteEntityResolutionErrorCode, string>> =
       "write entity resolution returned an invalid transaction result",
   });
 
+const AMBIGUITY_NOTES = Object.freeze({
+  subject:
+    "subject matches multiple entities; retry with an exact canonical name or confirm an alias or merge",
+  object:
+    "object matches multiple entities; retry with an exact canonical name or confirm an alias or merge",
+});
+
 export class WriteEntityResolutionError extends TypeError {
   public override readonly name: string = "WriteEntityResolutionError";
   public readonly code: WriteEntityResolutionErrorCode;
@@ -288,7 +295,7 @@ function boundedKind(
   value: unknown,
   code: WriteEntityResolutionErrorCode,
 ): string {
-  if (typeof value !== "string") {
+  if (typeof value !== "string" || !value.isWellFormed()) {
     return reject(code);
   }
   const result = value.trim().normalize("NFKC").toLowerCase();
@@ -368,6 +375,7 @@ function snapshotDrafts(value: unknown): readonly SqliteWriteEntityDraftInput[] 
 
 function freezeResolution(
   value: unknown,
+  expectedDraft: SqliteWriteEntityDraftInput | null,
 ): SqliteWriteEntityDraftResolution {
   if (value === null || typeof value !== "object" || Array.isArray(value)) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
@@ -407,8 +415,16 @@ function freezeResolution(
       }
       throw error;
     }
+    const draftIndex = Number(result["draftIndex"]);
+    if (
+      expectedDraft !== null &&
+      (draftIndex !== expectedDraft.draftIndex ||
+        (objectId !== null) !== (expectedDraft.object !== null))
+    ) {
+      return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    }
     return Object.freeze({
-      draftIndex: Number(result["draftIndex"]),
+      draftIndex,
       status: "resolved",
       subjectId,
       objectId,
@@ -420,14 +436,22 @@ function freezeResolution(
     ["candidates", "draftIndex", "field", "note", "reason", "status"],
     "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
   );
+  const field = result["field"];
   if (
     result["status"] !== "rejected" ||
     result["reason"] !== "ambiguous_entity" ||
-    (result["field"] !== "subject" && result["field"] !== "object") ||
+    (field !== "subject" && field !== "object") ||
     !Number.isSafeInteger(result["draftIndex"]) ||
     Number(result["draftIndex"]) < 0 ||
-    typeof result["note"] !== "string" ||
-    result["note"].length === 0
+    result["note"] !== AMBIGUITY_NOTES[field]
+  ) {
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+  const draftIndex = Number(result["draftIndex"]);
+  if (
+    expectedDraft !== null &&
+    (draftIndex !== expectedDraft.draftIndex ||
+      (field === "object" && expectedDraft.object === null))
   ) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
@@ -474,12 +498,12 @@ function freezeResolution(
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
   return Object.freeze({
-    draftIndex: Number(result["draftIndex"]),
+    draftIndex,
     status: "rejected",
     reason: "ambiguous_entity",
-    field: result["field"],
+    field,
     candidates: Object.freeze(candidates),
-    note: result["note"],
+    note: AMBIGUITY_NOTES[field],
   });
 }
 
@@ -525,7 +549,7 @@ function freezeFinalizationResult(
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
   const drafts = draftValues.map((draftValue, index) => {
-    const draft = freezeResolution(draftValue);
+    const draft = freezeResolution(draftValue, null);
     if (
       draft.status !== "resolved" ||
       draft.draftIndex !== survivorDraftIndexes[index]
@@ -552,12 +576,13 @@ function freezeResults(
   if (resultValues.length !== expectedDrafts.length) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
-  const results = resultValues.map(freezeResolution);
-  for (let index = 0; index < results.length; index += 1) {
-    if (results[index]?.draftIndex !== expectedDrafts[index]?.draftIndex) {
+  const results = resultValues.map((resultValue, index) => {
+    const expectedDraft = expectedDrafts[index];
+    if (expectedDraft === undefined) {
       return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
     }
-  }
+    return freezeResolution(resultValue, expectedDraft);
+  });
   return Object.freeze(results);
 }
 
