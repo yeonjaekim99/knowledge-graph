@@ -357,18 +357,23 @@ export function sanitizeMemoryRecordSecrets(
   input: MemoryRecordInput,
   detect: RecordSecretDetection = detectSecrets,
 ): RecordSecretSanitizationResult {
-  const rawDetection = runDetector(detect, input.raw_text, "raw_text");
-  const maskedRawText = maskRawText(input.raw_text, rawDetection);
+  const rawText = input.raw_text;
+  const reinterpretation = "supersedes" in input;
+  const submittedDrafts: readonly ClaimDraft[] = Object.freeze(
+    input.claims.map((draft) => cloneDraft(draft)),
+  );
+  const rawDetection = runDetector(detect, rawText, "raw_text");
+  const maskedRawText = maskRawText(rawText, rawDetection);
   const approvedDrafts: ApprovedRecordDraft[] = [];
   const rejectedClaims: RejectedRecordClaim[] = [];
 
-  for (const [inputIndex, draft] of input.claims.entries()) {
+  for (const [inputIndex, draft] of submittedDrafts.entries()) {
     const issue = detectDraftIssue(draft, inputIndex, detect);
     if (issue === undefined) {
       approvedDrafts.push(
         Object.freeze({
           inputIndex,
-          draft: cloneDraft(draft),
+          draft,
         }),
       );
       continue;
@@ -383,7 +388,7 @@ export function sanitizeMemoryRecordSecrets(
   }
 
   const frozenRejections = freezeRejections(rejectedClaims);
-  if ("supersedes" in input && frozenRejections.length > 0) {
+  if (reinterpretation && frozenRejections.length > 0) {
     throw new RecordSecretSanitizationError(
       "REINTERPRET_DRAFT_REJECTED",
       frozenRejections,
