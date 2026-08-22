@@ -178,7 +178,8 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 git diff --check
 ```
 
-REC-002 target 10/10, 전체 빠른 suite 242/242와 독립 behavior oracle 25/25를 통과했다.
+REC-002 target 10/10, 전체 빠른 suite 38개 파일 265/265와 독립 behavior oracle 25/25를
+통과했다.
 roadmap validator는 active 73·historical 74·evidence 67/67·ADR 17/17·scenario 24/24와
 acyclic dependency를 확인했고 production dependency audit은 알려진 취약점 0개다.
 

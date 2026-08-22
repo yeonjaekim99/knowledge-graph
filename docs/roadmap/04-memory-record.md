@@ -91,7 +91,8 @@
   allowlist를 고정했다.
 - 최초 TDD RED는 production export 부재로 target 0/1이었고, 독립 리뷰 보강 RED는
   internal punctuation과 64-hex `metadata.branch` fixture에서 8/10이었다. 수정 뒤
-  `pnpm verify:rec-002` target 10/10과 architecture/type/build, 전체 `pnpm test` 242/242를
+  `pnpm verify:rec-002` target 10/10과 architecture/type/build, 전체 `pnpm test` 38개 파일
+  265/265를
   통과했다.
 - synthetic fixture만으로 AWS/GitHub/GitLab/Google/Slack/Stripe, JWT, PEM, credential URL,
   assignment와 한국어 조사·문장부호, internal punctuation segmentation, 임의 hex branch 및

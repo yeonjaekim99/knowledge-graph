@@ -196,7 +196,7 @@
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| REC-002 local gate | PASS — architecture/type/build, target 10/10와 전체 빠른 suite 242/242 |
+| REC-002 local gate | PASS — architecture/type/build, target 10/10와 전체 빠른 suite 38개 파일 265/265 |
 | 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure domain detector·unit fixture·검증 script와 결정/evidence 문서만 추가, raw 마스킹·draft/application write·schema·journal·log/MCP·Phase 08 corpus 변경 없음 |
 
 ## 게시 전 재현 검사
