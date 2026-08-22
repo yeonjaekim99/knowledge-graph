@@ -122,11 +122,27 @@
 
 완료 체크:
 
-- [ ] raw_text 의심 구간을 길이 비례 마스킹한 뒤에만 journal/FTS로 전달한다.
-- [ ] secret이 든 draft만 제외하고 안전한 draft와 마스킹 원문은 계속 처리한다.
-- [ ] note와 error가 탐지값, SQL, DB 경로 또는 주변 민감 문맥을 echo하지 않는다.
-- [ ] 재해석 호출은 한 draft라도 거부되면 successor 전체를 만들지 않는다.
-- [ ] 마스킹/거부 전후 값을 audit-safe fixture로 검증한다.
+- [x] raw_text 의심 구간을 위치 기반 class marker로 마스킹하고 위치가 불명확하면 전체를
+      보수적으로 가린 plan만 후속 journal/FTS 경계에 전달한다.
+- [x] secret이 든 draft만 제외하고 안전한 draft와 마스킹 원문은 계속 처리한다.
+- [x] note와 error가 탐지값, SQL, DB 경로 또는 주변 민감 문맥을 echo하지 않는다.
+- [x] 재해석 호출은 한 draft라도 거부되면 successor 전체를 만들지 않는다.
+- [x] 마스킹/거부 전후 값을 audit-safe fixture로 검증한다.
+
+로컬 완료 증거:
+
+- [구현 결정](../implementation/rec-003-record-sanitizer.md)은 REC-001 입력과 REC-002
+  positional detector를 writer capability 없는 pure application plan으로 연결한다.
+- 최초 RED는 build 성공 뒤 sanitizer export 부재로 module load가 실패했다. GREEN은 raw
+  explicit/entropy 치환, 8개 draft 문자열 category, 부분/전체 거부, 재해석 전체 실패와
+  malformed detector fail-closed를 포함한 target 14/14다.
+- UTF-16 astral 인접 위치와 surrogate split, 겹침·역순·범위 손상, unknown class와 extra
+  payload, 앞선 hit 뒤 후속 detector exception을 synthetic 값만으로 검증한다.
+- `pnpm verify:rec-003`은 architecture/type과 REC-001 11/11, REC-002 13/13, REC-003
+  14/14를 통과했다. 전체 fast suite 39개 파일 282/282, PRJ-010 39/39, behavior spike
+  25/25, roadmap audit 67/67과 production dependency audit 취약점 0개도 통과했다.
+- 독립 review와 PR/merge 증거는 게시 전에 추가한다. journal/project 원자성과 전체 저장
+  매체 누출 scan은 REC-006/008의 완료를 과장하지 않고 남긴다.
 
 ### REC-004 — write entity 해석과 모호성 처리
 

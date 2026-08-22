@@ -172,6 +172,14 @@
     signature 범위를 닫았다. 최종 268/268 회귀와 미해결 HIGH/MEDIUM 0건을 확인한
     [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36)을 완료 증거로 고정해
     제품 roll-up을 27/66으로 올렸다.
+32. REC-003은 REC-001의 schema-valid 입력과 REC-002의 class/UTF-16 위치만 받는 detector를
+    writer 없는 pure application 경계에서 연결한다. raw hit는 뒤에서 앞으로 class marker로
+    치환하고 위치·순서·Unicode 경계가 손상되면 원문 전체를 가린다. 모든 draft 저장 문자열을
+    끝까지 검사해 detector 장애를 숨기지 않으며, 안전 draft는 immutable clone과 원래 input
+    index로 전달하고 hit draft만 actionable rejected로 분리한다. 재해석은 raw-only만 예외로
+    허용하고 한 draft라도 거부되면 successor plan 전체를 만들지 않는다. journal/FTS append,
+    duplicate/stored index·occurrence와 projection 원자성 및 전체 log/DB leak scan은 REC-005~008에
+    남겨 unit sanitizer 증거를 수직 경로 완료로 과장하지 않는다.
 
 ## 의도적으로 남은 상태
 
@@ -205,6 +213,7 @@
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
+| REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 14/14, 전체 fast 39개 파일 282/282, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 review는 PR 게시 전 수행 |
 | 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure domain detector·unit fixture·검증 script와 결정/evidence 문서만 추가, raw 마스킹·draft/application write·schema·journal·log/MCP·Phase 08 corpus 변경 없음 |
 
 ## 게시 전 재현 검사
