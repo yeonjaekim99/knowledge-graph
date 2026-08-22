@@ -171,9 +171,10 @@ spike 25/25를 통과했다. roadmap audit는 active 73개/historical 74개, ADR
 scenario 24/24와 dependency cycle 0을 확인했고 production dependency audit는 알려진
 취약점 0개를 반환했다.
 
-RCL-002 독립 review 후속 tests-only RED `73645f6`은 9개 free-form input 위치의 malformed
+RCL-002 독립 review 후속 tests-only RED `138c914`은 9개 free-form input 위치의 malformed
 UTF-16을 세 계약 경로가 받아 REC-001 13개 중 1개 실패, acceptance 204개임을 재현했다.
-fix `2e2b22c` 뒤 REC-001 13/13, FND-004 7/7과 전체 빠른 suite 285/285를 다시 통과했다.
+fix `02b7d10` 뒤 REC-001 13/13, FND-004 7/7과 최신 `main`의 REC-003을 포함한 전체 빠른
+suite 42개 파일 302/302를 다시 통과했다.
 최초 REC-001 완료 당시의 11/11·243/243 증거는 위 역사적 수치로 보존한다.
 
 ## ADR 영향과 후속 owner

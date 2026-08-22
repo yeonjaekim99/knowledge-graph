@@ -112,9 +112,9 @@ application module과 domain export가 없어 세 test module이 import 단계�
 제품 코드를 넣은 뒤 focused target은 11/11 GREEN이었다. 독립 review의 tests-only RED
 commit `9fc2c54`는 build 성공 뒤 표시 후보 손실·잘못된 cap 순서·ill-formed UTF-16 허용을
 24개 중 8개 실패로 재현했고, fix 뒤 focused target은 15/15 GREEN이다. 후속 tests-only RED
-commit `73645f6`은 REC-001의 9개 free-form input 위치를 advertised source, MCP Standard Schema,
+commit `138c914`은 REC-001의 9개 free-form input 위치를 advertised source, MCP Standard Schema,
 validate helper에서 검사해 13개 중 1개 실패와 malformed acceptance 204개를 관찰했다. fix
-commit `2e2b22c` 뒤 같은 target은 13/13 GREEN이다.
+commit `02b7d10` 뒤 같은 target은 13/13 GREEN이다.
 
 fixture는 다음을 고정한다.
 
@@ -148,9 +148,9 @@ python3 docs/roadmap/validate.py
 pnpm audit --prod
 ```
 
-최종 로컬 검증은 RCL-002 15/15, REC-001 13/13, REC-002 13/13, RCL-001 10/10,
-PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11과 PRJ-007 19/19다. 빠른 전체 suite는
-41개 파일 285/285,
+최신 `main` 위 최종 통합 검증은 RCL-002 15/15, REC-001 13/13, REC-002 13/13,
+REC-003 17/17, RCL-001 10/10, PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11과
+PRJ-007 19/19다. 빠른 전체 suite는 42개 파일 302/302,
 PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap validator는
 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고 production
 dependency 알려진 취약점은 0개다.
