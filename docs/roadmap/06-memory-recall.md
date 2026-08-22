@@ -80,11 +80,27 @@
 
 완료 체크:
 
-- [ ] 명시 terms는 입력 순서를, 미지정 query는 전체+문자/숫자 run을 긴 순서로 최대 10개 쓴다.
-- [ ] 두 글자 미만 normalized 후보를 제외하고 형태소/LLM 의미 추출을 하지 않는다.
-- [ ] surface 행을 전부 canonicalize하고 term 순서·entity ID 순으로 중복 제거한다.
-- [ ] 최대 50개 seed를 쓰고 51번째로 surface 절단을 감지한다.
-- [ ] 다의 surface를 모두 seed로 쓰되 cross-scope entity는 한 건도 포함하지 않는다.
+- [x] 명시 terms는 입력 순서를, 미지정 query는 전체+문자/숫자 run을 긴 순서로 최대 10개 쓴다.
+- [x] 두 글자 미만 normalized 후보를 제외하고 형태소/LLM 의미 추출을 하지 않는다.
+- [x] surface 행을 전부 canonicalize하고 term 순서·entity ID 순으로 중복 제거한다.
+- [x] 최대 50개 seed를 쓰고 51번째로 surface 절단을 감지한다.
+- [x] 다의 surface를 모두 seed로 쓰되 cross-scope entity는 한 건도 포함하지 않는다.
+
+로컬 완료 증거:
+
+- [구현 결정](../implementation/rcl-002-query-surface.md)에 PRJ-002 normalize와 PRJ-003/007
+  canonical redirect 재사용, RCL-001 typed snapshot seam, read-only/손상 경계를 고정했다.
+- tests-only RED commit `48b1fdd`에서 기존 build 성공 뒤 application/domain 제품 관찰점 부재로
+  0/3 실패했고, 최소 구현 뒤 `pnpm test:rcl-002`는 domain/application/SQLite 11/11 GREEN이다.
+- Unicode code-point 길이·정렬, explicit precedence/빈 배열/duplicate/<2/max10, 다의 surface,
+  redirect chain/cycle/33-hop/kind/scope 손상, 51 seed와 repeat 결정성을 검증했다.
+- 실제 WAL snapshot에서 cross-scope 동명 surface가 제외되고 concurrent commit은 다음 recall에서만
+  보였다. 성공/실패 뒤 persistent dump와 `data_version`은 같고 error는 payload를 echo하지 않았다.
+- 전체 fast suite 40개 파일 266/266, PRJ-010 39/39, behavior spike 25/25, roadmap
+  evidence 67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
+- FTS, BFS, ranking, Answer/note와 public S09/S21 golden은 RCL-003/RCL-005~008에 남겼다.
+- PR review와 `main` merge 증거가 없으므로 task/phase/master 상태와 완료 수는 `IN_PROGRESS`,
+  1/9, 26/66을 유지한다.
 
 ### RCL-003 — 안전한 FTS와 raw fallback
 
