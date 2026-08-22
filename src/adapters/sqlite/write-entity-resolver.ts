@@ -8,6 +8,10 @@ import {
   normalizeV1,
 } from "../../domain/projection-rules.js";
 import type { SqliteProjectionDispatchSession } from "./connection-factory.js";
+import {
+  SqliteConnectionError,
+  connectionErrorFromCode,
+} from "./connection-protocol.js";
 import type {
   SqliteWriteEntityDraftInput,
   SqliteWriteEntityDraftResolution,
@@ -41,6 +45,95 @@ function reject(code: WriteEntityResolutionErrorCode): never {
   throw new WriteEntityResolutionError(code);
 }
 
+function rejected<T>(code: WriteEntityResolutionErrorCode): Promise<T> {
+  return Promise.reject(new WriteEntityResolutionError(code));
+}
+
+function isSafeConnectionError(error: unknown): error is SqliteConnectionError {
+  try {
+    if (!(error instanceof SqliteConnectionError)) {
+      return false;
+    }
+    const canonical = connectionErrorFromCode(error.code);
+    if (!(canonical instanceof SqliteConnectionError)) {
+      return false;
+    }
+    const actualKeys = Reflect.ownKeys(error);
+    const canonicalKeys = Reflect.ownKeys(canonical);
+    if (
+      actualKeys.length !== canonicalKeys.length ||
+      actualKeys.some((key) => !canonicalKeys.includes(key))
+    ) {
+      return false;
+    }
+    for (const key of canonicalKeys) {
+      const actual = Object.getOwnPropertyDescriptor(error, key);
+      const expected = Object.getOwnPropertyDescriptor(canonical, key);
+      if (
+        actual === undefined ||
+        expected === undefined ||
+        actual.configurable !== expected.configurable ||
+        actual.enumerable !== expected.enumerable ||
+        ("value" in actual) !== ("value" in expected)
+      ) {
+        return false;
+      }
+      if ("value" in actual && "value" in expected) {
+        if (
+          actual.value !== expected.value ||
+          actual.writable !== expected.writable
+        ) {
+          return false;
+        }
+      } else if (
+        !("value" in actual) &&
+        !("value" in expected) &&
+        (actual.get !== expected.get || actual.set !== expected.set)
+      ) {
+        return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function invokeSessionOperation<T>(
+  operation: () => unknown,
+  snapshotResult: (value: unknown) => T,
+): Promise<T> {
+  let operationResult: unknown;
+  try {
+    operationResult = operation();
+    if (!(operationResult instanceof Promise)) {
+      return rejected("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    }
+  } catch {
+    return rejected("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+  try {
+    return Promise.prototype.then.call(
+      operationResult,
+      (value: unknown) => {
+        try {
+          return snapshotResult(value);
+        } catch {
+          return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+        }
+      },
+      (error: unknown) => {
+        if (isSafeConnectionError(error)) {
+          throw error;
+        }
+        return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+      },
+    ) as Promise<T>;
+  } catch {
+    return rejected("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+}
+
 function plainDataRecord(
   value: unknown,
   expectedKeys: readonly string[],
@@ -53,11 +146,19 @@ function plainDataRecord(
   if (prototype !== Object.prototype && prototype !== null) {
     return reject(code);
   }
-  const result: Record<string, unknown> = {};
-  for (const key of Reflect.ownKeys(value)) {
-    if (typeof key !== "string") {
-      return reject(code);
-    }
+  const keys = Reflect.ownKeys(value);
+  const expected = new Set(expectedKeys);
+  if (
+    keys.length !== expected.size ||
+    keys.some((key) => typeof key !== "string" || !expected.has(key))
+  ) {
+    return reject(code);
+  }
+  const result: Record<string, unknown> = Object.create(null) as Record<
+    string,
+    unknown
+  >;
+  for (const key of expectedKeys) {
     const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (
       descriptor === undefined ||
@@ -68,15 +169,7 @@ function plainDataRecord(
     }
     result[key] = descriptor.value;
   }
-  const keys = Object.keys(result).sort();
-  const expected = expectedKeys.slice().sort();
-  if (
-    keys.length !== expected.length ||
-    !keys.every((key, index) => key === expected[index])
-  ) {
-    return reject(code);
-  }
-  return result;
+  return Object.freeze(result);
 }
 
 function plainDataArray(
@@ -84,12 +177,43 @@ function plainDataArray(
   maximumLength: number,
   code: WriteEntityResolutionErrorCode,
 ): readonly unknown[] {
-  if (!Array.isArray(value) || value.length > maximumLength) {
+  if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) {
+    return reject(code);
+  }
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+  if (
+    lengthDescriptor === undefined ||
+    !("value" in lengthDescriptor) ||
+    !Number.isSafeInteger(lengthDescriptor.value) ||
+    Number(lengthDescriptor.value) < 0 ||
+    Number(lengthDescriptor.value) > maximumLength
+  ) {
+    return reject(code);
+  }
+  const length = Number(lengthDescriptor.value);
+  const keys = Reflect.ownKeys(value);
+  if (keys.length !== length + 1 || !keys.includes("length")) {
     return reject(code);
   }
   const result: unknown[] = [];
-  for (let index = 0; index < value.length; index += 1) {
-    const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+  result.length = length;
+  for (const key of keys) {
+    if (key === "length") {
+      continue;
+    }
+    if (typeof key !== "string") {
+      return reject(code);
+    }
+    const index = Number(key);
+    if (
+      !Number.isSafeInteger(index) ||
+      index < 0 ||
+      index >= length ||
+      String(index) !== key
+    ) {
+      return reject(code);
+    }
+    const descriptor = Object.getOwnPropertyDescriptor(value, key);
     if (
       descriptor === undefined ||
       descriptor.enumerable !== true ||
@@ -97,18 +221,7 @@ function plainDataArray(
     ) {
       return reject(code);
     }
-    result.push(descriptor.value);
-  }
-  const expectedKeys = new Set([
-    "length",
-    ...Array.from({ length: value.length }, (_, index) => String(index)),
-  ]);
-  if (
-    Reflect.ownKeys(value).some(
-      (key) => typeof key !== "string" || !expectedKeys.has(key),
-    )
-  ) {
-    return reject(code);
+    result[index] = descriptor.value;
   }
   return Object.freeze(result);
 }
@@ -394,13 +507,18 @@ function freezeFinalizationResult(
 }
 
 function freezeResults(
-  values: readonly SqliteWriteEntityDraftResolution[],
+  values: unknown,
   expectedDrafts: readonly SqliteWriteEntityDraftInput[],
 ): readonly SqliteWriteEntityDraftResolution[] {
-  if (!Array.isArray(values) || values.length !== expectedDrafts.length) {
+  const resultValues = plainDataArray(
+    values,
+    expectedDrafts.length,
+    "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+  );
+  if (resultValues.length !== expectedDrafts.length) {
     return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
-  const results = values.map(freezeResolution);
+  const results = resultValues.map(freezeResolution);
   for (let index = 0; index < results.length; index += 1) {
     if (results[index]?.draftIndex !== expectedDrafts[index]?.draftIndex) {
       return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
@@ -420,33 +538,34 @@ export function resolveSqliteWriteEntityDrafts(
 ): Promise<readonly SqliteWriteEntityDraftResolution[]> {
   let dispatchId: number;
   let drafts: readonly SqliteWriteEntityDraftInput[];
+  let resolveEntities: SqliteProjectionDispatchSession["resolveEntities"];
   try {
     const input = plainDataRecord(
       value,
       ["dispatchId", "drafts"],
       "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
     );
+    const sessionMethod =
+      session === null || typeof session !== "object"
+        ? null
+        : session.resolveEntities;
     if (
       !Number.isSafeInteger(input["dispatchId"]) ||
       Number(input["dispatchId"]) <= 0 ||
-      session === null ||
-      typeof session !== "object" ||
-      typeof session.resolveEntities !== "function"
+      typeof sessionMethod !== "function"
     ) {
-      return Promise.reject(
-        new WriteEntityResolutionError(
-          "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
-        ),
-      );
+      return rejected("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
     }
     dispatchId = Number(input["dispatchId"]);
     drafts = snapshotDrafts(input["drafts"]);
-  } catch (error: unknown) {
-    return Promise.reject(error);
+    resolveEntities = sessionMethod;
+  } catch {
+    return rejected("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
   }
-  return session
-    .resolveEntities(dispatchId, drafts)
-    .then((results) => freezeResults(results, drafts));
+  return invokeSessionOperation(
+    () => Reflect.apply(resolveEntities, session, [dispatchId, drafts]),
+    (results) => freezeResults(results, drafts),
+  );
 }
 
 /**
@@ -460,24 +579,23 @@ export function finalizeSqliteWriteEntityDrafts(
   let dispatchId: number;
   let survivorDraftIndexes: readonly number[];
   let statementBodyJson: string;
+  let finalizeEntities: SqliteProjectionDispatchSession["finalizeEntities"];
   try {
     const input = plainDataRecord(
       value,
       ["dispatchId", "statementBodyJson", "survivorDraftIndexes"],
       "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
     );
+    const sessionMethod =
+      session === null || typeof session !== "object"
+        ? null
+        : session.finalizeEntities;
     if (
       !Number.isSafeInteger(input["dispatchId"]) ||
       Number(input["dispatchId"]) <= 0 ||
-      session === null ||
-      typeof session !== "object" ||
-      typeof session.finalizeEntities !== "function"
+      typeof sessionMethod !== "function"
     ) {
-      return Promise.reject(
-        new WriteEntityResolutionError(
-          "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
-        ),
-      );
+      return rejected("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
     }
     dispatchId = Number(input["dispatchId"]);
     survivorDraftIndexes = snapshotSurvivorDraftIndexes(
@@ -487,21 +605,23 @@ export function finalizeSqliteWriteEntityDrafts(
       typeof input["statementBodyJson"] !== "string" ||
       input["statementBodyJson"].length === 0
     ) {
-      return Promise.reject(
-        new WriteEntityResolutionError(
-          "INVALID_WRITE_ENTITY_RESOLUTION_INPUT",
-        ),
-      );
+      return rejected("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
     }
     statementBodyJson = input["statementBodyJson"];
-  } catch (error: unknown) {
-    return Promise.reject(error);
+    finalizeEntities = sessionMethod;
+  } catch {
+    return rejected("INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
   }
-  return session
-    .finalizeEntities(dispatchId, survivorDraftIndexes, statementBodyJson)
-    .then((result) =>
+  return invokeSessionOperation(
+    () =>
+      Reflect.apply(finalizeEntities, session, [
+        dispatchId,
+        survivorDraftIndexes,
+        statementBodyJson,
+      ]),
+    (result) =>
       freezeFinalizationResult(result, survivorDraftIndexes),
-    );
+  );
 }
 
 export type {
