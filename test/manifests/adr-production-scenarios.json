@@ -226,7 +226,7 @@
       "layer": "integration-projection",
       "target": "test/integration/projection/s23-seeded-state-machine.test.mjs",
       "owner_tasks": ["PRJ-009", "PRJ-010", "REL-007"],
-      "status": "planned"
+      "status": "implemented"
     },
     {
       "id": "S24",
@@ -235,7 +235,7 @@
       "layer": "e2e-process",
       "target": "test/e2e/process/s24-crash-reopen.test.mjs",
       "owner_tasks": ["STO-007", "PRJ-009", "STO-008", "PRJ-010", "REL-004"],
-      "status": "planned"
+      "status": "implemented"
     }
   ],
   "non_scenario_gates": [

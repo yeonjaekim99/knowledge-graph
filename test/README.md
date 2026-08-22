@@ -35,6 +35,8 @@
 | `pnpm test:prj-006` | claim/support·카디널리티·철회와 structural 시각 |
 | `pnpm test:prj-007` | merge·alias·claim rewrite와 decision undo |
 | `pnpm test:prj-008` | effective TTL과 실제 SQLite aggregate·scope/invariant |
+| `pnpm test:prj-009` | 증분 dispatcher·full replay·atomic publish·commit gate |
+| `pnpm test:prj-010` | S01~S24 projection prefix, S23 288-prefix metamorphic, S24 process crash |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -95,5 +97,12 @@ SQLite prefix parity가 남아 있어 S08/S21 target은 `planned`를 유지한�
 
 PRJ-006/007은 claim/support 구조 상태와 merge·alias rewrite를 순수 reducer로 검증한다.
 PRJ-008은 그 structural output에 effective expiry를 붙이는 domain fixture와 실제 file SQLite의
-공통 aggregate SQL fixture를 함께 둔다. 아직 dispatcher/publish와 공개 recall 경로가 없으므로
-S09~S11/S19/S23 manifest는 PRJ-009/010과 RCL owner가 끝낼 때까지 `planned`다.
+공통 aggregate SQL fixture를 함께 둔다. PRJ-009는 이 reducer를 atomic dispatcher/publish와
+연결했다. S09~S11/S19의 public recall target은 RCL owner가 끝낼 때까지
+`planned`를 유지한다.
+
+PRJ-010은 S01~S24의 journal-reducible 이력을 실제 dispatcher에 누적하고 각
+operation prefix를 별도 full production reducer와 canonical byte로 비교한다. S23의
+288 prefix·metamorphic과 S24의 8개 hard-exit/reopen target은 `implemented`다.
+Record/Revise/Recall 출력을 요구하는 S01~S22의 나머지 vertical target은 각 owner가
+완결할 때까지 `planned`를 유지한다.
