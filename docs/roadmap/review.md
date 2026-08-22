@@ -3,8 +3,8 @@
 - 리뷰일: 2026-08-22
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#32 누적 게시·로컬 검증과 2026-08-22 scope 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001 완료 · REC-002/REC-004/RCL-001 진행 · 차단 결함 0개**
+- 성격: 작성자 자체 교차 검토, PR #3~#34 누적 게시·로컬 검증과 2026-08-22 scope 재검토
+- 결과: **Phase 01·02·03 종료 · REC-001/RCL-001 완료 · REC-002/REC-004 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -18,7 +18,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 25/66, Phase 01·02·03과 REC-001 `DONE`, REC-002/REC-004/RCL-001 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 26/66, Phase 01·02·03과 REC-001/RCL-001 `DONE`, REC-002/REC-004 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -139,6 +139,24 @@
     `superseded_previous > created > reinforced` 우선순위를 검증하되 detector/entity/dedupe,
     journal/project와 MCP wiring은 REC-002~008/MCP owner에 남겼다. 독립 peer review의 package
     root Low finding도 별도 fix commit으로 닫고 전체 243/243을 재검증한 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32)를 완료 증거로 고정했다.
+30. RCL-001은 search/overview와 RecallResult의 닫힌 Draft 2020-12 schema를 실제 SDK validator와
+    inferred type에 연결하고 trusted scope/evaluationNow를 한 번 캡처하는 typed application
+    read capability를 만들었다. STO-002 reader worker의 한 `BEGIN DEFERRED` 안에서 PRJ-008 source를
+    scope/fixed-now TEMP aggregate로 materialize하고 모든 column을 명시적으로 alias했다. 리뷰에서
+    concurrent WAL commit 중 claims join도 이전 snapshot을 유지하는 fixture, callback 실패 cleanup,
+    손상 ID fail-closed, trimmed Unicode 4,096자와 hops 상한, journal/projection/FTS dump·외부
+    data_version 불변을 추가했다. term/FTS, traversal/ranking/Answer와 S09/S10/S19 public
+    golden은 RCL-002~008에 남겼다. 독립 리뷰에서 depth 3 frontier incident의 반대 entity를
+    path에 덧붙이면 `hops=4`가 된다는 ADR-012 경계를 확인해 output 상한을 4로 정정하고 5를
+    거부하는 contract 회귀를 추가했다. MCP SDK가 Standard Schema를 직접 소비할 때 AJV default
+    annotation이 값을 채우지 않는 경계도 merge review에서 확인해, direct validate와 helper를
+    같은 canonical default 경로로 묶고 overview에는 불필요한 depth가 생기지 않게 고정했다.
+    매 recall 뒤 닫힌 reader가 factory Set에 남는 강참조도 제거하되 worker close 완료 전에는
+    ownership을 유지하고, 반복 reader close와 factory close가 같은 종료 Promise를 기다리게 했다.
+    advertised query schema의 raw `maxLength`와 runtime 선-trim 의미도 독립 SDK compile 회귀로
+    발견해 padding을 제외한 Unicode 4,096자 경계를 schema source 자체에 표현했다. 최종 독립
+    review와 255/255 통합 회귀에서 미해결 finding이 없었고 [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)를
+    완료 증거로 고정했다.
 
 ## 의도적으로 남은 상태
 
@@ -151,9 +169,9 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. Phase 04의 REC-001은
-  [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32)로 완료했고, 선행 조건이
-  해제된 REC-002, REC-004와 RCL-001은 각각 격리 branch에서 병렬 진행한다.
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. REC-001과 RCL-001은
+  각각 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)로
+  완료했고, REC-002와 REC-004는 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -166,9 +184,10 @@
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
 | STO-001~008·PRJ-001~010·REC-001 로컬 gate | PASS — REC-001 11/11, FND-004 7/7, architecture/type/build와 전체 Node test 243/243 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
+| RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — record schema/type/private validator·contract/type fixture와 문서만 추가, detector·entity resolution·journal/application service·MCP catalog/handler·자동 CI 변경 없음 |
+| 변경 범위 | PASS — REC-001 record 계약과 RCL-001 recall 계약·typed read port·reader TEMP transaction을 병존시키고, term/FTS/BFS/ranking/Answer·MCP catalog·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사
 

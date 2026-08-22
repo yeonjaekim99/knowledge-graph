@@ -95,6 +95,7 @@ export type SqliteConnectionErrorCode =
   | "WRITER_ALREADY_ACTIVE"
   | "CONNECTION_FACTORY_CLOSED"
   | "CONNECTION_CLOSED"
+  | "RECALL_SNAPSHOT_FAILED"
   | "SQLITE_BUSY";
 
 export type SqliteMigrationErrorCode =
@@ -126,6 +127,8 @@ const CONNECTION_ERROR_MESSAGES: Readonly<
     "SQLite database already has an active writer in this process",
   CONNECTION_FACTORY_CLOSED: "SQLite connection factory is closing or closed",
   CONNECTION_CLOSED: "SQLite reader connection is closed",
+  RECALL_SNAPSHOT_FAILED:
+    "SQLite recall snapshot failed and temporary state was discarded",
   SQLITE_BUSY: "SQLite writer lock was not available within five seconds",
 });
 
@@ -213,6 +216,34 @@ export interface SqliteWorkerQueryRequest {
   readonly type: "query";
   readonly requestId: number;
   readonly query: SqliteReadQuery;
+}
+
+export interface SqliteRecallSnapshotBeginResult {
+  readonly snapshotId: number;
+}
+
+export interface SqliteRecallAggregateRowsResult {
+  readonly rows: readonly Readonly<Record<string, unknown>>[];
+}
+
+export interface SqliteWorkerRecallSnapshotBeginRequest {
+  readonly type: "recall-snapshot-begin";
+  readonly requestId: number;
+  readonly scopeKey: string;
+  readonly evaluationNow: number;
+}
+
+export interface SqliteWorkerRecallSnapshotReadRequest {
+  readonly type: "recall-snapshot-read";
+  readonly requestId: number;
+  readonly snapshotId: number;
+}
+
+export interface SqliteWorkerRecallSnapshotEndRequest {
+  readonly type: "recall-snapshot-end";
+  readonly requestId: number;
+  readonly snapshotId: number;
+  readonly commit: boolean;
 }
 
 export interface SqliteProjectionMetaSnapshot {
@@ -313,6 +344,9 @@ export type SqliteWorkerRequest =
   | SqliteWorkerProjectionReplayRollbackRequest
   | SqliteWorkerProjectionDispatchBeginRequest
   | SqliteWorkerProjectionDispatchCommitRequest
+  | SqliteWorkerRecallSnapshotBeginRequest
+  | SqliteWorkerRecallSnapshotReadRequest
+  | SqliteWorkerRecallSnapshotEndRequest
   | SqliteWorkerCloseRequest;
 
 export interface SqliteWorkerReadyResponse {

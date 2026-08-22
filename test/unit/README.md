@@ -28,3 +28,8 @@ REC-001의 `application/rec-001-record-contract.type-test.ts`는 JSON Schema에�
 DTO가 relation enum, trusted input과 accepted/rejected result branch drift를 compile 단계에서
 거부하는지 확인한다. 비판별 XOR와 재해석 pair의 최종 판정은 runtime contract fixture가
 소유한다.
+
+RCL-001의 [`application/rcl-001-recall-snapshot-service.test.mjs`](application/rcl-001-recall-snapshot-service.test.mjs)는
+request-scoped runtime을 정확히 한 번 캡처하고 application이 raw SQL/connection 대신 TEMP
+유효 claim 전용 typed capability만 받는지 검증한다. 잘못된 scope/epoch는 DB를 열기 전에
+payload를 보관하지 않는 typed error로 닫는다.

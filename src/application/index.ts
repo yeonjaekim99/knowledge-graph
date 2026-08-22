@@ -1,4 +1,12 @@
 export { EmptyJournalBatchError, JournalWriteService } from "./write-service.js";
+export {
+  memoryRecallInputDefinition,
+  recallResultDefinition,
+} from "./memory-recall-contract.js";
+export type {
+  MemoryRecallInput,
+  RecallResult,
+} from "./memory-recall-contract.js";
 export type { UseCase } from "./use-case.js";
 export {
   RecordContractError,

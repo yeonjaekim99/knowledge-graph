@@ -20,6 +20,8 @@ import {
   type SqliteProjectionReplayCommitResult,
   type SqliteReadQuery,
   type SqliteReadResult,
+  type SqliteRecallAggregateRowsResult,
+  type SqliteRecallSnapshotBeginResult,
   type SqliteTransactionCommand,
   type SqliteWorkerResponse,
   type SqliteWorkerRole,
@@ -175,6 +177,37 @@ class SqliteWorkerClient {
     return this.#request({ type: "query", query }) as Promise<SqliteReadResult>;
   }
 
+  public beginRecallSnapshot(
+    scopeKey: string,
+    evaluationNow: number,
+  ): Promise<SqliteRecallSnapshotBeginResult> {
+    return this.#request({
+      type: "recall-snapshot-begin",
+      scopeKey,
+      evaluationNow,
+    }) as Promise<SqliteRecallSnapshotBeginResult>;
+  }
+
+  public readRecallSnapshot(
+    snapshotId: number,
+  ): Promise<SqliteRecallAggregateRowsResult> {
+    return this.#request({
+      type: "recall-snapshot-read",
+      snapshotId,
+    }) as Promise<SqliteRecallAggregateRowsResult>;
+  }
+
+  public endRecallSnapshot(
+    snapshotId: number,
+    commit: boolean,
+  ): Promise<void> {
+    return this.#request({
+      type: "recall-snapshot-end",
+      snapshotId,
+      commit,
+    }) as Promise<void>;
+  }
+
   public beginProjectionReplay(
     scopeKey: string,
   ): Promise<SqliteProjectionReplayBeginResult> {
@@ -294,6 +327,20 @@ class SqliteWorkerClient {
           readonly snapshot: ProjectionSnapshot;
         }
       | { readonly type: "query"; readonly query: SqliteReadQuery }
+      | {
+          readonly type: "recall-snapshot-begin";
+          readonly scopeKey: string;
+          readonly evaluationNow: number;
+        }
+      | {
+          readonly type: "recall-snapshot-read";
+          readonly snapshotId: number;
+        }
+      | {
+          readonly type: "recall-snapshot-end";
+          readonly snapshotId: number;
+          readonly commit: boolean;
+        }
       | { readonly type: "close" },
   ): Promise<unknown> {
     if (this.#state !== "open") {
@@ -376,10 +423,13 @@ export interface SqliteReaderConnection {
 class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
   readonly #client: SqliteWorkerClient;
   readonly configuration: SqliteConnectionPolicy;
+  #onClose: (() => void) | null;
   #closed: boolean = false;
+  #closePromise: Promise<void> | null = null;
 
-  public constructor(client: SqliteWorkerClient) {
+  public constructor(client: SqliteWorkerClient, onClose?: () => void) {
     this.#client = client;
+    this.#onClose = onClose ?? null;
     this.configuration = client.configuration;
   }
 
@@ -395,12 +445,89 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
   }
 
   public close(): Promise<void> {
-    if (this.#closed) {
-      return Promise.resolve();
+    if (this.#closePromise !== null) {
+      return this.#closePromise;
     }
     this.#closed = true;
-    return this.#client.close();
+    this.#closePromise = this.#client.close().finally(() => {
+      const onClose = this.#onClose;
+      this.#onClose = null;
+      onClose?.();
+    });
+    return this.#closePromise;
   }
+
+  public async withRecallSnapshot<Result>(
+    scopeKey: string,
+    evaluationNow: number,
+    operation: SqliteRecallSnapshotOperation<Result>,
+  ): Promise<Result> {
+    if (this.#closed || typeof operation !== "function") {
+      throw new SqliteConnectionError(
+        this.#closed ? "CONNECTION_CLOSED" : "RECALL_SNAPSHOT_FAILED",
+      );
+    }
+
+    const started = await this.#client.beginRecallSnapshot(
+      scopeKey,
+      evaluationNow,
+    );
+    let active = true;
+    const source: SqliteRecallSnapshotSource = Object.freeze({
+      listRawAggregateRows: async () => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+        const result = await this.#client.readRecallSnapshot(
+          started.snapshotId,
+        );
+        return result.rows;
+      },
+    });
+
+    try {
+      const result = await operation(source);
+      await this.#client.endRecallSnapshot(started.snapshotId, true);
+      active = false;
+      return result;
+    } catch (error) {
+      if (active) {
+        active = false;
+        try {
+          await this.#client.endRecallSnapshot(started.snapshotId, false);
+        } catch {
+          // Preserve the safe primary operation error; close owns final cleanup.
+        }
+      }
+      throw error;
+    }
+  }
+}
+
+export interface SqliteRecallSnapshotSource {
+  listRawAggregateRows(): Promise<
+    readonly Readonly<Record<string, unknown>>[]
+  >;
+}
+
+export type SqliteRecallSnapshotOperation<Result> = (
+  source: SqliteRecallSnapshotSource,
+) => Promise<Result>;
+
+export function runSqliteRecallSnapshot<Result>(
+  reader: SqliteReaderConnection,
+  scopeKey: string,
+  evaluationNow: number,
+  operation: SqliteRecallSnapshotOperation<Result>,
+): Promise<Result> {
+  if (!(reader instanceof SqliteReaderConnectionImplementation)) {
+    return Promise.reject(new SqliteConnectionError("RECALL_SNAPSHOT_FAILED"));
+  }
+  return reader.withRecallSnapshot(
+    scopeKey,
+    evaluationNow,
+    operation,
+  );
 }
 
 export interface SqliteConnectionFactory {
@@ -687,10 +814,16 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
     if (!this.#accepting) {
       throw new SqliteConnectionError("CONNECTION_FACTORY_CLOSED");
     }
-    const opening = openSqliteReader(this.#readiness);
+    let trackedReader: SqliteReaderConnection | undefined;
+    const opening = openSqliteReaderWithCloseHook(this.#readiness, () => {
+      if (trackedReader !== undefined) {
+        this.#readers.delete(trackedReader);
+      }
+    });
     this.#readerOpenings.add(opening);
     try {
       const reader = await opening;
+      trackedReader = reader;
       if (!this.#accepting) {
         await reader.close();
         throw new SqliteConnectionError("CONNECTION_FACTORY_CLOSED");
@@ -795,8 +928,15 @@ async function openWorker(
 export async function openSqliteReader(
   readiness: SqliteStartupReadiness,
 ): Promise<SqliteReaderConnection> {
+  return openSqliteReaderWithCloseHook(readiness);
+}
+
+async function openSqliteReaderWithCloseHook(
+  readiness: SqliteStartupReadiness,
+  onClose?: () => void,
+): Promise<SqliteReaderConnection> {
   const client = await openWorker("reader", readiness);
-  return new SqliteReaderConnectionImplementation(client);
+  return new SqliteReaderConnectionImplementation(client, onClose);
 }
 
 export async function createSqliteConnectionFactory(
