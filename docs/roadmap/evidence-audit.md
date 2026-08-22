@@ -163,6 +163,6 @@
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
 - Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-004`와
-  `RCL-001`~`RCL-005`는 완료됐고 `REC-005`는 owner와 격리 branch에서 진행 중이다.
+  `RCL-001`~`RCL-005`는 완료됐고 `REC-005`, `RCL-006`은 owner와 격리 branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.
