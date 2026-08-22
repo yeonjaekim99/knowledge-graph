@@ -244,6 +244,14 @@ function validRawRow(overrides = {}) {
 }
 
 async function overviewInjectedResult(factory, rawResult, limit = 10) {
+  return overviewInjectedRead(
+    factory,
+    () => Promise.resolve(rawResult),
+    limit,
+  );
+}
+
+async function overviewInjectedRead(factory, readRawOverviewState, limit = 10) {
   const reader = await factory.openReader();
   Object.defineProperty(reader, "withRecallSnapshot", {
     configurable: true,
@@ -254,9 +262,7 @@ async function overviewInjectedResult(factory, rawResult, limit = 10) {
           async listRawAggregateRows() {
             return Object.freeze([]);
           },
-          async readRawOverviewState() {
-            return rawResult;
-          },
+          readRawOverviewState,
         }),
       ),
   });
@@ -275,6 +281,32 @@ function smuggledReadError(marker) {
   error.cause = { marker };
   error.secret = marker;
   return error;
+}
+
+function payloadAdapterError(kind, marker) {
+  if (kind === "typed") {
+    return smuggledReadError(marker);
+  }
+  const error = new Error(marker);
+  error.name = marker;
+  error.cause = { marker };
+  error.secret = marker;
+  return error;
+}
+
+function freshAdapterError(injected, marker) {
+  return (error) => {
+    const expected = new RecallReadError("INVALID_RECALL_OVERVIEW_CANDIDATE");
+    assert.ok(error instanceof RecallReadError);
+    assert.notStrictEqual(error, injected);
+    assert.equal(error.code, expected.code);
+    assert.equal(error.name, expected.name);
+    assert.equal(error.message, expected.message);
+    assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+    assert.equal("cause" in error, false);
+    assert.equal(JSON.stringify(error).includes(marker), false);
+    return true;
+  };
 }
 
 test("overview SQL is parameterized, TEMP-valid-rooted, numerically ordered, and read-only", () => {
@@ -633,6 +665,38 @@ test("overview envelope, array, row, accessor, and typed-error traps are payload
         return true;
       },
     );
+  }
+});
+
+test("overview snapshot sync throws, rejections, and hostile thenables become fresh fixed adapter errors", async (t) => {
+  const { factory } = await fixture();
+  t.after(() => factory.close());
+  for (const mode of ["sync", "reject", "then-getter"]) {
+    for (const kind of ["typed", "ordinary"]) {
+      const marker = `do-not-echo-rcl-004-adapter-${mode}-${kind}`;
+      const injected = payloadAdapterError(kind, marker);
+      const readRawOverviewState = () => {
+        if (mode === "sync") {
+          throw injected;
+        }
+        if (mode === "reject") {
+          return Promise.reject(injected);
+        }
+        return Object.create(null, {
+          then: {
+            enumerable: true,
+            get() {
+              throw injected;
+            },
+          },
+        });
+      };
+
+      await assert.rejects(
+        overviewInjectedRead(factory, readRawOverviewState),
+        freshAdapterError(injected, marker),
+      );
+    }
   }
 });
 

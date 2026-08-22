@@ -16,6 +16,31 @@ function readError(code) {
   };
 }
 
+function payloadError(kind, code, marker) {
+  const error =
+    kind === "typed" ? new RecallReadError(code) : new Error(marker);
+  error.name = marker;
+  error.message = marker;
+  error.cause = { marker };
+  error.secret = marker;
+  return error;
+}
+
+function freshReadError(injected, code, marker) {
+  return (error) => {
+    const expected = new RecallReadError(code);
+    assert.ok(error instanceof RecallReadError);
+    assert.notStrictEqual(error, injected);
+    assert.equal(error.code, expected.code);
+    assert.equal(error.name, expected.name);
+    assert.equal(error.message, expected.message);
+    assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+    assert.equal("cause" in error, false);
+    assert.equal(JSON.stringify(error).includes(marker), false);
+    return true;
+  };
+}
+
 test("overview delegates one validated result limit through the typed snapshot capability", async () => {
   const expected = Object.freeze({
     seeds: Object.freeze([]),
@@ -90,4 +115,44 @@ test("overview request validation replaces accessor and Proxy failures with a fr
       return true;
     },
   );
+});
+
+test("overview capability sync throws, rejections, and hostile thenables become fresh fixed errors", async () => {
+  for (const mode of ["sync", "reject", "then-getter"]) {
+    for (const kind of ["typed", "ordinary"]) {
+      const marker = `do-not-echo-rcl-004-application-${mode}-${kind}`;
+      const injected = payloadError(
+        kind,
+        "INVALID_RECALL_OVERVIEW_REQUEST",
+        marker,
+      );
+      const source = Object.freeze({
+        selectOverviewCandidates() {
+          if (mode === "sync") {
+            throw injected;
+          }
+          if (mode === "reject") {
+            return Promise.reject(injected);
+          }
+          return Object.create(null, {
+            then: {
+              enumerable: true,
+              get() {
+                throw injected;
+              },
+            },
+          });
+        },
+      });
+
+      await assert.rejects(
+        selectRecallOverviewCandidates(source, 10),
+        freshReadError(
+          injected,
+          "INVALID_RECALL_OVERVIEW_REQUEST",
+          marker,
+        ),
+      );
+    }
+  }
 });
