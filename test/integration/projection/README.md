@@ -11,8 +11,13 @@
 - `projection_meta` missing/seq/rules mismatch와 current no-op 분기
 - 여섯 projection table의 독립 `recall-projection-v1` canonical dump parity
 
-PRJ-002의 versioned normalize/relation/literal, PRJ-003의 occurrence ID/redirect,
-PRJ-004의 사건 pre-scan과 PRJ-005의 entity/surface/kind reducer는 domain unit·process
-fixture로 완료됐다. claim/support 상태 전이, merge/alias 사건과 증분 dispatcher는
-PRJ-006~009가 추가한다. 이 디렉터리의 기반 test가 있다는 사실만으로 S01~S03, S08,
-S14/S15, S21이나 S24 전체 parity를 완료로 표시하지 않는다.
+PRJ-002~009의 normalize, ID, pre-scan, entity/claim/decision/validity reducer와 atomic
+dispatcher를 PRJ-010이 production 회귀 suite로 연결한다.
+
+- `prj-010-scenario-prefix-parity.test.mjs`: S01~S24의 projection 가능 이력 98 prefix
+- `s23-seeded-state-machine.test.mjs`: 8 trace × 36 operation, correct/scope/time/undo metamorphic
+- 매 prefix의 canonical byte·checksum과 scope/FK/FTS/support/describes/redirect/meta 불변식
+
+이 suite는 stored journal→projection 경계만 소유한다. S01~S22의 public
+Record/Revise/Recall 동작은 manifest의 각 vertical target이 추가될 때까지 완료로
+표시하지 않는다.

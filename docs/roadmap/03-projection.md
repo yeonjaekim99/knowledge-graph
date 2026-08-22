@@ -24,7 +24,7 @@
 | PRJ-007 | merge·alias와 claim rewrite | `DONE` | `log0629` | PRJ-005, PRJ-006 | [PR #27](https://github.com/yeonjaekim99/knowledge-graph/pull/27) |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `DONE` | `log0629` | PRJ-004, PRJ-006 | [PR #28](https://github.com/yeonjaekim99/knowledge-graph/pull/28) |
 | PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `DONE` | `log0629` | PRJ-003~008 | [PR #29](https://github.com/yeonjaekim99/knowledge-graph/pull/29) |
-| PRJ-010 | prefix oracle·metamorphic·crash parity | `TODO` | `unassigned` | PRJ-009, STO-008 | — |
+| PRJ-010 | prefix oracle·metamorphic·crash parity | `IN_PROGRESS` | `log0629` | PRJ-009, STO-008 | — |
 
 ## 상세 체크리스트
 
@@ -335,8 +335,9 @@
 
 ### PRJ-010 — prefix oracle·metamorphic·crash parity
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `prj-010-prefix-parity`
 - 근거: ADR-001~010, ADR-017과 behavior spike
 - 선행 작업: PRJ-009, STO-008
 - 결과물: production reducer 회귀 suite

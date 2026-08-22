@@ -90,7 +90,10 @@ export async function runReplayParity(options) {
       const incremental = canonicalProjectionDump(incrementalSnapshot);
       const fullReplay = canonicalProjectionDump(fullReplaySnapshot);
 
-      if (incremental.checksum !== fullReplay.checksum) {
+      if (
+        incremental.canonical !== fullReplay.canonical ||
+        incremental.checksum !== fullReplay.checksum
+      ) {
         throw new ReplayParityError({
           scenarioId,
           prefixLength,
