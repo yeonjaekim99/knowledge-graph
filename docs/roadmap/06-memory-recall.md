@@ -16,8 +16,8 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | RCL-001 | recall 계약·snapshot·유효 aggregate | `DONE` | `log0629` | FND-004, PRJ-008 | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md) |
-| RCL-002 | query term과 surface seed | `TODO` | `unassigned` | RCL-001, PRJ-005 | — |
-| RCL-003 | 안전한 FTS와 raw fallback | `TODO` | `unassigned` | RCL-001, STO-004 | — |
+| RCL-002 | query term과 surface seed | `IN_PROGRESS` | `log0629` | RCL-001, PRJ-005 | — |
+| RCL-003 | 안전한 FTS와 raw fallback | `IN_PROGRESS` | `log0629` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
 | RCL-005 | BFS 이동·수집·경로 복원 | `TODO` | `unassigned` | RCL-001, RCL-002 | — |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
@@ -71,8 +71,9 @@
 
 ### RCL-002 — query term과 surface seed
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rcl-002-query-surface`
 - 근거: ADR-006, ADR-008, ADR-012
 - 선행 작업: RCL-001, PRJ-005
 - 결과물: deterministic term extractor와 surface seed resolver
@@ -87,8 +88,9 @@
 
 ### RCL-003 — 안전한 FTS와 raw fallback
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rcl-003-fts-fallback`
 - 근거: ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 작업: RCL-001, STO-004
 - 결과물: FTS candidate query와 graph/raw 진입 변환
