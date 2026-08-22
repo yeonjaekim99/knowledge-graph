@@ -151,6 +151,8 @@
     거부하는 contract 회귀를 추가했다. MCP SDK가 Standard Schema를 직접 소비할 때 AJV default
     annotation이 값을 채우지 않는 경계도 merge review에서 확인해, direct validate와 helper를
     같은 canonical default 경로로 묶고 overview에는 불필요한 depth가 생기지 않게 고정했다.
+    매 recall 뒤 닫힌 reader가 factory Set에 남는 강참조도 제거하되 worker close 완료 전에는
+    ownership을 유지하고, 반복 reader close와 factory close가 같은 종료 Promise를 기다리게 했다.
 
 ## 의도적으로 남은 상태
 
@@ -178,7 +180,7 @@
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
 | STO-001~008·PRJ-001~010·REC-001 로컬 gate | PASS — REC-001 11/11, FND-004 7/7, architecture/type/build와 전체 Node test 243/243 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
-| RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 5/5, PRJ-008 8/8, PRJ-010 39/39와 architecture/type/build; 최신 main 통합 회귀는 PR review에서 재실행 |
+| RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39와 architecture/type/build; 최신 main 통합 회귀는 PR review에서 재실행 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | 변경 범위 | PASS — REC-001 record 계약과 RCL-001 recall 계약·typed read port·reader TEMP transaction을 병존시키고, term/FTS/BFS/ranking/Answer·MCP catalog·자동 CI 변경은 포함하지 않음 |

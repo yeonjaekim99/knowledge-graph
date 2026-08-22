@@ -423,10 +423,13 @@ export interface SqliteReaderConnection {
 class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
   readonly #client: SqliteWorkerClient;
   readonly configuration: SqliteConnectionPolicy;
+  #onClose: (() => void) | null;
   #closed: boolean = false;
+  #closePromise: Promise<void> | null = null;
 
-  public constructor(client: SqliteWorkerClient) {
+  public constructor(client: SqliteWorkerClient, onClose?: () => void) {
     this.#client = client;
+    this.#onClose = onClose ?? null;
     this.configuration = client.configuration;
   }
 
@@ -442,11 +445,16 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
   }
 
   public close(): Promise<void> {
-    if (this.#closed) {
-      return Promise.resolve();
+    if (this.#closePromise !== null) {
+      return this.#closePromise;
     }
     this.#closed = true;
-    return this.#client.close();
+    this.#closePromise = this.#client.close().finally(() => {
+      const onClose = this.#onClose;
+      this.#onClose = null;
+      onClose?.();
+    });
+    return this.#closePromise;
   }
 
   public async withRecallSnapshot<Result>(
@@ -806,10 +814,16 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
     if (!this.#accepting) {
       throw new SqliteConnectionError("CONNECTION_FACTORY_CLOSED");
     }
-    const opening = openSqliteReader(this.#readiness);
+    let trackedReader: SqliteReaderConnection | undefined;
+    const opening = openSqliteReaderWithCloseHook(this.#readiness, () => {
+      if (trackedReader !== undefined) {
+        this.#readers.delete(trackedReader);
+      }
+    });
     this.#readerOpenings.add(opening);
     try {
       const reader = await opening;
+      trackedReader = reader;
       if (!this.#accepting) {
         await reader.close();
         throw new SqliteConnectionError("CONNECTION_FACTORY_CLOSED");
@@ -914,8 +928,15 @@ async function openWorker(
 export async function openSqliteReader(
   readiness: SqliteStartupReadiness,
 ): Promise<SqliteReaderConnection> {
+  return openSqliteReaderWithCloseHook(readiness);
+}
+
+async function openSqliteReaderWithCloseHook(
+  readiness: SqliteStartupReadiness,
+  onClose?: () => void,
+): Promise<SqliteReaderConnection> {
   const client = await openWorker("reader", readiness);
-  return new SqliteReaderConnectionImplementation(client);
+  return new SqliteReaderConnectionImplementation(client, onClose);
 }
 
 export async function createSqliteConnectionFactory(

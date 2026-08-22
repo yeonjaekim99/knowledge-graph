@@ -85,7 +85,9 @@ readonly WAL reader open
 reader worker 안에서만 sync driver와 transaction을 소유하며 application callback의 성공·실패
 모두 cleanup을 `finally` 경계로 통과한다. callback이 보관한 capability는 종료 후 fail closed한다.
 TEMP DDL은 connection-local 상태만 쓰며 main schema의 journal/projection/FTS에는 write를
-발행하지 않는다.
+발행하지 않는다. factory가 연 reader는 반복 close가 같은 Promise를 반환하고 worker close가
+완료된 뒤에만 factory ownership에서 빠진다. 따라서 요청마다 닫힌 reader를 강참조하지 않고,
+개별 close와 factory close 경합에서도 factory 종료가 in-flight worker보다 먼저 끝나지 않는다.
 
 PRJ-008의 `CLAIM_AGGREGATE_SQL_SOURCE.recallSelect`를 wrapper SELECT 안에서 그대로 사용한다.
 유효 support predicate를 복제하지 않고 `:scope_key`와 `:now` named binding을 유지한다.
@@ -127,6 +129,9 @@ schema에 대해 3/4 RED인 것을 확인한 뒤 maximum을 4로 바로잡아 4/
 MCP-003이 직접 소비할 Standard Schema 성공값의 default 누락도 padded search와 overview
 fixture가 3/4 RED로 재현했다. Standard Schema와 helper를 한 canonical default 경로로 합치고
 실패 result는 무변형 반환해 focused 4/4 GREEN으로 닫았다.
+개별 reader가 닫힌 뒤에도 factory가 다시 close하는 lifecycle fixture는 STO-002 5/6 RED로
+강참조 누적을 재현했다. deregistration을 worker close 완료 뒤로 옮기고 반복·factory close가
+같은 in-flight Promise를 기다리는 경합 fixture까지 추가해 7/7 GREEN으로 닫았다.
 
 재현 명령은 다음과 같다.
 
@@ -141,7 +146,7 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 pnpm audit --prod
 ```
 
-최종 검증은 RCL-001 10/10, STO-002 5/5, PRJ-008 8/8, 전체 fast 36개 파일 242/242,
+최종 검증은 RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, 전체 fast 37개 파일 255/255,
 PRJ-010 reference parity 39/39와 behavior spike 25/25다. roadmap validator는 phase 9,
 active task 73, historical task 74, retired 1, evidence 67/67, ADR 17/17과 scenario 24/24를
 통과했고 production dependency 알려진 취약점은 0개였다.

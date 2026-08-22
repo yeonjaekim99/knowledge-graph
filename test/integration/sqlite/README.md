@@ -3,6 +3,10 @@
 실제 임시 SQLite file, migration, WAL과 transaction을 검증한다. 공통 규칙은
 [`../../README.md`](../../README.md)를 따른다.
 
+STO-002의 [`sto-002-connection-factory.test.mjs`](sto-002-connection-factory.test.mjs)는
+개별 reader close가 완료되면 factory ownership에서 제거되고, 반복 close와 동시 factory
+close가 같은 in-flight worker 종료를 기다리는 lifecycle도 검증한다.
+
 PRJ-008의 [`prj-008-claim-aggregate.test.mjs`](prj-008-claim-aggregate.test.mjs)는 공통
 valid-support source가 diagnostic view와 scope/fixed-now TEMP aggregate에서 같은 결과를
 내는지 검증한다. expiry·label·contested 경계, cross-scope corruption invariant와 TEMP 조회

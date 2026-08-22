@@ -348,3 +348,39 @@ test("close drains accepted writes, closes readers, and rejects new work", async
     connectionError("CONNECTION_CLOSED"),
   );
 });
+
+test("an individually closed reader is no longer owned by the factory", async () => {
+  const { readiness } = createReadiness();
+  const factory = await createSqliteConnectionFactory(readiness);
+  const reader = await factory.openReader();
+
+  await reader.close();
+  let redundantCloseCalls = 0;
+  reader.close = async () => {
+    redundantCloseCalls += 1;
+  };
+
+  await factory.close();
+  assert.equal(redundantCloseCalls, 0);
+});
+
+test("reader and factory close share the in-flight reader shutdown", async () => {
+  const { readiness } = createReadiness();
+  const factory = await createSqliteConnectionFactory(readiness);
+  const reader = await factory.openReader();
+
+  const firstClose = reader.close();
+  const repeatedClose = reader.close();
+  try {
+    assert.strictEqual(repeatedClose, firstClose);
+
+    let readerCloseCompleted = false;
+    void firstClose.then(() => {
+      readerCloseCompleted = true;
+    });
+    await factory.close();
+    assert.equal(readerCloseCompleted, true);
+  } finally {
+    await Promise.allSettled([firstClose, factory.close()]);
+  }
+});
