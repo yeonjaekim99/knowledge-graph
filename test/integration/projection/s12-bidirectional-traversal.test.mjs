@@ -150,6 +150,7 @@ test("S12 TEMP traversal moves both directions, collects literals, excludes scop
       "listValidClaimAggregates",
       "resolveSurfaceSeeds",
       "searchFtsCandidates",
+      "selectOverviewCandidates",
       "readTraversalNeighborhood",
     ]);
     const first = await traverseRecallGraph(source, {
