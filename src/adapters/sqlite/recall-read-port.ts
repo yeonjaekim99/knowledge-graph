@@ -107,7 +107,7 @@ const FTS_RESULT_KEYS: readonly string[] = Object.freeze([
   "queryUnavailable",
   "supportRows",
 ]);
-const MAX_FTS_SUPPORT_ROWS = 2_000;
+const MAX_FTS_SUPPORT_ROWS = 2_100;
 
 interface DecodedFtsStatement {
   readonly eventId: string;
@@ -663,7 +663,7 @@ function assembleFtsCandidates(
   );
   const usedStatements = statements.slice(0, 20);
   const statementsByEvent: Map<string, DecodedFtsStatement> = new Map(
-    usedStatements.map((statement) => [statement.eventId, statement]),
+    statements.map((statement) => [statement.eventId, statement]),
   );
   const supportsByEvent: Map<string, DecodedFtsSupport[]> = new Map();
   const supportIdentity: Set<string> = new Set();
@@ -702,6 +702,15 @@ function assembleFtsCandidates(
       }
     }
   }
+  for (const statement of statements) {
+    const supportCount = supportsByEvent.get(statement.eventId)?.length ?? 0;
+    if (
+      (statement.parsedCount === 0 && supportCount > 0) ||
+      (statement.parsedCount > 0 && supportCount === 0)
+    ) {
+      return invalidFtsCandidate();
+    }
+  }
 
   const seeds: RecallFtsSeedCandidate[] = [];
   const seedOrderByEntity: Map<string, number> = new Map();
@@ -735,9 +744,6 @@ function assembleFtsCandidates(
 
   for (const statement of usedStatements) {
     const supports = supportsByEvent.get(statement.eventId) ?? [];
-    if (statement.parsedCount === 0 && supports.length > 0) {
-      return invalidFtsCandidate();
-    }
     if (supports.length > 0) {
       for (const support of supports) {
         const subjectSeedOrder = addSeed(

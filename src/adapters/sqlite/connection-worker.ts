@@ -1856,7 +1856,7 @@ function searchRecallSnapshotFts(
       );
     }
 
-    for (const candidate of matchedRows.slice(0, 20)) {
+    for (const candidate of matchedRows) {
       const eventId = candidate["recall_fts_event_id"];
       if (typeof eventId !== "string") {
         throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
