@@ -519,37 +519,44 @@ function validateRankingReadRequest(
   probeLimit: unknown,
 ): readonly RecallRankingReadCandidate[] {
   if (
-    !Array.isArray(value) ||
-    value.length < 1 ||
     !Number.isSafeInteger(probeLimit) ||
     Number(probeLimit) < 2 ||
     Number(probeLimit) > 51
   ) {
     return invalidRankingRequest();
   }
+  const candidates = snapshotExactArray(
+    value,
+    41_896_500,
+    invalidRankingRequest,
+  );
+  if (candidates.length < 1) {
+    return invalidRankingRequest();
+  }
   const seen = new Set<string>();
   const result: RecallRankingReadCandidate[] = [];
-  for (const candidate of value) {
+  for (const candidate of candidates) {
+    const row = snapshotExactRecord(
+      candidate,
+      ["claimId", "depth"],
+      invalidRankingRequest,
+    );
+    const claimId = row["claimId"];
+    const depth = row["depth"];
     if (
-      candidate === null ||
-      typeof candidate !== "object" ||
-      Array.isArray(candidate) ||
-      Object.keys(candidate).sort().join("\u0000") !== "claimId\u0000depth" ||
-      !("claimId" in candidate) ||
-      !("depth" in candidate) ||
-      typeof candidate.claimId !== "string" ||
-      !CLAIM_ID_PATTERN.test(candidate.claimId) ||
-      !Number.isSafeInteger(candidate.depth) ||
-      Number(candidate.depth) < 0 ||
-      Number(candidate.depth) > 3 ||
-      seen.has(candidate.claimId)
+      typeof claimId !== "string" ||
+      !CLAIM_ID_PATTERN.test(claimId) ||
+      !Number.isSafeInteger(depth) ||
+      Number(depth) < 0 ||
+      Number(depth) > 3 ||
+      seen.has(claimId)
     ) {
       return invalidRankingRequest();
     }
-    seen.add(candidate.claimId);
+    seen.add(claimId);
     result.push(Object.freeze({
-      claimId: candidate.claimId,
-      depth: Number(candidate.depth) as 0 | 1 | 2 | 3,
+      claimId,
+      depth: Number(depth) as 0 | 1 | 2 | 3,
     }));
   }
   return Object.freeze(result);

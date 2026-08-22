@@ -46,13 +46,46 @@ function snapshotRankedStates(
   totalCount: number,
   expectedDepths: ReadonlyMap<string, number>,
 ): readonly RecallRankedClaimState[] {
-  if (!Array.isArray(value) || value.length !== expectedCount) {
+  let snapshot: readonly unknown[];
+  try {
+    if (!Array.isArray(value) || Object.getPrototypeOf(value) !== Array.prototype) {
+      return invalidState();
+    }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      lengthDescriptor.value !== expectedCount
+    ) {
+      return invalidState();
+    }
+    const keys = Reflect.ownKeys(value);
+    if (
+      keys.some((key) => typeof key !== "string") ||
+      keys.length !== expectedCount + 1
+    ) {
+      return invalidState();
+    }
+    const copied: unknown[] = [];
+    for (let index = 0; index < expectedCount; index += 1) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, String(index));
+      if (
+        descriptor === undefined ||
+        descriptor.enumerable !== true ||
+        !("value" in descriptor)
+      ) {
+        return invalidState();
+      }
+      copied.push(descriptor.value);
+    }
+    snapshot = Object.freeze(copied);
+  } catch {
     return invalidState();
   }
   const result: RecallRankedClaimState[] = [];
   const seen = new Set<string>();
   try {
-    for (const candidate of value) {
+    for (const candidate of snapshot) {
       const state = validateRecallRankedClaimState(candidate);
       if (
         state.totalCount !== totalCount ||
