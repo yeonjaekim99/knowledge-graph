@@ -127,7 +127,7 @@
       "layer": "integration-projection",
       "target": "test/integration/projection/s12-bidirectional-traversal.test.mjs",
       "owner_tasks": ["RCL-005", "RCL-006", "RCL-008"],
-      "status": "planned"
+      "status": "implemented"
     },
     {
       "id": "S13",
@@ -136,7 +136,7 @@
       "layer": "integration-projection",
       "target": "test/integration/projection/s13-hub-fanout.test.mjs",
       "owner_tasks": ["RCL-005", "RCL-007", "RCL-008", "REL-003"],
-      "status": "planned"
+      "status": "implemented"
     },
     {
       "id": "S14",

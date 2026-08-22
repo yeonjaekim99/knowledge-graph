@@ -19,7 +19,7 @@
 | RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
-| RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), branch `rcl-005-bfs-traversal` |
+| RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md), branch `rcl-005-bfs-traversal` |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
@@ -219,12 +219,34 @@
 
 완료 체크:
 
-- [ ] entity-object claim만 양방향 이동하고 방문 entity의 literal 포함 incident를 별도 수집한다.
-- [ ] 요청 depth까지 조기 종료 없이 BFS하며 canonical entity 기준으로 한 번 방문한다.
-- [ ] link와 incident를 규정된 aggregate tie-break로 31개 읽어 30개만 쓴다.
-- [ ] 같은 claim은 가장 낮은 depth와 가장 이른 seed/간선 경로를 유지한다.
-- [ ] 별칭·FTS·overview 표시와 entity 간 실제 hops를 구분해 path를 복원한다.
-- [ ] incoming, literal, multi-seed와 cycle fixture에서 path/hops가 반복 실행마다 같다.
+- [x] entity-object claim만 양방향 이동하고 방문 entity의 literal 포함 incident를 별도 수집한다.
+- [x] 요청 depth까지 조기 종료 없이 BFS하며 canonical entity 기준으로 한 번 방문한다.
+- [x] link와 incident를 규정된 aggregate tie-break로 31개 읽어 30개만 쓴다.
+- [x] 같은 claim은 가장 낮은 depth와 가장 이른 seed/간선 경로를 유지한다.
+- [x] 별칭·FTS·overview 표시와 entity 간 실제 hops를 구분해 path를 복원한다.
+- [x] incoming, literal, multi-seed와 cycle fixture에서 path/hops가 반복 실행마다 같다.
+
+로컬 구현 증거:
+
+- [구현 결정](../implementation/rcl-005-bfs-traversal.md)에 RCL-001의 fixed scope/now snapshot과
+  유효 aggregate에 뿌리를 둔 TEMP link/incident, typed neighborhood, canonical BFS와
+  path/hops 경계를 고정했다.
+- tests-only RED `62e358a`는 기존 build 성공 뒤 새 traversal 제품 관찰점 부재로 0/3
+  실패했고, 최소 GREEN `47d7836` 뒤 `pnpm verify:rcl-005`는 unit 5, S12 3, S13 1의
+  9/9다.
+- file SQLite에서 scope·expiry가 이동/수집에 들어오지 않고, 같은 WAL snapshot 중 concurrent
+  commit은 다음 callback에서만 보이며, 성공·실패 뒤 permanent dump와 외부 `data_version`이
+  변하지 않음을 확인했다. cross-scope endpoint 손상과 callback 종료 source는 payload를
+  echo하지 않고 fail closed한다.
+- S12/S13 target이 production traversal/fanout seam을 실행하므로 manifest를 `implemented`로
+  맞췄다. 두 scenario의 ranking·public Answer/note·전체 vertical/성능 소유권은
+  RCL-006~008·REL-003에 남는다.
+- RCL-001 10/10, RCL-002 15/15, PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11,
+  PRJ-007 19/19, PRJ-008 8/8과 REC-001/002/003 13/13·13/13·17/17도 회귀했다. 전체 fast는
+  45개 파일 311/311, PRJ-010은 39/39, spike는 25/25다. roadmap evidence 67/67·ADR
+  17/17·scenario 24/24와 dependency audit 0을 확인했다.
+- 독립 review와 PR merge 전이므로 상태는 `IN_PROGRESS`이고 Phase/master 완료 수는 바꾸지
+  않는다. review finding과 PR 증거는 제출 단계에서 갱신한다.
 
 ### RCL-006 — ranking·상충·문장 조합
 
