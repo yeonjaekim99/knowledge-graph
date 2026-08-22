@@ -139,39 +139,46 @@ function reconstructedConnectionError(
   }
 }
 
-function invokeSessionOperation<T>(
+async function invokeSessionOperation<T>(
   operation: () => unknown,
   snapshotResult: (value: unknown) => T,
 ): Promise<T> {
-  let operationResult: unknown;
+  let operationResult: Promise<unknown>;
   try {
-    operationResult = operation();
-    if (!(operationResult instanceof Promise)) {
-      return rejected("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    const candidate = operation();
+    if (!(candidate instanceof Promise)) {
+      return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
     }
+    operationResult = candidate;
   } catch {
-    return rejected("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
+
+  let settledResult: unknown;
   try {
-    return Promise.prototype.then.call(
-      operationResult,
-      (value: unknown) => {
-        try {
-          return snapshotResult(value);
-        } catch {
-          return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
-        }
-      },
-      (error: unknown) => {
-        const connectionError = reconstructedConnectionError(error);
-        if (connectionError !== null) {
-          throw connectionError;
-        }
-        return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
-      },
-    ) as Promise<T>;
+    settledResult = await new Promise<unknown>((resolve, rejectSettlement) => {
+      try {
+        void Promise.prototype.then.call(
+          operationResult,
+          resolve,
+          rejectSettlement,
+        );
+      } catch (error: unknown) {
+        rejectSettlement(error);
+      }
+    });
+  } catch (error: unknown) {
+    const connectionError = reconstructedConnectionError(error);
+    if (connectionError !== null) {
+      throw connectionError;
+    }
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+  }
+
+  try {
+    return snapshotResult(settledResult);
   } catch {
-    return rejected("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
+    return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
   }
 }
 
