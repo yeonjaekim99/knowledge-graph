@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 5/9
+- 진행률: 6/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -20,7 +20,7 @@
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
 | RCL-005 | BFS 이동·수집·경로 복원 | `DONE` | `log0629` | RCL-001, RCL-002 | [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md) |
-| RCL-006 | ranking·상충·문장 조합 | `IN_PROGRESS` | `log0629` | RCL-005, PRJ-008 | [Planning PR #47](https://github.com/yeonjaekim99/knowledge-graph/pull/47), branch `rcl-006-ranking-format` |
+| RCL-006 | ranking·상충·문장 조합 | `DONE` | `log0629` | RCL-005, PRJ-008 | [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49), [Planning PR #47](https://github.com/yeonjaekim99/knowledge-graph/pull/47), [구현 결정](../implementation/rcl-006-ranking-brief.md) |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
 | RCL-009 | 대표 fixture 성능 baseline | `TODO` | `unassigned` | RCL-008, STO-008 | — |
@@ -274,21 +274,47 @@
 
 ### RCL-006 — ranking·상충·문장 조합
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-006-ranking-format`
 - Planning PR: [#47](https://github.com/yeonjaekim99/knowledge-graph/pull/47)
+- Implementation PR: [#49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)
 - 근거: ADR-004, ADR-010, ADR-012
 - 선행 작업: RCL-005, PRJ-008
 - 결과물: parameterized ranking query와 brief formatter
 
 완료 체크:
 
-- [ ] depth·provenance·support·30일 최근성·상충 가중치를 SQL 안에서 계산한다.
-- [ ] score 동률은 depth/strongest/count/last_seen/origin_seq/숫자 index 순으로 푼다.
-- [ ] uses/rejects 양쪽이 같은 TEMP aggregate에 있을 때만 contested다.
-- [ ] relation label도 같은 aggregate에서 읽고 만료되면 이전 label로 돌아간다.
-- [ ] canonical literal과 기본 predicate를 이어붙이며 한국어 조사를 임의 보정하지 않는다.
+- [x] depth·provenance·support·30일 최근성·상충 가중치를 SQL 안에서 계산한다.
+- [x] score 동률은 depth/strongest/count/last_seen/origin_seq/숫자 index 순으로 푼다.
+- [x] uses/rejects 양쪽이 같은 TEMP aggregate에 있을 때만 contested다.
+- [x] relation label도 같은 aggregate에서 읽고 만료되면 이전 label로 돌아간다.
+- [x] canonical literal과 기본 predicate를 이어붙이며 한국어 조사를 임의 보정하지 않는다.
+
+로컬 구현 증거:
+
+- [구현 결정](../implementation/rcl-006-ranking-brief.md)에 bound reached JSON/scope/fixed-now/
+  limit+1 query, exact SQL score와 tie-break, aggregate-only contested·label, canonical brief와
+  RCL-007 조립 경계를 고정했다.
+- tests-only `d958335`은 기존 build 성공 뒤 missing ranking module로 0/2 RED였고 product
+  `80a8a93` 뒤 5/5 GREEN이었다. self-review `0660373`은 output/adapter accessor payload를
+  9/11 RED로 재현했고 `40aa429`가 descriptor-only snapshot으로 11/11 GREEN을 만들었다.
+- Draft PR #49 독립 review의 MEDIUM 4건은 non-canonical literal, relation-contested 불변식,
+  unguarded `assertActive`, factory candidate accessor/Proxy payload였다. tests-only `97bd7bb`이
+  11/20·9 failure RED를 고정했고 `4401f73`이 canonical identity·contested domain/adapter 검증과
+  lifecycle/request/read/decode·descriptor factory fresh-error 경계로 20/20 GREEN을 만들었다.
+- S10 file SQLite fixture는 30일 inclusive boundary, exact expiry, 철회·만료 label fallback,
+  entity/literal null-safe contested, 모든 score/tie 신호, limit+1, fixed WAL snapshot,
+  scope·future/corrupt row와 read-only dump/data_version을 검증한다. source/adapter의 Proxy,
+  accessor, typed error, Promise rejection과 hostile thenable은 payload 없는 fresh error로 닫힌다.
+- RCL-001~005 10/10·15/15·21/21·15/15·21/21, PRJ-008 8/8과 REC-004 통합 70/70을
+  회귀했다. 전체 fast 53개 파일 429/429, PRJ-010 39/39, behavior spike 25/25와 공통
+  architecture/type/build/roadmap/audit gate를 통과했다.
+- public RecallResult/Answer, detail/raw/payload budget, `more_available`와 note는 만들지 않았고
+  RCL-007/008에 남겼다. remediation HEAD `276a3c4`의 독립 재리뷰는 이전 MEDIUM 4건이 모두
+  닫혔음을 재현하고 HIGH/MEDIUM/LOW 0건으로 판정했다. focused 20/20, 전체 fast 429/429,
+  PRJ-010 39/39와 모든 공통 gate를 다시 통과했으며 [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)가
+  구현·TDD·리뷰·검증과 이 완료 상태를 `main`에 함께 고정한다.
 
 ### RCL-007 — Answer 구성·detail·payload budget
 

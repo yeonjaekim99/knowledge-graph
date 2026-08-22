@@ -24,6 +24,8 @@ import {
   type SqliteRecallAggregateRowsResult,
   type SqliteRecallFtsRowsResult,
   type SqliteRecallOverviewRowsResult,
+  type SqliteRecallRankingCandidate,
+  type SqliteRecallRankingRowsResult,
   type SqliteRecallSnapshotBeginResult,
   type SqliteRecallSurfaceStateRowsResult,
   type SqliteRecallTraversalStateRowsResult,
@@ -139,6 +141,108 @@ function snapshotRecallEntityId(value: unknown): string {
     return invalidCommand("SQLITE_QUERY_FAILED");
   }
   return value;
+}
+
+function snapshotRecallRankingCandidates(
+  value: unknown,
+): readonly SqliteRecallRankingCandidate[] {
+  try {
+    if (
+      !Array.isArray(value) ||
+      Object.getPrototypeOf(value) !== Array.prototype
+    ) {
+      return invalidCommand("SQLITE_QUERY_FAILED");
+    }
+    const lengthDescriptor = Object.getOwnPropertyDescriptor(value, "length");
+    if (
+      lengthDescriptor === undefined ||
+      !("value" in lengthDescriptor) ||
+      !Number.isSafeInteger(lengthDescriptor.value) ||
+      Number(lengthDescriptor.value) < 1 ||
+      Number(lengthDescriptor.value) > 41_896_500
+    ) {
+      return invalidCommand("SQLITE_QUERY_FAILED");
+    }
+    const length = Number(lengthDescriptor.value);
+    const arrayKeys = Reflect.ownKeys(value);
+    if (
+      arrayKeys.some((key) => typeof key !== "string") ||
+      arrayKeys.length !== length + 1
+    ) {
+      return invalidCommand("SQLITE_QUERY_FAILED");
+    }
+    const seen = new Set<string>();
+    const result: SqliteRecallRankingCandidate[] = [];
+    for (let index = 0; index < length; index += 1) {
+      const itemDescriptor = Object.getOwnPropertyDescriptor(
+        value,
+        String(index),
+      );
+      if (
+        itemDescriptor === undefined ||
+        itemDescriptor.enumerable !== true ||
+        !("value" in itemDescriptor)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const item = itemDescriptor.value;
+      if (
+        item === null ||
+        typeof item !== "object" ||
+        Array.isArray(item)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const itemPrototype = Object.getPrototypeOf(item);
+      if (itemPrototype !== Object.prototype && itemPrototype !== null) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const itemKeys = Reflect.ownKeys(item);
+      if (
+        itemKeys.some((key) => typeof key !== "string") ||
+        itemKeys.length !== 2 ||
+        !itemKeys.includes("claimId") ||
+        !itemKeys.includes("depth")
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const claimIdDescriptor = Object.getOwnPropertyDescriptor(
+        item,
+        "claimId",
+      );
+      const depthDescriptor = Object.getOwnPropertyDescriptor(item, "depth");
+      if (
+        claimIdDescriptor === undefined ||
+        claimIdDescriptor.enumerable !== true ||
+        !("value" in claimIdDescriptor) ||
+        depthDescriptor === undefined ||
+        depthDescriptor.enumerable !== true ||
+        !("value" in depthDescriptor)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      const claimId = claimIdDescriptor.value;
+      const depth = depthDescriptor.value;
+      if (
+        typeof claimId !== "string" ||
+        !/^c[1-9][0-9]*\.[0-9]+$/u.test(claimId) ||
+        !Number.isSafeInteger(depth) ||
+        Number(depth) < 0 ||
+        Number(depth) > 3 ||
+        seen.has(claimId)
+      ) {
+        return invalidCommand("SQLITE_QUERY_FAILED");
+      }
+      seen.add(claimId);
+      result.push(Object.freeze({
+        claimId,
+        depth: Number(depth),
+      }));
+    }
+    return Object.freeze(result);
+  } catch {
+    return invalidCommand("SQLITE_QUERY_FAILED");
+  }
 }
 
 class SqliteWorkerClient {
@@ -270,6 +374,19 @@ class SqliteWorkerClient {
       snapshotId,
       entityId: snapshotRecallEntityId(entityId),
     }) as Promise<SqliteRecallTraversalStateRowsResult>;
+  }
+
+  public readRecallRankingRows(
+    snapshotId: number,
+    candidates: readonly SqliteRecallRankingCandidate[],
+    probeLimit: number,
+  ): Promise<SqliteRecallRankingRowsResult> {
+    return this.#request({
+      type: "recall-snapshot-ranking",
+      snapshotId,
+      candidates: snapshotRecallRankingCandidates(candidates),
+      probeLimit,
+    }) as Promise<SqliteRecallRankingRowsResult>;
   }
 
   public endRecallSnapshot(
@@ -497,6 +614,12 @@ class SqliteWorkerClient {
           readonly entityId: string;
         }
       | {
+          readonly type: "recall-snapshot-ranking";
+          readonly snapshotId: number;
+          readonly candidates: readonly SqliteRecallRankingCandidate[];
+          readonly probeLimit: number;
+        }
+      | {
           readonly type: "recall-snapshot-end";
           readonly snapshotId: number;
           readonly commit: boolean;
@@ -688,6 +811,19 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
           entityId,
         );
       },
+      readRawRankingRows: async (
+        candidates: readonly SqliteRecallRankingCandidate[],
+        probeLimit: number,
+      ) => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+        return this.#client.readRecallRankingRows(
+          started.snapshotId,
+          candidates,
+          probeLimit,
+        );
+      },
     });
 
     try {
@@ -727,6 +863,10 @@ export interface SqliteRecallSnapshotSource {
   readRawTraversalState(
     entityId: string,
   ): Promise<SqliteRecallTraversalStateRowsResult>;
+  readRawRankingRows(
+    candidates: readonly SqliteRecallRankingCandidate[],
+    probeLimit: number,
+  ): Promise<SqliteRecallRankingRowsResult>;
 }
 
 export type SqliteRecallSnapshotOperation<Result> = (

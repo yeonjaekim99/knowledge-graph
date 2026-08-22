@@ -114,8 +114,9 @@ SQLite prefix parity가 남아 있어 S08/S21 target은 `planned`를 유지한�
 PRJ-006/007은 claim/support 구조 상태와 merge·alias rewrite를 순수 reducer로 검증한다.
 PRJ-008은 그 structural output에 effective expiry를 붙이는 domain fixture와 실제 file SQLite의
 공통 aggregate SQL fixture를 함께 둔다. PRJ-009는 이 reducer를 atomic dispatcher/publish와
-연결했다. S09~S11/S19의 public recall target은 RCL owner가 끝낼 때까지
-`planned`를 유지한다.
+연결했다. RCL-006의 aggregate-backed internal ranking target이 S10을 `implemented`로
+전환했지만 public Answer golden은 RCL-008에 남는다. S09/S11/S19의 public recall target은
+각 RCL owner가 끝낼 때까지 `planned`를 유지한다.
 
 PRJ-010은 S01~S24의 journal-reducible 이력을 실제 dispatcher에 누적하고 각
 operation prefix를 별도 full production reducer와 canonical byte로 비교한다. S23의
@@ -132,8 +133,9 @@ metadata 금지와 input/result index coverage를 검증하며 secret 탐지, DB
 RCL-001은 실제 MCP SDK validator가 search/overview 입력과 RecallResult 닫힌 union을 같은
 Draft 2020-12 source에서 검증하는 contract fixture, trusted runtime snapshot을 정확히 한 번
 소비하는 application fixture, 실제 WAL reader의 deferred transaction·TEMP aggregate를 검증하는
-SQLite fixture를 추가했다. term/FTS/overview/traversal/ranking/Answer 조합은 후속 RCL 작업의
-소유이므로 S09/S10/S19 manifest는 아직 `planned`다.
+SQLite fixture를 추가했다. term/FTS/overview/traversal/Answer 조합은 후속 RCL 작업의
+소유다. S10 internal ranking target은 RCL-006에서 `implemented`가 됐지만 S09/S19와 완성
+public recall golden은 여전히 RCL-008에 남는다.
 
 REC-002는 [`unit/domain/rec-002-secret-detector.test.mjs`](unit/domain/rec-002-secret-detector.test.mjs)에서
 IO 없는 versioned signature/entropy detector를 검증한다. fixture는 실제 credential이 아닌
@@ -209,3 +211,16 @@ canonical name과 동일한 81-code-point surface는 truncation 전에 raw equal
 한 번만 표시한다. 따라서 manifest 상태가 `implemented`다. 이 상태는 RCL-005 traversal seam의
 production target이 존재한다는 뜻이며 ranking·public Answer/note와 완성 recall vertical은
 RCL-006~008, 성능은 RCL-009/REL-003에 남는다.
+
+RCL-006은 RCL-005 reached의 claim ID/depth만 request-local worker에 넘겨 bound JSON CTE와
+`temp.recall_claim_agg`에서 score·contested·label을 계산한다. S10 target은 provenance
+6/4/1, support cap 4, inclusive 30일, contested -3과 전체 tie-break, exact expiry·철회 label
+fallback, entity/literal null-safe identity, limit+1 및 fixed WAL/read-only를 실제 SQLite에서
+검증한다. application은 canonical entity/literal과 aggregate label 또는 ADR-004 default
+predicate를 공백으로만 연결하고 한국어 조사를 보정하지 않는다. descriptor-only input/output,
+raw envelope/array/row와 source/adapter Proxy·accessor·typed-error·Promise/thenable failure는
+payload 없는 fresh error로 닫힌다. Draft PR #49 독립 review의 MEDIUM 4건은 canonical literal
+equality, uses/rejects 전용 contested, guarded `assertActive`, connection-factory candidate
+array/row/Proxy descriptor snapshot으로 회귀를 추가해 11/20 RED에서 20/20 GREEN으로 닫았다.
+따라서 S10 internal target은 `implemented`다. public
+RecallResult/Answer, detail/raw payload, more_available/note와 완성 golden은 RCL-007/008에 남는다.

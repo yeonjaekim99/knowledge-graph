@@ -6,6 +6,10 @@ import type {
 import type {
   RecallTraversalNeighborhood,
 } from "../../domain/recall-graph-traversal.js";
+import type {
+  RecallRankedClaimState,
+  RecallRankingReadCandidate,
+} from "../../domain/recall-ranking.js";
 
 const SCOPE_KEY_PATTERN =
   /^u:[A-Za-z0-9._-]{1,64}\/p:[A-Za-z0-9._-]{1,64}$/u;
@@ -18,7 +22,9 @@ export type RecallReadErrorCode =
   | "INVALID_RECALL_FTS_CANDIDATE"
   | "INVALID_RECALL_OVERVIEW_REQUEST"
   | "INVALID_RECALL_OVERVIEW_CANDIDATE"
-  | "INVALID_RECALL_TRAVERSAL_STATE";
+  | "INVALID_RECALL_TRAVERSAL_STATE"
+  | "INVALID_RECALL_RANKING_REQUEST"
+  | "INVALID_RECALL_RANKING_STATE";
 
 const RECALL_READ_ERROR_MESSAGES: Readonly<
   Record<RecallReadErrorCode, string>
@@ -39,6 +45,10 @@ const RECALL_READ_ERROR_MESSAGES: Readonly<
     "recall overview candidate state does not satisfy the read contract",
   INVALID_RECALL_TRAVERSAL_STATE:
     "recall traversal state does not satisfy the read contract",
+  INVALID_RECALL_RANKING_REQUEST:
+    "recall ranking requires validated reached claims and a limit plus one probe",
+  INVALID_RECALL_RANKING_STATE:
+    "recall ranking state does not satisfy the read contract",
 });
 
 export class RecallReadError extends Error {
@@ -173,6 +183,10 @@ export interface RecallValidClaimSource {
   readTraversalNeighborhood(
     entityId: string,
   ): Promise<RecallTraversalNeighborhood>;
+  selectRankedClaims(
+    candidates: readonly RecallRankingReadCandidate[],
+    probeLimit: number,
+  ): Promise<readonly RecallRankedClaimState[]>;
 }
 
 export interface RecallFtsCandidateSource {
