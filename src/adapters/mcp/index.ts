@@ -8,6 +8,12 @@ export type {
   McpJsonSchemaContract,
   SchemaValidationBoundary,
 } from "./json-schema-contract.js";
+export {
+  claimDraftContract,
+  memoryRecordInputContract,
+  recordResultContract,
+  validateRecordResultForInput,
+} from "./memory-record-schema-contract.js";
 
 /**
  * Inbound MCP wiring depends on application use cases only. FND-004 and MCP-003

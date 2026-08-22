@@ -2,7 +2,7 @@
 
 > 기준일: 2026-08-22
 > 범위: Recall v1 production 구현
-> 현재 상태: **Phase 04와 Phase 06 병렬 진행 중 · 첫 wave REC-001/REC-002/RCL-001**
+> 현재 상태: **Phase 04와 Phase 06 병렬 진행 중 · REC-001 로컬 완료, PR review/main 병합 대기**
 
 이 디렉터리는 [Accepted ADR](../adr/README.md)을 팀이 실행할 수 있는 작업 순서와
 체크리스트로 바꾼다. ADR은 **왜와 무엇을**, 이 로드맵은 **순서·담당·완료 증거를**

@@ -37,6 +37,8 @@
 | `pnpm test:prj-008` | effective TTL과 실제 SQLite aggregate·scope/invariant |
 | `pnpm test:prj-009` | 증분 dispatcher·full replay·atomic publish·commit gate |
 | `pnpm test:prj-010` | S01~S24 projection prefix, S23 288-prefix metamorphic, S24 process crash |
+| `pnpm test:rec-001` | record input/draft/result schema, Unicode bounds와 result index 계약 |
+| `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -106,3 +108,8 @@ operation prefix를 별도 full production reducer와 canonical byte로 비교�
 288 prefix·metamorphic과 S24의 8개 hard-exit/reopen target은 `implemented`다.
 Record/Revise/Recall 출력을 요구하는 S01~S22의 나머지 vertical target은 각 owner가
 완결할 때까지 `planned`를 유지한다.
+
+REC-001은 FND-004의 frozen Draft 2020-12 source와 SDK validator를 재사용해 record input,
+독립 ClaimDraft와 typed result를 검증한다. contract fixture는 trim 후 Unicode code-point
+경계, 목적어 XOR, 재해석 pair, trusted metadata 금지와 input/result index coverage를
+검증하며 secret 탐지, DB 해석과 journal write 완료를 주장하지 않는다.

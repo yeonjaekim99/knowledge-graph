@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| REC-001 | record 입력·출력 schema와 domain 계약 | `IN_PROGRESS` | `log0629` | FND-004, PRJ-009 | — |
+| REC-001 | record 입력·출력 schema와 domain 계약 | `IN_PROGRESS` | `log0629` | FND-004, PRJ-009 | [구현·로컬 증거](../implementation/rec-001-record-contract.md) |
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | — |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
 | REC-004 | write entity 해석과 모호성 처리 | `TODO` | `unassigned` | REC-001, PRJ-005 | — |
@@ -37,11 +37,28 @@
 
 완료 체크:
 
-- [ ] raw 1~32,768자, claims 0~100개와 모든 문자열·배열 상한을 Unicode 문자 기준으로 검사한다.
-- [ ] object/object_value XOR, object 전용 kind/aliases와 relates_to label 조건을 표현한다.
-- [ ] 모든 object에 `additionalProperties:false`를 적용한다.
-- [ ] schema 오류는 사건 없는 tool error, 의미 오류는 draft별 rejected로 구분한다.
-- [ ] 각 입력 index에 정확히 한 result가 있고 상태 우선순위가 ADR-013과 같다.
+- [x] raw 1~32,768자, claims 0~100개와 모든 문자열·배열 상한을 Unicode 문자 기준으로 검사한다.
+- [x] object/object_value XOR, object 전용 kind/aliases와 relates_to label 조건을 표현한다.
+- [x] 모든 object에 `additionalProperties:false`를 적용한다.
+- [x] schema 오류는 사건 없는 tool error, 의미 오류는 draft별 rejected로 구분한다.
+- [x] 각 입력 index에 정확히 한 result가 있고 상태 우선순위가 ADR-013과 같다.
+
+검토 준비 증거:
+
+- [구현 결정](../implementation/rec-001-record-contract.md)에 four-branch ClaimDraft,
+  일반/재해석 input, trim 후 Unicode 상한과 typed output/index 불변식을 고정했다.
+- TDD RED는 build 뒤 아직 없는 `RecordContractError` export에서 target module load가 실패했다.
+  GREEN은 `pnpm verify:rec-001`의 FND-004 7/7과 REC-001 11/11이다.
+- exact-bound astral-plane emoji와 앞뒤 공백 원문 보존, 한 code point 초과·whitespace-only,
+  claims 100/101과 aliases 20/21 경계를 검증했다.
+- 목적어 XOR, object-only field, 다섯 relation/label, 재해석 pair와 ID/token pattern, trusted
+  scope/metadata 금지를 모두 사건 전 schema contract 오류로 분리했다.
+- accepted/rejected result branch, original input index의 전단사 coverage와
+  `superseded_previous > created > reinforced` 우선순위를 검증했다.
+- 전체 빠른 suite 243/243, 독립 behavior spike 25/25, roadmap audit와 production dependency
+  audit 취약점 0개를 통과했다.
+- 완료 체크는 로컬 구현 증거를 뜻한다. PR review와 `main` 병합 전이므로 AGENTS.md에 따라
+  작업 상태와 Phase/master 완료 수는 아직 `IN_PROGRESS`, 0/8을 유지한다.
 
 ### REC-002 — 비밀값 pattern·entropy 탐지기
 

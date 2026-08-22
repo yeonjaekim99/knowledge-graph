@@ -48,8 +48,10 @@
     "test:prj-008": "pnpm run build && node --test test/unit/domain/prj-008-ttl-validity.test.mjs test/integration/sqlite/prj-008-claim-aggregate.test.mjs",
     "test:prj-009": "pnpm run build && node --test test/unit/domain/prj-009-projection-dispatcher.test.mjs test/integration/projection/prj-009-atomic-dispatcher.test.mjs",
     "test:prj-010": "pnpm run build && node --test test/integration/projection/prj-010-scenario-prefix-parity.test.mjs test/integration/projection/s23-seeded-state-machine.test.mjs test/e2e/process/s24-crash-reopen.test.mjs",
+    "test:rec-001": "pnpm run build && node --test test/contract/mcp/rec-001-record-schema.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
+    "typecheck:rec-001": "tsc --noEmit -p tsconfig.rec-001.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
     "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002",
     "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003",
@@ -74,6 +76,7 @@
     "verify:prj-008": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-008",
     "verify:prj-009": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-009",
     "verify:prj-010": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-010",
+    "verify:rec-001": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rec-001 && pnpm run build && pnpm run test:fnd-004 && pnpm run test:rec-001",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
