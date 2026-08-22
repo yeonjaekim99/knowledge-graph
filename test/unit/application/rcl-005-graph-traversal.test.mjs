@@ -69,6 +69,34 @@ function assertDeepFrozen(value) {
   }
 }
 
+function smuggledTraversalError(code, marker) {
+  const error = new RecallGraphTraversalError(code);
+  error.name = `Smuggled${marker}`;
+  error.message = `smuggled-message-${marker}`;
+  error.cause = { token: marker };
+  error.prefix = marker;
+  error.suffix = marker;
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshTraversalError(error, injected, code, marker) {
+  const expected = new RecallGraphTraversalError(code);
+  assert.ok(error instanceof RecallGraphTraversalError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, code);
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("prefix" in error, false);
+  assert.equal("suffix" in error, false);
+  assert.equal("secret" in error, false);
+  assert.doesNotMatch(error.message, new RegExp(marker, "u"));
+  assert.equal(JSON.stringify(error), JSON.stringify(expected));
+  return true;
+}
+
 test("incoming traversal and literal collection preserve alias, FTS, overview path, and real hops", async () => {
   const contains = claim("c1.0", "e1.0", "리포", "e2.0", "인증 시스템");
   const uses = claim("c2.0", "e2.0", "인증 시스템", "e3.0", "서버 세션", {
@@ -174,6 +202,24 @@ test("incoming traversal and literal collection preserve alias, FTS, overview pa
   assertDeepFrozen(incoming);
   assertDeepFrozen(fts);
   assertDeepFrozen(overview);
+});
+
+test("a long surface identical to the canonical name is displayed once before truncation", async () => {
+  const canonicalName = "가".repeat(81);
+  const literal = claim("c1.0", "e1.0", canonicalName, null, null);
+  const result = await traverseRecallGraph(
+    sourceFrom([
+      ["e1.0", neighborhood("e1.0", canonicalName, [], [literal])],
+    ]),
+    {
+      entry: "surface",
+      depth: 1,
+      seeds: [{ entityId: "e1.0", display: canonicalName }],
+    },
+  );
+
+  assert.equal(result.reached[0].path, canonicalName);
+  assert.equal(result.reached[0].hops, 0);
 });
 
 test("depth three never stops early and an unvisited entity-object endpoint can produce four hops", async () => {
@@ -425,4 +471,129 @@ test("invalid input and malformed neighborhoods fail closed without retaining pa
       return true;
     },
   );
+});
+
+test("typed traversal failures from the source are replaced by a fresh fixed state error", async () => {
+  const marker = "do-not-smuggle-rcl-005-source-rejection";
+  const injected = smuggledTraversalError("INVALID_TRAVERSAL_STATE", marker);
+  const source = Object.freeze({
+    listValidClaimAggregates: async () => Object.freeze([]),
+    resolveSurfaceSeeds: async (terms) =>
+      Object.freeze({ terms, seeds: Object.freeze([]), truncated: false }),
+    async readTraversalNeighborhood() {
+      throw injected;
+    },
+  });
+
+  await assert.rejects(
+    traverseRecallGraph(source, {
+      entry: "surface",
+      depth: 1,
+      seeds: [{ entityId: "e1.0", display: "safe" }],
+    }),
+    (error) =>
+      assertFreshTraversalError(
+        error,
+        injected,
+        "INVALID_TRAVERSAL_STATE",
+        marker,
+      ),
+  );
+});
+
+test("input and neighborhood traps are descriptor-only and become fresh fixed errors", async () => {
+  const inputMarker = "do-not-smuggle-rcl-005-input-proxy";
+  const injectedInput = smuggledTraversalError(
+    "INVALID_TRAVERSAL_INPUT",
+    inputMarker,
+  );
+  const trappedInput = new Proxy(
+    {
+      entry: "surface",
+      depth: 1,
+      seeds: [{ entityId: "e1.0", display: "safe" }],
+    },
+    {
+      getPrototypeOf() {
+        throw injectedInput;
+      },
+    },
+  );
+  await assert.rejects(
+    traverseRecallGraph(sourceFrom([]), trappedInput),
+    (error) =>
+      assertFreshTraversalError(
+        error,
+        injectedInput,
+        "INVALID_TRAVERSAL_INPUT",
+        inputMarker,
+      ),
+  );
+
+  let accessorRead = false;
+  for (const boundary of ["envelope", "accessor", "array", "row"]) {
+    const marker = `do-not-smuggle-rcl-005-neighborhood-${boundary}`;
+    const injected = smuggledTraversalError(
+      "INVALID_TRAVERSAL_STATE",
+      marker,
+    );
+    let state;
+    if (boundary === "envelope") {
+      state = new Proxy(neighborhood("e1.0", "safe", [], []), {
+        getPrototypeOf() {
+          throw injected;
+        },
+      });
+    } else if (boundary === "accessor") {
+      const entity = { entityId: "e1.0" };
+      Object.defineProperty(entity, "entityName", {
+        enumerable: true,
+        get() {
+          accessorRead = true;
+          throw injected;
+        },
+      });
+      state = { entity, links: [], incidents: [] };
+    } else if (boundary === "array") {
+      state = {
+        entity: { entityId: "e1.0", entityName: "safe" },
+        links: new Proxy([], {
+          getOwnPropertyDescriptor() {
+            throw injected;
+          },
+        }),
+        incidents: [],
+      };
+    } else {
+      const reference = claim("c1.0", "e1.0", "safe", null, null);
+      state = {
+        entity: { entityId: "e1.0", entityName: "safe" },
+        links: [],
+        incidents: [
+          new Proxy(reference, {
+            ownKeys() {
+              throw injected;
+            },
+          }),
+        ],
+      };
+    }
+
+    await assert.rejects(
+      traverseRecallGraph(sourceFrom([["e1.0", state]]), {
+        entry: "surface",
+        depth: 1,
+        seeds: [{ entityId: "e1.0", display: "safe" }],
+      }),
+      (error) =>
+        assertFreshTraversalError(
+          error,
+          injected,
+          "INVALID_TRAVERSAL_STATE",
+          marker,
+        ),
+      boundary,
+    );
+  }
+  assert.equal(accessorRead, false);
 });

@@ -17,6 +17,73 @@ import {
   permanentDump,
 } from "../../support/rcl-005-sqlite-fixture.mjs";
 
+function smuggledReadError(code, marker) {
+  const error = new RecallReadError(code);
+  error.name = `Smuggled${marker}`;
+  error.message = `smuggled-message-${marker}`;
+  error.cause = { token: marker };
+  error.prefix = marker;
+  error.suffix = marker;
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshReadError(error, injected, code, marker) {
+  const expected = new RecallReadError(code);
+  assert.ok(error instanceof RecallReadError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, code);
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("prefix" in error, false);
+  assert.equal("suffix" in error, false);
+  assert.equal("secret" in error, false);
+  assert.doesNotMatch(error.message, new RegExp(marker, "u"));
+  assert.equal(JSON.stringify(error), JSON.stringify(expected));
+  return true;
+}
+
+function validTraversalEntityRow() {
+  return {
+    recall_traversal_entity_id: "e1.0",
+    recall_traversal_entity_merged_into: null,
+    recall_traversal_entity_name: "safe",
+    recall_traversal_entity_scope_key: RCL_005_SCOPE,
+  };
+}
+
+async function traverseInjectedState(factory, rawState) {
+  const reader = await factory.openReader();
+  Object.defineProperty(reader, "withRecallSnapshot", {
+    configurable: true,
+    value: async (_scopeKey, _evaluationNow, operation) =>
+      operation(
+        Object.freeze({
+          assertActive() {},
+          async listRawAggregateRows() {
+            return Object.freeze([]);
+          },
+          async readRawTraversalState() {
+            return rawState;
+          },
+        }),
+      ),
+  });
+  const injectedFactory = Object.freeze({
+    async openReader() {
+      return reader;
+    },
+  });
+  return createRecallService(injectedFactory).withSnapshot((source) =>
+    traverseRecallGraph(source, {
+      entry: "surface",
+      depth: 1,
+      seeds: [{ entityId: "e1.0", display: "safe" }],
+    }));
+}
+
 test("S12 TEMP traversal moves both directions, collects literals, excludes scope and expiry, and never writes", async (t) => {
   const { databasePath, factory } = await createRcl005Fixture(t);
   await factory.enqueueWriteTransaction([
@@ -197,4 +264,75 @@ test("S12 cross-scope entity corruption fails closed, redacts payload, and clean
   assert.equal(permanentDump(observer), beforeDump);
   assert.equal(observer.pragma("data_version", { simple: true }), beforeVersion);
   assert.equal("insert" in RECALL_TRAVERSAL_SQL_SOURCE, false);
+});
+
+test("S12 traversal adapter snapshots raw envelope, row, array, and accessors into fresh errors", async (t) => {
+  const { factory } = await createRcl005Fixture(t);
+  let accessorRead = false;
+
+  for (const boundary of ["envelope", "row", "array", "accessor"]) {
+    const marker = `do-not-smuggle-rcl-005-adapter-${boundary}`;
+    const injected = smuggledReadError(
+      "INVALID_RECALL_TRAVERSAL_STATE",
+      marker,
+    );
+    let rawState;
+    if (boundary === "envelope") {
+      rawState = new Proxy(
+        {
+          entityRow: validTraversalEntityRow(),
+          linkRows: [],
+          incidentRows: [],
+        },
+        {
+          getPrototypeOf() {
+            throw injected;
+          },
+        },
+      );
+    } else if (boundary === "row") {
+      rawState = {
+        entityRow: new Proxy(validTraversalEntityRow(), {
+          ownKeys() {
+            throw injected;
+          },
+        }),
+        linkRows: [],
+        incidentRows: [],
+      };
+    } else if (boundary === "array") {
+      rawState = {
+        entityRow: validTraversalEntityRow(),
+        linkRows: new Proxy([], {
+          getOwnPropertyDescriptor() {
+            throw injected;
+          },
+        }),
+        incidentRows: [],
+      };
+    } else {
+      const entityRow = validTraversalEntityRow();
+      Object.defineProperty(entityRow, "recall_traversal_entity_name", {
+        enumerable: true,
+        get() {
+          accessorRead = true;
+          throw injected;
+        },
+      });
+      rawState = { entityRow, linkRows: [], incidentRows: [] };
+    }
+
+    await assert.rejects(
+      traverseInjectedState(factory, rawState),
+      (error) =>
+        assertFreshReadError(
+          error,
+          injected,
+          "INVALID_RECALL_TRAVERSAL_STATE",
+          marker,
+        ),
+      boundary,
+    );
+  }
+  assert.equal(accessorRead, false);
 });
