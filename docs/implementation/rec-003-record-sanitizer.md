@@ -53,7 +53,9 @@ detector가 알려진 class를 반환했지만 범위를 특정할 수 없거나
 손상됐으면 ADR-011의 보수적 규칙대로 raw 전체를 `[REDACTED:SECRET]`로 바꾼다. registry
 version, class 또는 result shape 자체가 계약과 다르거나 detector가 예외를 던지면
 `DETECTOR_FAILED`로 호출 전체를 중단한다. result/finding은 exact enumerable data property와
-dense bounded array로 snapshot하며 accessor를 실행해 값을 얻지 않는다.
+dense bounded array로 snapshot하며 accessor를 실행해 값을 얻지 않는다. detector가 같은
+`RecordSecretSanitizationError` 타입을 던져도 그 객체는 신뢰하지 않고, message·cause·임의
+property를 버린 새로운 고정 오류로 치환한다.
 
 ### draft 검사와 부분 성공
 
@@ -96,11 +98,16 @@ GREEN fixture는 다음을 검증한다.
 - subject/kind/object/value/label/양방향 alias 전체 context와 검사 순서
 - UTF-16 astral 인접 slice, 겹침·역순·surrogate split·범위 손상 fallback
 - detector 예외, unknown class, extra payload와 malformed result의 redacted fail-closed
+- payload를 붙인 detector-owned typed error도 동일 객체를 재사용하지 않는 고정 오류 치환
 - 앞선 hit 뒤의 detector 장애가 숨지 않음
 - detector 실행 중 caller-owned raw/draft/alias 변경이 승인 plan에 섞이지 않음
 - result/finding accessor와 sparse·extra payload가 실행되거나 plan에 섞이지 않음
 - 재해석 부분 성공 금지와 raw-only 재해석
 - 결과, alias 배열과 error rejection 목록의 immutable 경계
+
+독립 review는 detector가 payload-bearing `RecordSecretSanitizationError`를 직접 던지면 같은
+객체가 밖으로 나오는 경계를 찾았다. production 수정 전 회귀는 target 16/17 RED였고, 모든
+detector 예외를 새 `DETECTOR_FAILED`로 바꾼 뒤 17/17 GREEN으로 닫았다.
 
 전용 재현 명령은 다음과 같다.
 

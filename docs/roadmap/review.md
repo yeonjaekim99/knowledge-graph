@@ -179,6 +179,9 @@
     index로 전달하고 hit draft만 actionable rejected로 분리한다. detector 호출 전 raw·mode와
     draft/alias를 snapshot해 주입 구현이 caller-owned 값을 바꿔도 검사값과 plan이 갈리지 않는다.
     detector result와 finding도 exact data descriptor로만 snapshot해 accessor를 실행하지 않는다.
+    독립 review에서 같은 typed error 객체에 message·cause·임의 payload를 붙여 던지면 그대로
+    재throw되는 누출을 확인했고, detector 예외는 종류와 무관하게 새 고정 오류로 치환하도록
+    16/17 RED에서 17/17 GREEN으로 닫았다.
     재해석은 raw-only만 예외로
     허용하고 한 draft라도 거부되면 successor plan 전체를 만들지 않는다. journal/FTS append,
     duplicate/stored index·occurrence와 projection 원자성 및 전체 log/DB leak scan은 REC-005~008에
@@ -216,8 +219,8 @@
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
-| REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 16/16, 전체 fast 39개 파일 284/284, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16 RED를 닫았고 독립 review는 PR 게시 전 수행 |
-| 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure domain detector·unit fixture·검증 script와 결정/evidence 문서만 추가, raw 마스킹·draft/application write·schema·journal·log/MCP·Phase 08 corpus 변경 없음 |
+| REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 17/17, 전체 fast 39개 파일 285/285, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16·typed detector error 16/17 RED를 닫았고 독립 review finding HIGH 0/MEDIUM 0 |
+| 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure application sanitation plan·unit/type fixture·검증 script와 결정/evidence 문서를 추가했다. writer/SQLite/MCP/schema/journal/log·Phase 08 corpus는 변경하지 않았다. |
 
 ## 게시 전 재현 검사
 
