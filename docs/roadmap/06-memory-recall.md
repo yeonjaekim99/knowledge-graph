@@ -240,6 +240,10 @@
   envelope·row·array/accessor와 canonical name과 동일한 81-code-point surface 중복 표시를
   9/13으로 포착했다. fix `6a59954`는 descriptor-only bounded snapshot과 fresh fixed error,
   raw equality-before-truncation을 적용해 focused target 13/13으로 닫았다.
+- 최종 재review RED `f071832`는 source property getter·Proxy lookup, method invocation,
+  Promise rejection·hostile thenable settlement와 adapter error의 application 경계 변환을
+  11/18로 포착했다. fix `d26993e`는 single lookup과 receiver binding 뒤 lookup·apply·await·
+  validation을 한 fail-closed 경계로 묶어 focused target 18/18로 닫았다.
 - file SQLite에서 scope·expiry가 이동/수집에 들어오지 않고, 같은 WAL snapshot 중 concurrent
   commit은 다음 callback에서만 보이며, 성공·실패 뒤 permanent dump와 외부 `data_version`이
   변하지 않음을 확인했다. cross-scope endpoint 손상과 callback 종료 source는 payload를
@@ -248,10 +252,10 @@
   맞췄다. 두 scenario의 ranking·public Answer/note·전체 vertical/성능 소유권은
   RCL-006~008·REL-003에 남는다.
 - 최신 `main` `3e2eedb` 위 semantic rebase에서 RCL-003 FTS facet과 RCL-004 계획을 보존했다.
-  RCL-005 13/13, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, PRJ-002 7/7,
+  RCL-005 18/18, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, PRJ-002 7/7,
   PRJ-003 9/9, PRJ-005 11/11,
   PRJ-007 19/19, PRJ-008 8/8과 REC-001/002/003 13/13·13/13·17/17도 회귀했다. 전체 fast는
-  47개 파일 336/336, PRJ-010은 39/39, spike는 25/25다. roadmap evidence 67/67·ADR
+  47개 파일 341/341, PRJ-010은 39/39, spike는 25/25다. roadmap evidence 67/67·ADR
   17/17·scenario 24/24와 dependency audit 0을 확인했다.
 - 독립 review와 PR merge 전이므로 상태는 `IN_PROGRESS`이고 Phase/master 완료 수는 바꾸지
   않는다. review finding과 PR 증거는 제출 단계에서 갱신한다.

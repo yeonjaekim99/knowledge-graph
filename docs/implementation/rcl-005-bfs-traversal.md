@@ -86,6 +86,10 @@ origin-seq와 claim ID의 일치, root incident/link 방향, 최대 31개, 중�
 payload-bearing `RecallGraphTraversalError`를 reject해도 fresh
 `INVALID_TRAVERSAL_STATE`로 바꾼다. fake 또는 다른 adapter가 typed port를 흉내 내도
 malformed neighborhood가 BFS에 들어오거나 공격자 payload가 오류에 남지 않는다.
+`readTraversalNeighborhood`는 property를 한 번만 guarded lookup하고 receiver와 함께
+고정한다. lookup, method apply, Promise·thenable assimilation/settlement와 반환 neighborhood
+검증 중 어떤 오류가 나도 원본 종류·identity·message·cause를 읽거나 보존하지 않고 같은
+fresh `INVALID_TRAVERSAL_STATE`로 닫는다.
 
 ## BFS, reached와 parent
 
@@ -136,6 +140,12 @@ surface 표시를 추가해 13개 중 4개 실패를 포착했다. fix `6a59954`
 descriptor snapshot으로 고정하고 typed 오류를 fresh fixed error로 교체하며, truncation 전에
 raw surface와 canonical name을 비교해 진짜 별칭만 prepend한다. focused target은 13/13이다.
 
+최종 재review RED `f071832`는 source property getter·Proxy lookup, method invocation,
+`RecallReadError` Promise rejection과 hostile thenable assimilation을 추가하고 adapter 오류의
+application 경계 의미를 바로잡아 18개 중 7개 실패를 포착했다. fix `d26993e`는 method를 한 번
+lookup해 receiver와 묶고 lookup·apply·await·settlement·validation을 하나의 fail-closed
+경계에 넣어 focused target을 18/18로 만들었다.
+
 fixture는 다음을 고정한다.
 
 - incoming 방향 시작, literal collection, 별칭·FTS·overview path와 실제 hops
@@ -146,6 +156,7 @@ fixture는 다음을 고정한다.
 - 같은 WAL snapshot 중 concurrent commit 비가시성, 다음 호출 가시성
 - cross-scope endpoint 손상의 payload-redacted fail-closed와 실패 뒤 snapshot 재사용
 - domain/SQLite의 envelope·row·array/accessor trap과 source typed-error payload 비보존
+- source method lookup·invoke·Promise/thenable settlement의 fresh fixed-error 변환
 - 81-code-point surface가 canonical name과 같을 때 truncation으로 중복 표시되지 않음
 - 성공/실패 전후 permanent dump와 외부 reader `data_version` 불변
 
@@ -171,10 +182,10 @@ pnpm audit --prod
 
 최신 `main` `3e2eedb` 위 semantic rebase에서 RCL-003의 FTS protocol/factory/worker/read-port
 facet과 RCL-004의 `IN_PROGRESS` 계획을 보존했다. 현재 branch의 로컬 통합 검증은 RCL-005
-13/13, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
+18/18, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11, PRJ-007 19/19, PRJ-008 8/8,
 REC-001 13/13, REC-002 13/13과 REC-003 17/17이다. 빠른 전체 suite는 47개 파일
-336/336, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
+341/341, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
 validator는 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고
 production dependency 알려진 취약점은 0개다.
 
