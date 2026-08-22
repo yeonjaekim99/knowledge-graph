@@ -18,7 +18,7 @@
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `DONE` | `log0629` | FND-003 | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [구현 결정](../implementation/rec-002-secret-detector.md) |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `DONE` | `log0629` | REC-001, REC-002 | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [구현 결정](../implementation/rec-003-record-sanitizer.md) |
-| REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
+| REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | [구현 결정](../implementation/rec-004-write-entity-resolver.md) |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
 | REC-006 | statement append·project·결과 원자성 | `TODO` | `unassigned` | REC-005, STO-007, PRJ-009 | — |
 | REC-007 | raw-only·기본값·재시도 의미 | `TODO` | `unassigned` | REC-006, PRJ-008 | — |
@@ -170,11 +170,29 @@
 
 완료 체크:
 
-- [ ] surface 전체 후보→canonical→exact normal name 순서로 해석한다.
-- [ ] 후보가 여러 개면 임의 선택하지 않고 그 draft만 actionable ambiguous로 거부한다.
-- [ ] 다른 scope의 ID/후보 존재를 응답에서 드러내지 않는다.
-- [ ] write lock 안에서 constraint 충돌 후 재조회해 동시 동일 이름을 하나로 수렴시킨다.
-- [ ] kind 불일치와 alias homonym을 자동 merge/split하지 않는다.
+- [x] surface 전체 후보→canonical→exact normal name 순서로 해석한다.
+- [x] 후보가 여러 개면 임의 선택하지 않고 그 draft만 actionable ambiguous로 거부한다.
+- [x] 다른 scope의 ID/후보 존재를 응답에서 드러내지 않는다.
+- [x] write lock 안에서 constraint 충돌 후 재조회해 동시 동일 이름을 하나로 수렴시킨다.
+- [x] kind 불일치와 alias homonym을 자동 merge/split하지 않는다.
+
+완료 증거:
+
+- [구현 결정](../implementation/rec-004-write-entity-resolver.md)은 기존 atomic dispatcher의
+  `BEGIN IMMEDIATE` 안에 prepare→draft resolve→append 단계를 두되, pre-resolution
+  entity/surface/redirect stage를 append 직전 outer savepoint로 전부 rollback하도록 고정했다.
+- production adapter는 PRJ-005 resolver를 재사용해 same-scope surface 전체 후보를 redirect
+  terminal로 바꾼 뒤 exact normal-name 하나만 tie-break한다. 남은 ambiguity는 정렬된 안전한
+  후보와 retry note로 해당 draft만 거부하며 object 실패 시 nested savepoint가 그 draft의
+  subject/alias stage도 되돌린다.
+- file-backed [REC-004 integration test](../../test/integration/sqlite/rec-004-write-entity-resolver.test.mjs)는
+  정상 redirect/신규 object, exact tie-break·ambiguity, 앞·뒤 draft 격리, alias homonym,
+  trigger로 만든 실제 unique collision 재조회, cross-scope redaction·queue 회복과 append 없는
+  commit 차단을 검증한다.
+- 최초 RED는 production module 부재로 `ERR_MODULE_NOT_FOUND` 0/1이었고 구현 뒤 target은
+  8/8 GREEN이다. RCL-001 병합본 위 재검증은 양쪽 target REC-004 28/28·RCL-001 10/10,
+  STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39와 전체 fast 263/263을 통과했다. PR/main 영속
+  증거가 추가될 때까지 상태와 phase roll-up은 `IN_PROGRESS`로 유지한다.
 
 ### REC-005 — draft 의미 검증·중복 제거·index mapping
 

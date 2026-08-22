@@ -3,7 +3,8 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#41 누적 게시·로컬 검증과 2026-08-23 scope 재검토
+- 성격: 작성자 자체 교차 검토, PR #3~#42 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
+  REC-004 로컬 구현 검증
 - 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · 차단 결함 0개**
 
 ## 검토 결과
@@ -207,6 +208,13 @@
     semantic rebase에서 보존했다. 최종 323/323 회귀와 독립 review HIGH/MEDIUM/LOW 0건을
     확인한 [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)을 완료 증거로
     고정해 제품 roll-up을 30/66으로 올렸다.
+35. REC-004는 PRJ-005의 surface 전체 후보→redirect terminal→exact-name resolver를 기존
+    PRJ-009 managed writer transaction의 append 전 단계에 연결했다. draft별 nested savepoint는
+    object ambiguity가 그 draft의 subject/alias stage를 남기지 않게 하고, outer savepoint는
+    해석용 projection INSERT를 journal append 전에 전부 되돌린다. constraint collision 뒤
+    same-scope 재조회, cross-scope redaction, kind·alias homonym 보존과 append 없는 commit 차단을
+    file-backed fixture로 검증했다. public record 조립·secret·dedupe·stored index는 후속
+    REC-003/005/006에 남기며 PR/main 증거 전까지 REC-004 상태와 roll-up은 바꾸지 않았다.
 
 ## 의도적으로 남은 상태
 
@@ -237,7 +245,7 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~008·PRJ-001~010·REC-001 로컬 gate | PASS — REC-001 11/11, FND-004 7/7, architecture/type/build와 전체 Node test 243/243 |
+| STO-001~008·PRJ-001~010·REC-001·REC-004 로컬 gate | PASS — REC-004 8/8, 관련 PRJ-005/009 포함 target 28/28, RCL-001 병합본 위 architecture/type/build와 전체 Node test 263/263 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
@@ -246,7 +254,7 @@
 | REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 17/17, 전체 fast 39개 파일 285/285, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16·typed detector error 16/17 RED를 닫았고 독립 review finding HIGH 0/MEDIUM 0 |
 | RCL-002 branch gate | PASS — architecture/type/build, RCL-002 15/15·REC-001 13/13·REC-002 13/13·REC-003 17/17·RCL-001 10/10, 전체 fast 42개 파일 302/302, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | RCL-003 branch gate | PASS — architecture/type/build, RCL-003 21/21·RCL-002 15/15·RCL-001 10/10·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 44개 파일 323/323, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 2,100 support·21 candidate probe 및 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
-| 변경 범위 | PASS — 기존 REC-001/RCL-001 계약·snapshot 경계를 보존하고 pure application sanitation plan·unit/type fixture·검증 script와 결정/evidence 문서를 추가했다. writer/SQLite/MCP/schema/journal/log·Phase 08 corpus는 변경하지 않았다. |
+| 변경 범위 | PASS — REC-003 sanitation·RCL-003 FTS와 REC-004 writer resolver를 기존 REC-001/RCL-001 snapshot 경계에 병존시키고, dedupe·journal record service·BFS/ranking/Answer·MCP handler·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사
 
