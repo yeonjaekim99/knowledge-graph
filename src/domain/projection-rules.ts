@@ -46,7 +46,7 @@ function reject(code: ProjectionRuleErrorCode): never {
  * Display text stays in the journal/entity row and is never reconstructed here.
  */
 export function normalizeV1(value: unknown): string {
-  if (typeof value !== "string") {
+  if (typeof value !== "string" || !value.isWellFormed()) {
     return reject("INVALID_NORMALIZATION_INPUT");
   }
   const normalized = value

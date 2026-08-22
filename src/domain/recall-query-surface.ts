@@ -155,16 +155,11 @@ function frozenTerm(text: string, surfaceNorm: string): RecallQueryTerm {
   return Object.freeze({ text, surfaceNorm });
 }
 
-function uniqueTermsInOrder(
+function cappedTermsInOrder(
   candidates: readonly CandidateTerm[],
 ): readonly RecallQueryTerm[] {
-  const seen = new Set<string>();
   const result: RecallQueryTerm[] = [];
   for (const candidate of candidates) {
-    if (seen.has(candidate.surfaceNorm)) {
-      continue;
-    }
-    seen.add(candidate.surfaceNorm);
     result.push(frozenTerm(candidate.text, candidate.surfaceNorm));
     if (result.length === MAX_QUERY_TERMS) {
       break;
@@ -227,7 +222,7 @@ export function extractRecallQueryTerms(
         candidates.push(candidate);
       }
     }
-    return uniqueTermsInOrder(candidates);
+    return cappedTermsInOrder(candidates);
   }
 
   const candidates: CandidateTerm[] = [];
@@ -238,6 +233,9 @@ export function extractRecallQueryTerms(
   let appearanceOrder = 1;
   for (const match of query.matchAll(LETTER_NUMBER_RUN_PATTERN)) {
     const run = match[0];
+    if (match.index === 0 && run === query) {
+      continue;
+    }
     const candidate = candidateTerm(run, appearanceOrder);
     appearanceOrder += 1;
     if (candidate !== null) {
@@ -250,7 +248,7 @@ export function extractRecallQueryTerms(
     }
     return left.appearanceOrder - right.appearanceOrder;
   });
-  return uniqueTermsInOrder(candidates);
+  return cappedTermsInOrder(candidates);
 }
 
 export interface RecallSurfaceCandidateState {
@@ -299,7 +297,6 @@ function validatedTerms(value: unknown): readonly RecallQueryTerm[] {
     return reject("INVALID_SURFACE_SEED_STATE");
   }
   const result: RecallQueryTerm[] = [];
-  const seen = new Set<string>();
   for (const valueTerm of values) {
     const row = exactDataRecord(
       valueTerm,
@@ -313,8 +310,7 @@ function validatedTerms(value: unknown): readonly RecallQueryTerm[] {
       text.length === 0 ||
       text.trim() !== text ||
       typeof surfaceNorm !== "string" ||
-      codePointLength(surfaceNorm) < 2 ||
-      seen.has(surfaceNorm)
+      codePointLength(surfaceNorm) < 2
     ) {
       return reject("INVALID_SURFACE_SEED_STATE");
     }
@@ -331,7 +327,6 @@ function validatedTerms(value: unknown): readonly RecallQueryTerm[] {
       }
       throw error;
     }
-    seen.add(surfaceNorm);
     result.push(frozenTerm(text, surfaceNorm));
   }
   return Object.freeze(result);

@@ -158,6 +158,7 @@ test("scoped surface candidates resolve through redirect chains with determinist
     terms: [
       { text: "로-그_인", surfaceNorm: "로그인" },
       { text: "인증", surfaceNorm: "인증" },
+      { text: "로그인", surfaceNorm: "로그인" },
     ],
     seeds: [
       { entityId: "e10.0", matchedTerm: "로-그_인", surfaceNorm: "로그인" },

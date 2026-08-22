@@ -1620,10 +1620,9 @@ function readRecallSnapshotSurfaceState(
     !Array.isArray(surfaceNorms) ||
     surfaceNorms.length > 10 ||
     surfaceNorms.some(
-      (surfaceNorm, index) =>
+      (surfaceNorm) =>
         typeof surfaceNorm !== "string" ||
-        surfaceNorm.length === 0 ||
-        surfaceNorms.indexOf(surfaceNorm) !== index,
+        surfaceNorm.length === 0,
     )
   ) {
     throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");

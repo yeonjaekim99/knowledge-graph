@@ -79,10 +79,16 @@ test("query surface policy runs inside the RCL-001 snapshot and exposes only the
   assert.equal(captures, 1);
   assert.equal(reads, 1);
   assert.deepEqual(observedTerms, [
-    [{ text: "로-그_인", surfaceNorm: "로그인" }],
+    [
+      { text: "로-그_인", surfaceNorm: "로그인" },
+      { text: "로그인", surfaceNorm: "로그인" },
+    ],
   ]);
   assert.deepEqual(result, {
-    terms: [{ text: "로-그_인", surfaceNorm: "로그인" }],
+    terms: [
+      { text: "로-그_인", surfaceNorm: "로그인" },
+      { text: "로그인", surfaceNorm: "로그인" },
+    ],
     seeds: [
       {
         entityId: "e1.0",

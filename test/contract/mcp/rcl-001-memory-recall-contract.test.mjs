@@ -149,6 +149,15 @@ test("input validation rejects missing query, mode leaks, closed fields, and Uni
     "~standard"
   ].validate({ query: ` ${"😀".repeat(4_097)} ` });
   assert.ok(advertisedTooLong.issues?.length > 0);
+  for (const malformed of [
+    { query: `safe-${"\ud800"}-payload` },
+    { query: "ok", terms: [`safe-${"\udfff"}-payload`] },
+  ]) {
+    const malformedResult = await advertisedContract.standardSchema[
+      "~standard"
+    ].validate(malformed);
+    assert.ok(malformedResult.issues?.length > 0);
+  }
 
   const advertisedQuerySchema =
     memoryRecallInputDefinition.schema.oneOf[0].properties.query;

@@ -117,13 +117,11 @@ function snapshotRecallSurfaceNorms(value: unknown): readonly string[] {
   if (!Array.isArray(value) || value.length > 10) {
     return invalidCommand("SQLITE_QUERY_FAILED");
   }
-  const seen = new Set<string>();
   const result: string[] = [];
   for (const item of value) {
-    if (typeof item !== "string" || item.length === 0 || seen.has(item)) {
+    if (typeof item !== "string" || item.length === 0) {
       return invalidCommand("SQLITE_QUERY_FAILED");
     }
-    seen.add(item);
     result.push(item);
   }
   return Object.freeze(result);
