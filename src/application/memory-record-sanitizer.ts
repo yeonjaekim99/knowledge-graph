@@ -84,6 +84,7 @@ const SECRET_CLASS_SET: ReadonlySet<string> = new Set([
   ...SECRET_SIGNATURE_REGISTRY.map(({ secretClass }) => secretClass),
   "high-entropy",
 ]);
+const MAX_DETECTOR_FINDINGS = 32_768;
 
 function exactOwnKeys(value: object, expected: readonly string[]): boolean {
   const keys = Reflect.ownKeys(value);
@@ -91,6 +92,48 @@ function exactOwnKeys(value: object, expected: readonly string[]): boolean {
     keys.length === expected.length &&
     expected.every((key) => keys.includes(key))
   );
+}
+
+function ownEnumerableDataValue(value: object, key: string): unknown {
+  const descriptor = Object.getOwnPropertyDescriptor(value, key);
+  if (
+    descriptor === undefined ||
+    descriptor.enumerable !== true ||
+    !("value" in descriptor)
+  ) {
+    throw new RecordSecretSanitizationError("DETECTOR_FAILED");
+  }
+  return descriptor.value;
+}
+
+function snapshotFindingCandidates(
+  findings: unknown[],
+): readonly unknown[] {
+  const lengthDescriptor = Object.getOwnPropertyDescriptor(findings, "length");
+  if (
+    lengthDescriptor === undefined ||
+    !("value" in lengthDescriptor) ||
+    !Number.isSafeInteger(lengthDescriptor.value) ||
+    lengthDescriptor.value < 0 ||
+    lengthDescriptor.value > MAX_DETECTOR_FINDINGS
+  ) {
+    throw new RecordSecretSanitizationError("DETECTOR_FAILED");
+  }
+  const length = lengthDescriptor.value as number;
+  const keys = Reflect.ownKeys(findings);
+  const keySet: ReadonlySet<PropertyKey> = new Set(keys);
+  if (keys.length !== length + 1 || !keySet.has("length")) {
+    throw new RecordSecretSanitizationError("DETECTOR_FAILED");
+  }
+  const candidates: unknown[] = [];
+  for (let index = 0; index < length; index += 1) {
+    const key = String(index);
+    if (!keySet.has(key)) {
+      throw new RecordSecretSanitizationError("DETECTOR_FAILED");
+    }
+    candidates.push(ownEnumerableDataValue(findings, key));
+  }
+  return candidates;
 }
 
 function isCodePointBoundary(value: string, offset: number): boolean {
@@ -119,10 +162,11 @@ function checkDetectionResult(
   ) {
     throw new RecordSecretSanitizationError("DETECTOR_FAILED");
   }
-  const record = result as Record<string, unknown>;
+  const registryVersion = ownEnumerableDataValue(result, "registryVersion");
+  const findingsValue = ownEnumerableDataValue(result, "findings");
   if (
-    record["registryVersion"] !== SECRET_DETECTOR_VERSION ||
-    !Array.isArray(record["findings"])
+    registryVersion !== SECRET_DETECTOR_VERSION ||
+    !Array.isArray(findingsValue)
   ) {
     throw new RecordSecretSanitizationError("DETECTOR_FAILED");
   }
@@ -130,7 +174,7 @@ function checkDetectionResult(
   const findings: SecretFinding[] = [];
   let positionsAreSafe = true;
   let previousEnd = 0;
-  for (const candidate of record["findings"]) {
+  for (const candidate of snapshotFindingCandidates(findingsValue)) {
     if (
       candidate === null ||
       typeof candidate !== "object" ||
@@ -143,17 +187,19 @@ function checkDetectionResult(
     ) {
       throw new RecordSecretSanitizationError("DETECTOR_FAILED");
     }
-    const finding = candidate as Record<string, unknown>;
+    const secretClass = ownEnumerableDataValue(candidate, "secretClass");
+    const startValue = ownEnumerableDataValue(candidate, "startCodeUnit");
+    const endValue = ownEnumerableDataValue(candidate, "endCodeUnit");
     if (
-      typeof finding["secretClass"] !== "string" ||
-      !SECRET_CLASS_SET.has(finding["secretClass"]) ||
-      typeof finding["startCodeUnit"] !== "number" ||
-      typeof finding["endCodeUnit"] !== "number"
+      typeof secretClass !== "string" ||
+      !SECRET_CLASS_SET.has(secretClass) ||
+      typeof startValue !== "number" ||
+      typeof endValue !== "number"
     ) {
       throw new RecordSecretSanitizationError("DETECTOR_FAILED");
     }
-    const startCodeUnit = finding["startCodeUnit"];
-    const endCodeUnit = finding["endCodeUnit"];
+    const startCodeUnit = startValue;
+    const endCodeUnit = endValue;
     const positionIsSafe =
       Number.isSafeInteger(startCodeUnit) &&
       Number.isSafeInteger(endCodeUnit) &&
@@ -168,7 +214,7 @@ function checkDetectionResult(
       previousEnd = endCodeUnit;
     }
     findings.push({
-      secretClass: finding["secretClass"] as SecretClass,
+      secretClass: secretClass as SecretClass,
       startCodeUnit,
       endCodeUnit,
     });
