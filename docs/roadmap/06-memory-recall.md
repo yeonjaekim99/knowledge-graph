@@ -20,7 +20,7 @@
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
 | RCL-005 | BFS 이동·수집·경로 복원 | `DONE` | `log0629` | RCL-001, RCL-002 | [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md) |
-| RCL-006 | ranking·상충·문장 조합 | `IN_PROGRESS` | `log0629` | RCL-005, PRJ-008 | Branch `rcl-006-ranking-format` |
+| RCL-006 | ranking·상충·문장 조합 | `IN_PROGRESS` | `log0629` | RCL-005, PRJ-008 | [Planning PR #47](https://github.com/yeonjaekim99/knowledge-graph/pull/47), branch `rcl-006-ranking-format` |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
 | RCL-009 | 대표 fixture 성능 baseline | `TODO` | `unassigned` | RCL-008, STO-008 | — |
@@ -277,6 +277,7 @@
 - 상태: `IN_PROGRESS`
 - Owner: `log0629`
 - Branch: `rcl-006-ranking-format`
+- Planning PR: [#47](https://github.com/yeonjaekim99/knowledge-graph/pull/47)
 - 근거: ADR-004, ADR-010, ADR-012
 - 선행 작업: RCL-005, PRJ-008
 - 결과물: parameterized ranking query와 brief formatter
