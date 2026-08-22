@@ -1,7 +1,7 @@
 # Phase 04 — memory_record 수직 경로
 
 - 상태: `IN_PROGRESS`
-- 진행률: 0/8
+- 진행률: 1/8
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-002~011, ADR-013
 - 선행 증거 감사: [Phase 04 baseline과 production gap](evidence-audit.md#phase-04-record)
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| REC-001 | record 입력·출력 schema와 domain 계약 | `IN_PROGRESS` | `log0629` | FND-004, PRJ-009 | [구현·로컬 증거](../implementation/rec-001-record-contract.md) |
+| REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | — |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
 | REC-004 | write entity 해석과 모호성 처리 | `TODO` | `unassigned` | REC-001, PRJ-005 | — |
@@ -28,9 +28,10 @@
 
 ### REC-001 — record 입력·출력 schema와 domain 계약
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rec-001-record-contract`
+- PR: [#32](https://github.com/yeonjaekim99/knowledge-graph/pull/32)
 - 근거: ADR-002, ADR-004, ADR-013
 - 선행 작업: FND-004, PRJ-009
 - 결과물: MemoryRecordInput, ClaimDraft, RecordResult schema와 validator
@@ -43,7 +44,7 @@
 - [x] schema 오류는 사건 없는 tool error, 의미 오류는 draft별 rejected로 구분한다.
 - [x] 각 입력 index에 정확히 한 result가 있고 상태 우선순위가 ADR-013과 같다.
 
-검토 준비 증거:
+완료 증거:
 
 - [구현 결정](../implementation/rec-001-record-contract.md)에 four-branch ClaimDraft,
   일반/재해석 input, trim 후 Unicode 상한과 typed output/index 불변식을 고정했다.
@@ -57,8 +58,9 @@
   `superseded_previous > created > reinforced` 우선순위를 검증했다.
 - 전체 빠른 suite 243/243, 독립 behavior spike 25/25, roadmap audit와 production dependency
   audit 취약점 0개를 통과했다.
-- 완료 체크는 로컬 구현 증거를 뜻한다. PR review와 `main` 병합 전이므로 AGENTS.md에 따라
-  작업 상태와 Phase/master 완료 수는 아직 `IN_PROGRESS`, 0/8을 유지한다.
+- 독립 peer review에서 merge-blocking 결함은 없었고 package root의 내부 status facts 노출
+  Low finding은 별도 fix commit과 전체 243/243 재검증으로 닫았다. [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32)가
+  이 상태·증거 commit을 포함해 `main`에 병합되면 REC-001의 영속적인 완료 근거가 된다.
 
 ### REC-002 — 비밀값 pattern·entropy 탐지기
 
