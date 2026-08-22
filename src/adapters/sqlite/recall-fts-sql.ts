@@ -23,6 +23,26 @@ const validCandidateSupportExists = [
   ")",
 ].join("\n");
 
+const malformedCandidateSupportExists = [
+  "EXISTS (",
+  "  SELECT 1",
+  "  FROM claim_support AS malformed_support",
+  "  JOIN temp.recall_claim_agg AS malformed_aggregate",
+  "    ON malformed_aggregate.claim_id = malformed_support.claim_id",
+  "  JOIN claims AS malformed_claim",
+  "    ON malformed_claim.id = malformed_support.claim_id",
+  "  WHERE malformed_support.event_id = candidate_journal.id",
+  "    AND malformed_support.live = 1",
+  "    AND (malformed_support.expires_at IS NULL",
+  "         OR malformed_support.expires_at > :now)",
+  "    AND malformed_claim.scope_key = :scope_key",
+  "    AND json_type(candidate_journal.body, '$.parsed') = 'array'",
+  "    AND (malformed_support.draft_index < 0",
+  "         OR malformed_support.draft_index >=",
+  "            json_array_length(candidate_journal.body, '$.parsed'))",
+  ")",
+].join("\n");
+
 const validGraphDuplicateExists = [
   "EXISTS (",
   "  SELECT 1",
@@ -90,6 +110,7 @@ const selectCandidateStatements = [
   "    OR json_type(candidate_journal.body, '$.parsed') IS NOT 'array'",
   "    OR json_array_length(candidate_journal.body, '$.parsed') > 100",
   `    OR ${validCandidateSupportExists}`,
+  `    OR ${malformedCandidateSupportExists}`,
   "    OR (",
   "      json_array_length(candidate_journal.body, '$.parsed') = 0",
   `      AND NOT ${validGraphDuplicateExists}`,

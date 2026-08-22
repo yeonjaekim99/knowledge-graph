@@ -111,10 +111,7 @@ function snapshotCandidateStrings(value: unknown): readonly string[] {
       candidates.push(descriptor.value);
     }
     return Object.freeze(candidates);
-  } catch (error: unknown) {
-    if (error instanceof RecallReadError) {
-      throw error;
-    }
+  } catch {
     return invalidRequest();
   }
 }

@@ -181,10 +181,7 @@ function snapshotExactRecord(
       snapshot[key] = descriptor.value;
     }
     return Object.freeze(snapshot);
-  } catch (error: unknown) {
-    if (error instanceof RecallReadError) {
-      throw error;
-    }
+  } catch {
     return invalid();
   }
 }
@@ -264,10 +261,7 @@ function snapshotExactArray(
       snapshot.push(descriptor.value);
     }
     return Object.freeze(snapshot);
-  } catch (error: unknown) {
-    if (error instanceof RecallReadError) {
-      throw error;
-    }
+  } catch {
     return invalid();
   }
 }
