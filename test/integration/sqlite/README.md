@@ -38,3 +38,11 @@ invalid draft index는 fail closed하고 dead·expired·cross-scope 대조군은
 typed Proxy error identity와 임의 payload도 adapter 밖으로 전달하지 않는다. bounded 21개 모두의
 support를 검증하므로 used parsed candidate의 support 누락과 malformed 21번째 sentinel은 실패하고,
 정상 sentinel은 truncation 확인에만 쓰이며 앞 20개 결과에는 들어가지 않는다.
+
+REC-004의
+[`rec-004-write-entity-resolver.test.mjs`](rec-004-write-entity-resolver.test.mjs)는 managed
+writer가 `BEGIN IMMEDIATE`를 보유한 동안 surface 전체 후보→redirect terminal→exact
+normal-name 순서로 entity를 해석하는지 검증한다. ambiguity는 nested draft savepoint만
+되돌리고, scope 밖 후보는 노출하지 않으며, `INSERT OR IGNORE` 충돌 뒤 재조회로 수렴한다.
+해석용 provisional entity/surface/redirect는 append 전에 outer savepoint로 전부 되돌려
+journal 없는 projection-only commit 경로가 생기지 않게 한다.

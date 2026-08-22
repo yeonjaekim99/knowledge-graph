@@ -15,6 +15,7 @@ import {
   type SqliteProjectionDispatchAppendEvent,
   type SqliteProjectionDispatchBeginResult,
   type SqliteProjectionDispatchCommitResult,
+  type SqliteProjectionDispatchPrepareResult,
   type SqliteProjectionPublishMode,
   type SqliteProjectionReplayBeginResult,
   type SqliteProjectionReplayCommitResult,
@@ -25,6 +26,8 @@ import {
   type SqliteRecallSnapshotBeginResult,
   type SqliteRecallSurfaceStateRowsResult,
   type SqliteTransactionCommand,
+  type SqliteWriteEntityDraftInput,
+  type SqliteWriteEntityDraftResolution,
   type SqliteWorkerResponse,
   type SqliteWorkerRole,
 } from "./connection-protocol.js";
@@ -290,6 +293,37 @@ class SqliteWorkerClient {
     }) as Promise<SqliteProjectionDispatchBeginResult>;
   }
 
+  public prepareProjectionDispatch(
+    scopeKey: string,
+  ): Promise<SqliteProjectionDispatchPrepareResult> {
+    return this.#request({
+      type: "projection-dispatch-prepare",
+      scopeKey,
+    }) as Promise<SqliteProjectionDispatchPrepareResult>;
+  }
+
+  public resolveProjectionDispatchEntities(
+    dispatchId: number,
+    drafts: readonly SqliteWriteEntityDraftInput[],
+  ): Promise<readonly SqliteWriteEntityDraftResolution[]> {
+    return this.#request({
+      type: "projection-dispatch-resolve-entities",
+      dispatchId,
+      drafts,
+    }) as Promise<readonly SqliteWriteEntityDraftResolution[]>;
+  }
+
+  public appendProjectionDispatch(
+    dispatchId: number,
+    events: readonly SqliteProjectionDispatchAppendEvent[],
+  ): Promise<SqliteProjectionDispatchBeginResult> {
+    return this.#request({
+      type: "projection-dispatch-append",
+      dispatchId,
+      events,
+    }) as Promise<SqliteProjectionDispatchBeginResult>;
+  }
+
   public commitProjectionDispatch(
     dispatchId: number,
     mode: SqliteProjectionPublishMode,
@@ -356,6 +390,20 @@ class SqliteWorkerClient {
       | {
           readonly type: "projection-dispatch-begin";
           readonly scopeKey: string;
+          readonly events: readonly SqliteProjectionDispatchAppendEvent[];
+        }
+      | {
+          readonly type: "projection-dispatch-prepare";
+          readonly scopeKey: string;
+        }
+      | {
+          readonly type: "projection-dispatch-resolve-entities";
+          readonly dispatchId: number;
+          readonly drafts: readonly SqliteWriteEntityDraftInput[];
+        }
+      | {
+          readonly type: "projection-dispatch-append";
+          readonly dispatchId: number;
           readonly events: readonly SqliteProjectionDispatchAppendEvent[];
         }
       | {
@@ -637,6 +685,15 @@ export interface SqliteProjectionReplaySession {
 }
 
 export interface SqliteProjectionDispatchSession {
+  prepare(scopeKey: string): Promise<SqliteProjectionDispatchPrepareResult>;
+  resolveEntities(
+    dispatchId: number,
+    drafts: readonly SqliteWriteEntityDraftInput[],
+  ): Promise<readonly SqliteWriteEntityDraftResolution[]>;
+  append(
+    dispatchId: number,
+    events: readonly SqliteProjectionDispatchAppendEvent[],
+  ): Promise<SqliteProjectionDispatchBeginResult>;
   begin(
     scopeKey: string,
     events: readonly SqliteProjectionDispatchAppendEvent[],
@@ -833,6 +890,37 @@ class SqliteConnectionFactoryImplementation implements SqliteConnectionFactory {
     const queued = this.#writeTail.then(async (): Promise<Result> => {
       let activeDispatchId: number | null = null;
       const session: SqliteProjectionDispatchSession = Object.freeze({
+        prepare: async (
+          scopeKey: string,
+        ): Promise<SqliteProjectionDispatchPrepareResult> => {
+          if (activeDispatchId !== null) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          const result = await this.#writer.prepareProjectionDispatch(scopeKey);
+          activeDispatchId = result.dispatchId;
+          return result;
+        },
+        resolveEntities: async (
+          dispatchId: number,
+          drafts: readonly SqliteWriteEntityDraftInput[],
+        ): Promise<readonly SqliteWriteEntityDraftResolution[]> => {
+          if (activeDispatchId !== dispatchId) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          return this.#writer.resolveProjectionDispatchEntities(
+            dispatchId,
+            drafts,
+          );
+        },
+        append: async (
+          dispatchId: number,
+          events: readonly SqliteProjectionDispatchAppendEvent[],
+        ): Promise<SqliteProjectionDispatchBeginResult> => {
+          if (activeDispatchId !== dispatchId) {
+            throw new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+          }
+          return this.#writer.appendProjectionDispatch(dispatchId, events);
+        },
         begin: async (
           scopeKey: string,
           events: readonly SqliteProjectionDispatchAppendEvent[],

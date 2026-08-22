@@ -12,6 +12,16 @@ export type {
   SqliteReaderConnection,
 } from "./connection-factory.js";
 export {
+  WriteEntityResolutionError,
+  resolveSqliteWriteEntityDrafts,
+} from "./write-entity-resolver.js";
+export type {
+  WriteEntityDraftResolution,
+  WriteEntityDraftResolutionInput,
+  WriteEntityReferenceResolutionInput,
+  WriteEntityResolutionErrorCode,
+} from "./write-entity-resolver.js";
+export {
   SQLITE_CONNECTION_POLICY,
   SqliteBusyError,
   SqliteConnectionError,
