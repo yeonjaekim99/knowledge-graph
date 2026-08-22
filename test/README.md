@@ -46,6 +46,8 @@
 | `pnpm test:rcl-002` | ordered display query term, canonical scoped surface seed와 50+1/read-only fixture |
 | `pnpm typecheck:rcl-002` | RCL-002 typed seed port와 raw SQL 비노출 compile fixture |
 | `pnpm verify:rcl-002` | RCL-002 architecture/type/build와 focused target |
+| `pnpm test:rcl-003` | safe quoted FTS와 graph/raw candidate 변환·21/20·read-only fixture |
+| `pnpm verify:rcl-003` | architecture/type/build와 RCL-003 unit·SQLite target |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -148,3 +150,10 @@ code-point 순서, 같은 norm의 distinct display phrase, cap-before-dedupe, il
 redirect corruption과 50+1을, application/compile fixture는
 RCL-001 typed capability와 raw SQL 비노출을, 실제 SQLite fixture는 scope·snapshot·read-only를
 검증한다. FTS/BFS/Answer가 아직 없으므로 S09/S21 public scenario status는 바꾸지 않는다.
+
+RCL-003은 user candidate를 최대 10개 quoted phrase literal로 만들고 normalized 3 code point
+미만을 actionable skip으로 분리하는 application fixture, 실제 contentless trigram FTS와
+RCL-001 TEMP aggregate를 같은 snapshot에서 읽는 SQLite fixture를 추가했다. graph support의
+subject/object seed와 depth-0 reached pin, parsed=[] raw-only, 죽은 parsed history 비부활,
+동일 raw valid graph 우선, 21/20 절단과 persistent dump/data_version 불변을 검증한다. 최종
+Answer와 overview가 아직 없으므로 S11/S22 manifest는 `planned`다.

@@ -25,3 +25,9 @@ transaction에서 parameterized scope/surface exact lookup과 필요한 entity/r
 같은 normalized lookup을 가진 distinct display term의 first-pair dedupe, 51→50 절단,
 concurrent WAL commit 전후 snapshot, persistent dump/`data_version` 불변과 cycle 오류 cleanup을
 포함한다.
+
+RCL-003의 [`rcl-003-fts-fallback.test.mjs`](rcl-003-fts-fallback.test.mjs)는 같은 snapshot에서
+bound quoted phrase로 STO-004 contentless FTS를 검색하고 current-scope live/unexpired statement
+21개 중 20개만 변환하는지 검증한다. operator·quote·control·한국어·emoji, entity/literal
+endpoint seed와 reached pin, raw TTL/state와 죽은 parsed claim 비부활, 동일 raw graph duplicate,
+반복 order, WAL snapshot, 영구 dump/data_version 및 payload-redacted corruption을 포함한다.
