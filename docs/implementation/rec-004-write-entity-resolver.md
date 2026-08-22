@@ -234,8 +234,9 @@ pnpm audit --prod
 ```
 
 독립 재검토 보완 뒤 REC-004 SQLite target은 33/33, 관련 PRJ-005/009 포함 target은 53/53다.
-REC-003·RCL-002 완료와 RCL-005 planning이 반영된 최신 main 결합 상태의 전체 fast
-44 files·335/335, RCL-001 10/10, RCL-002 15/15, STO-002 7/7, PRJ-010 39/39,
+REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신 main 결합 상태의
+전체 fast 46 files·356/356, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
+STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39,
 behavior spike 25/25, roadmap audit 67/67과 production audit 0건을 통과했고
 미해결 HIGH/MEDIUM finding은 없다. PR/main 영속 증거 전까지 작업 상태는 `IN_PROGRESS`다.
 S21의 write-time resolver 부분은 production으로 옮겼지만 public `memory_record`와 실제
