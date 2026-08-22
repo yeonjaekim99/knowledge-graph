@@ -129,31 +129,31 @@ parent를 seed까지 역추적하고 anchor의 claim이 entity-object이며 반�
 
 ## TDD와 검증
 
-tests-only RED commit `e05743f`는 기존 production build 성공 뒤 새 application module이 없어
-RCL-005의 세 test module이 import 단계에서 0/3 실패했다. 최소 GREEN commit `01b221b`은
+tests-only RED commit `c39b5a1`은 기존 production build 성공 뒤 새 application module이 없어
+RCL-005의 세 test module이 import 단계에서 0/3 실패했다. 최소 GREEN commit `7170442`는
 TEMP source, snapshot protocol/adapter, domain validation과 BFS를 연결했고
 `pnpm verify:rcl-005`가 9/9로 통과했다.
 
 로컬 diff 재검토에서 parent 간선이 아닌 cycle edge의 반대 endpoint가 이미 ancestor라는
-이유로 path에서 사라지는 결함을 찾았다. tests-only RED `3cb2835`는 depth 3의 `D→B`를
-`A→B→C→D→B`, 4 hops로 요구해 8/9와 실제 `A→B→C→D`를 포착했다. fix `0303829`는
+이유로 path에서 사라지는 결함을 찾았다. tests-only RED `5cc5ced`는 depth 3의 `D→B`를
+`A→B→C→D→B`, 4 hops로 요구해 8/9와 실제 `A→B→C→D`를 포착했다. fix `717c078`은
 self-loop 또는 anchor의 정확한 parent claim만 append에서 제외해 다시 9/9로 만들었다.
 
-독립 review remediation의 tests-only RED `71ca202`는 payload-bearing source/proxy 오류,
+독립 review remediation의 tests-only RED `6e2fa6f`는 payload-bearing source/proxy 오류,
 SQLite raw envelope·row·array/accessor와 canonical name과 byte-identical한 81-code-point
-surface 표시를 추가해 13개 중 4개 실패를 포착했다. fix `6a59954`는 raw 경계를 bounded
+surface 표시를 추가해 13개 중 4개 실패를 포착했다. fix `2114688`은 raw 경계를 bounded
 descriptor snapshot으로 고정하고 typed 오류를 fresh fixed error로 교체하며, truncation 전에
 raw surface와 canonical name을 비교해 진짜 별칭만 prepend한다. focused target은 13/13이다.
 
-최종 재review RED `f071832`는 source property getter·Proxy lookup, method invocation,
+최종 재review RED `1f0b75a`는 source property getter·Proxy lookup, method invocation,
 `RecallReadError` Promise rejection과 hostile thenable assimilation을 추가하고 adapter 오류의
-application 경계 의미를 바로잡아 18개 중 7개 실패를 포착했다. fix `d26993e`는 method를 한 번
+application 경계 의미를 바로잡아 18개 중 7개 실패를 포착했다. fix `70f3f79`는 method를 한 번
 lookup해 receiver와 묶고 lookup·apply·await·settlement·validation을 하나의 fail-closed
 경계에 넣어 focused target을 18/18로 만들었다.
 
-후속 독립 review의 tests-only RED `f7fac7f`는 stateful input 재-snapshot, link가 빠진
+후속 독립 review의 tests-only RED `3492b4a`는 stateful input 재-snapshot, link가 빠진
 entity-object incident와 긴 FTS marker 소실을 추가해 21개 중 정확히 3개 실패를 포착했다.
-fix `8577155`는 input branch/key를 한 snapshot에서 고르고 incident⊆link를 검증하며 FTS
+fix `c9b0b6a`는 input branch/key를 한 snapshot에서 고르고 incident⊆link를 검증하며 FTS
 suffix 예산을 먼저 예약해 focused target을 21/21로 만들었다.
 
 fixture는 다음을 고정한다.
@@ -191,13 +191,14 @@ python3 docs/roadmap/validate.py
 pnpm audit --prod
 ```
 
-최신 `main` `3e2eedb` 위 semantic rebase에서 RCL-003의 FTS protocol/factory/worker/read-port
-facet과 RCL-004의 `IN_PROGRESS` 계획을 보존했다. 현재 branch의 로컬 통합 검증은 RCL-005
+최신 `main` `25eeb72` 위 semantic rebase에서 RCL-003의 FTS protocol/factory/worker/read-port
+facet, REC-004 shared writer connection seam과 REC-005·RCL-004의 `IN_PROGRESS` 계획을
+보존했다. 현재 branch의 로컬 통합 검증은 RCL-005
 21/21, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11, PRJ-007 19/19, PRJ-008 8/8,
-REC-001 13/13, REC-002 13/13과 REC-003 17/17이다. 빠른 전체 suite는 47개 파일
-344/344, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
-validator는 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고
+REC-001 13/13, REC-002 13/13과 REC-003 17/17이며 REC-004 통합 gate는 70/70이다. 빠른
+전체 suite는 49개 파일 394/394, PRJ-010 reference parity는 39/39, 독립 behavior spike는
+25/25다. roadmap validator는 evidence 67/67·ADR 17/17·scenario 24/24·link 406과 기존 Phase/master 집계를 통과했고
 production dependency 알려진 취약점은 0개다.
 
 PR link, 독립 review 결과와 `main` merge 증거는 root 작업자가 붙인다. 그 전까지 task는
