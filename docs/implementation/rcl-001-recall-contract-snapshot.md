@@ -1,6 +1,6 @@
 # RCL-001: recall 계약·snapshot·유효 aggregate
 
-- 상태: 구현 완료, PR 게시 전
+- 상태: 완료 — [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)
 - 결정일: 2026-08-22
 - 작업: RCL-001
 - Owner: `log0629`

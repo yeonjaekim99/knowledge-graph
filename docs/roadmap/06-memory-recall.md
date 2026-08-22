@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 0/9
+- 진행률: 1/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| RCL-001 | recall 계약·snapshot·유효 aggregate | `IN_PROGRESS` | `log0629` | FND-004, PRJ-008 | [구현·로컬 검증](../implementation/rcl-001-recall-contract-snapshot.md) |
+| RCL-001 | recall 계약·snapshot·유효 aggregate | `DONE` | `log0629` | FND-004, PRJ-008 | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md) |
 | RCL-002 | query term과 surface seed | `TODO` | `unassigned` | RCL-001, PRJ-005 | — |
 | RCL-003 | 안전한 FTS와 raw fallback | `TODO` | `unassigned` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
@@ -29,9 +29,10 @@
 
 ### RCL-001 — recall 계약·snapshot·유효 aggregate
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-001-recall-contract`
+- PR: [#34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)
 - 근거: ADR-003, ADR-010, ADR-014
 - 선행 작업: FND-004, PRJ-008
 - 결과물: MemoryRecall schema, read transaction과 scope TEMP aggregate
@@ -44,7 +45,7 @@
 - [x] aggregate source의 column을 명시적으로 alias해 SQLite 이름 충돌 가능성을 제거한다.
 - [x] 이후 진입·이동·수집·상충·detail이 이 TEMP 유효 집합만 사용한다.
 
-검토 준비 증거:
+완료 증거:
 
 - [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md)에 FND-004 schema/type/runtime
   단일 source, request-scoped typed read port, STO-002 reader protocol과 PRJ-008 aggregate 재사용
@@ -63,8 +64,10 @@
   확인했다.
 - term/surface/FTS/overview/BFS/ranking/Answer assembly/MCP wiring과 성능은 구현하지 않았고
   RCL-002~009·MCP-003에 남겼다. 따라서 S09/S10/S19 public golden은 아직 `planned`다.
-- 완료 체크는 구현·로컬 검증 기준으로 닫았지만 독립 review, PR과 `main` 병합 전까지
-  작업 상태와 Phase/master 완료 수는 `IN_PROGRESS`, 0/9를 유지한다.
+- 독립 review에서 발견한 합법적 4-hop 경로, MCP Standard Schema 기본값, 닫힌 reader의
+  factory 강참조·close race와 advertised trim 경계 결함을 각각 RED로 재현해 별도 fix로
+  닫았고, 최종 재검토에서 미해결 finding이 없음을 확인했다. [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34)가
+  이 상태·증거 commit을 포함해 `main`에 병합되면 RCL-001의 영속적인 완료 근거가 된다.
 
 ### RCL-002 — query term과 surface seed
 

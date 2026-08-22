@@ -52,7 +52,7 @@
 | `E-PROJECTION-DISPATCH` | [PR #29](https://github.com/yeonjaekim99/knowledge-graph/pull/29), [dispatcher 구현 결정](../implementation/prj-009-projection-dispatcher.md), [domain test](../../test/unit/domain/prj-009-projection-dispatcher.test.mjs), [SQLite test](../../test/integration/projection/prj-009-atomic-dispatcher.test.mjs) | PRJ-004~008 canonical reducer 조립, 안전 suffix 증분·과거 변경 replay 분기, journal/FTS/projection/meta 단일 transaction, commit gate와 read-your-writes | 전체 prefix/metamorphic/process crash parity는 `E-PROJECTION-PARITY`; public record/revise/recall 연결과 10만 규모는 후속 owner |
 | `E-PROJECTION-PARITY` | [PR #30](https://github.com/yeonjaekim99/knowledge-graph/pull/30), [parity 구현 결정](../implementation/prj-010-prefix-metamorphic-crash-parity.md), [S01~S24 prefix test](../../test/integration/projection/prj-010-scenario-prefix-parity.test.mjs), [S23 metamorphic test](../../test/integration/projection/s23-seeded-state-machine.test.mjs), [S24 crash test](../../test/e2e/process/s24-crash-reopen.test.mjs) | journal로 환원 가능한 S01~S24의 98 operation prefix, 8×36 seeded prefix, batch/scope/time/undo metamorphic 관계와 실제 child `SIGKILL` 8지점의 production/full replay byte parity·불변식 | S01~S22의 public record/revise/recall vertical target, 실제 MCP mixed load와 10만 규모 성능은 REC/REV/RCL/REL owner |
 | `E-RECORD-CONTRACT` | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [record 계약 결정](../implementation/rec-001-record-contract.md), [runtime contract test](../../test/contract/mcp/rec-001-record-schema.test.mjs), [type fixture](../../test/unit/application/rec-001-record-contract.type-test.ts) | frozen Record/ClaimDraft/Result source와 추론 DTO, trim 후 Unicode bounds, closed XOR·재해석 pair, schema/rejected 경계, result index coverage와 accepted status precedence | 비밀 탐지·마스킹, entity 해석·dedupe, journal/project application path와 실제 MCP wiring은 REC-002~008/MCP owner |
-| `E-RECALL-FOUNDATION` | [RCL-001 구현 결정](../implementation/rcl-001-recall-contract-snapshot.md), [contract test](../../test/contract/mcp/rcl-001-memory-recall-contract.test.mjs), [application test](../../test/unit/application/rcl-001-recall-snapshot-service.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-001-recall-snapshot.test.mjs) | 실제 MemoryRecall/RecallResult schema·type·SDK validation, trusted scope/fixed-now capture, 한 readonly WAL transaction의 scope TEMP aggregate와 explicit alias, cleanup·손상 방어·영구 state 불변 | term/surface/FTS/overview/BFS/ranking/Answer assembly와 public recall golden·MCP wiring·성능은 RCL-002~009/MCP owner |
+| `E-RECALL-FOUNDATION` | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [RCL-001 구현 결정](../implementation/rcl-001-recall-contract-snapshot.md), [contract test](../../test/contract/mcp/rcl-001-memory-recall-contract.test.mjs), [application test](../../test/unit/application/rcl-001-recall-snapshot-service.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-001-recall-snapshot.test.mjs) | 실제 MemoryRecall/RecallResult schema·type·SDK validation, trusted scope/fixed-now capture, 한 readonly WAL transaction의 scope TEMP aggregate와 explicit alias, cleanup·손상 방어·영구 state 불변 | term/surface/FTS/overview/BFS/ranking/Answer assembly와 public recall golden·MCP wiring·성능은 RCL-002~009/MCP owner |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -150,15 +150,14 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 25/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
-  `PRJ-001`~`010`과 `REC-001`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 26/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
+  `PRJ-001`~`010`, `REC-001`과 `RCL-001`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. Phase 04의 `REC-001`은
-  완료됐고 선행 조건이 해제된 `REC-002`, `REC-004`, `RCL-001`은 owner와 격리 branch에서
-  진행 중이다.
+- Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`과 `RCL-001`은
+  완료됐고 선행 조건이 해제된 `REC-002`와 `REC-004`는 owner와 격리 branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.
