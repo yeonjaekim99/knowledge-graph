@@ -59,9 +59,11 @@ export {
   preScanProjectionEvents,
 } from "./projection-event-pre-scan.js";
 export type {
+  EffectiveAliasEvent,
   EffectiveClaimRetractionEvent,
   EffectiveDecisionEvent,
   EffectiveEventRetractionEvent,
+  EffectiveMergeEvent,
   EffectiveProjectionEvent,
   EffectiveStatementEvent,
   PreScannedStatement,
@@ -98,6 +100,15 @@ export type {
   ClaimSupportStateProjection,
   StructuralClaimSupportProjectionRow,
 } from "./projection-claims.js";
+export {
+  ProjectionDecisionError,
+  projectMergeAliasState,
+  reduceMergeAliasState,
+} from "./projection-decisions.js";
+export type {
+  MergeAliasStateProjection,
+  ProjectionDecisionErrorCode,
+} from "./projection-decisions.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,
