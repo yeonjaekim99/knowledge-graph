@@ -55,6 +55,7 @@
     "test:rcl-002": "pnpm run build && node --test test/unit/domain/rcl-002-query-surface.test.mjs test/unit/application/rcl-002-query-surface.test.mjs test/integration/sqlite/rcl-002-query-surface.test.mjs",
     "test:rcl-003": "pnpm run build && node --test test/unit/application/rcl-003-fts-query.test.mjs test/integration/sqlite/rcl-003-fts-fallback.test.mjs",
     "test:rec-004": "pnpm run build && node --test test/integration/sqlite/rec-004-write-entity-resolver.test.mjs test/integration/sqlite/rec-004-write-entity-finalization.test.mjs",
+    "test:rcl-004": "pnpm run build && node --test test/unit/application/rcl-004-overview-candidates.test.mjs test/integration/sqlite/rcl-004-overview-candidates.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "typecheck:rec-001": "tsc --noEmit -p tsconfig.rec-001.json",
@@ -62,6 +63,7 @@
     "typecheck:rec-003": "tsc --noEmit -p tsconfig.rec-003.json",
     "typecheck:rcl-002": "tsc --noEmit -p tsconfig.rcl-002.json",
     "typecheck:rcl-003": "tsc --noEmit -p tsconfig.rcl-003.json",
+    "typecheck:rcl-004": "tsc --noEmit -p tsconfig.rcl-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
     "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002",
     "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003",
@@ -93,6 +95,7 @@
     "verify:rcl-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rcl-002 && pnpm run test:rcl-002",
     "verify:rcl-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rcl-003 && pnpm run test:rcl-003",
     "verify:rec-004": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && node --test test/unit/domain/prj-005-entity-surface-kind.test.mjs test/unit/domain/prj-009-projection-dispatcher.test.mjs test/integration/projection/prj-009-atomic-dispatcher.test.mjs test/integration/sqlite/rec-004-write-entity-resolver.test.mjs test/integration/sqlite/rec-004-write-entity-finalization.test.mjs",
+    "verify:rcl-004": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rcl-004 && pnpm run test:rcl-004",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
