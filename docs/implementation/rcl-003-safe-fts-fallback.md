@@ -192,8 +192,18 @@ graph seq 1 뒤의 suppressed raw 20개와 dead parsed 20개, `a\u0301b`/`㍿`, 
 측정하며 exact descriptor snapshot으로 외부 payload를 닫아 focused 14/14를 통과했다. 기존
 eligible raw 21개 fixture도 그대로 20개와 정확한 truncation을 반환해 순서·절단 회귀가 없다.
 
-최종 local gate는 architecture/type/build, RCL-003 14/14, RCL-001 10/10, STO-002 7/7,
-STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 40개 파일 282/282, PRJ-010 독립
+후속 독립 재리뷰는 검사 중 던져진 `RecallReadError`를 신뢰하면 Proxy가 같은 타입의 객체에
+message/cause와 임의 필드를 붙여 redaction 경계를 통과시킬 수 있고, same-scope live·unexpired
+aggregate support의 stored draft index가 범위를 벗어나면 eligibility에서 사라져 손상이 빈 검색
+성공으로 보이는 문제를 확인했다. test-only `595d283`은 request와 adapter envelope/row/array의
+typed-error smuggling 및 실제 file SQLite invalid-index와 dead·expired·cross-scope 대조군을 추가해
+focused 14/17 RED를 만들었다. fix `aa633b4`는 검사 예외의 타입과 identity를 전혀 신뢰하지 않고
+각 경계의 새 고정 오류를 만들며, 범위를 벗어난 aggregate-backed support만 validation candidate로
+남겼다. valid graph duplicate는 계속 범위 안의 support만 인정하므로 invalid history가 raw를
+정상 graph처럼 억제하지 않고, 해당 malformed statement가 후보이면 전체 호출은 fail closed한다.
+
+최종 local gate는 architecture/type/build, RCL-003 17/17, RCL-001 10/10, STO-002 7/7,
+STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 40개 파일 285/285, PRJ-010 독립
 reference parity는 39/39, behavior spike는 25/25다. roadmap validator는 phase 9,
 active task 73, historical task 74, retired 1, evidence 67/67, ADR 17/17과 scenario 24/24를
 통과했고 production dependency 알려진 취약점은 0개였다.

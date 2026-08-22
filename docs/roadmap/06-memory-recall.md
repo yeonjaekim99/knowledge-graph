@@ -140,13 +140,15 @@
 - rebased test-only `4b33cb7`에서 기존 build 성공 뒤 missing production module로 새 두 test
   module이 0/2 RED였고, product `f707c86`·hardening `7d088a6`·`fb2aef5`·`3a023f2`·`e1bebb1`
   뒤 첫 focused target이 10/10 GREEN이었다. 독립 review RED `f8a186f`의 eligible cap,
-  exact phrase code-point와 Proxy/accessor 경계는 fix `ca21753` 뒤 14/14 GREEN이다.
+  exact phrase code-point와 Proxy/accessor 경계는 fix `ca21753` 뒤 14/14 GREEN이다. 후속 review
+  RED `595d283`의 typed-error 객체 smuggling과 aggregate-backed invalid draft index는 fix
+  `aa633b4` 뒤 17/17 GREEN이다.
 - operator/quote/control/Korean/emoji와 NFKC-equivalent 별도 phrase, 실제 bound phrase 3자 경계,
   scope·expiry·retraction·supersede, entity/literal endpoint, raw duplicate와 저장 원문 공백
   보존, suppressed raw/dead parsed의 cap 비소비, eligible 21개 절단, 반복 결정성, 고정
-  snapshot, persistent dump/data_version와 payload-redacted corruption을 실제 file SQLite에서
-  검증했다.
-- 전체 fast 40개 파일 282/282, PRJ-010 39/39, behavior spike 25/25, roadmap evidence
+  snapshot, persistent dump/data_version, fresh typed error와 invalid-index fail-closed 및
+  payload-redacted corruption을 실제 file SQLite에서 검증했다.
+- 전체 fast 40개 파일 285/285, PRJ-010 39/39, behavior spike 25/25, roadmap evidence
   67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - 최종 BFS/ranking/Answer/MCP와 overview는 포함하지 않았고 S11/S22 public manifest도
   `planned`로 유지한다. root reviewer가 PR·merge 증거를 확인할 때까지 상태·체크·진행률은

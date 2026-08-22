@@ -33,4 +33,6 @@ combining/compatibility code-point 경계, entity/literal
 endpoint seed와 reached pin, raw TTL/state와 죽은 parsed claim 비부활, 동일 raw graph duplicate,
 NFKC-equivalent 별도 phrase와 정확한 matched term, suppressed raw/dead parsed cap 비소비, 저장
 원문의 앞뒤 공백 보존, 반복 order, WAL snapshot, 영구 dump/data_version 및 Proxy/accessor를
-포함한 payload-redacted corruption을 포함한다.
+포함한 payload-redacted corruption을 포함한다. same-scope live·unexpired aggregate support의
+invalid draft index는 fail closed하고 dead·expired·cross-scope 대조군은 정상적으로 제외하며,
+typed Proxy error identity와 임의 payload도 adapter 밖으로 전달하지 않는다.
