@@ -138,6 +138,7 @@ test("scoped surface candidates resolve through redirect chains with determinist
     assert.deepEqual(Object.keys(source), [
       "listValidClaimAggregates",
       "resolveSurfaceSeeds",
+      "searchFtsCandidates",
     ]);
     assert.equal("query" in source, false);
     assert.equal("sql" in source, false);
