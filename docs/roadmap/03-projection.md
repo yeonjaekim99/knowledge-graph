@@ -19,7 +19,7 @@
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
 | PRJ-003 | occurrence ID와 redirect registry | `DONE` | `log0629` | PRJ-001, PRJ-002 | [PR #23](https://github.com/yeonjaekim99/knowledge-graph/pull/23) |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `DONE` | `log0629` | PRJ-001, PRJ-003 | [PR #24](https://github.com/yeonjaekim99/knowledge-graph/pull/24) |
-| PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
+| PRJ-005 | entity·surface·kind 투영 | `IN_PROGRESS` | `log0629` | PRJ-002~004 | — |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
 | PRJ-007 | merge·alias와 claim rewrite | `TODO` | `unassigned` | PRJ-005, PRJ-006 | — |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `TODO` | `unassigned` | PRJ-004, PRJ-006 | — |
@@ -160,8 +160,9 @@
 
 ### PRJ-005 — entity·surface·kind 투영
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `prj-005-entity-surface-kind`
 - 근거: ADR-006, ADR-008
 - 선행 작업: PRJ-002~004
 - 결과물: entity resolver와 surface/kind reducer
