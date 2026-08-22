@@ -129,6 +129,10 @@ function pathFor(
 
   let hops = Math.max(0, chain.length - 1);
   if (state.claim.objectId !== null) {
+    const anchor = chain[chain.length - 1];
+    if (anchor === undefined || anchor.entityId !== state.anchorId) {
+      return invalidState();
+    }
     let oppositeId: string;
     if (state.claim.subjectId === state.anchorId) {
       oppositeId = state.claim.objectId;
@@ -137,7 +141,10 @@ function pathFor(
     } else {
       return invalidState();
     }
-    if (!chain.some(({ entityId }) => entityId === oppositeId)) {
+    if (
+      oppositeId !== state.anchorId &&
+      anchor.viaClaimId !== state.claim.claimId
+    ) {
       pathParts.push(entityNameFor(state.claim, oppositeId));
       hops += 1;
     }
