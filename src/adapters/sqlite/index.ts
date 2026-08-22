@@ -65,6 +65,8 @@ export { RECALL_OVERVIEW_SQL_SOURCE } from "./recall-overview-sql.js";
 export type { RecallOverviewSqlSource } from "./recall-overview-sql.js";
 export { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
 export type { RecallSnapshotSqlSource } from "./recall-snapshot-sql.js";
+export { RECALL_TRAVERSAL_SQL_SOURCE } from "./recall-traversal-sql.js";
+export type { RecallTraversalSqlSource } from "./recall-traversal-sql.js";
 
 export {
   SqliteProjectionDispatcherError,

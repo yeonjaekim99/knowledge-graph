@@ -1,5 +1,9 @@
 export { EmptyJournalBatchError, JournalWriteService } from "./write-service.js";
 export {
+  RecallGraphTraversalError,
+  traverseRecallGraph,
+} from "./recall-graph-traversal.js";
+export {
   memoryRecallInputDefinition,
   recallResultDefinition,
 } from "./memory-recall-contract.js";

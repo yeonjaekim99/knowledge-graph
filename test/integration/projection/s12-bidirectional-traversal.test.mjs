@@ -79,6 +79,7 @@ test("S12 TEMP traversal moves both directions, collects literals, excludes scop
     assert.deepEqual(Object.keys(source), [
       "listValidClaimAggregates",
       "resolveSurfaceSeeds",
+      "searchFtsCandidates",
       "readTraversalNeighborhood",
     ]);
     const first = await traverseRecallGraph(source, {

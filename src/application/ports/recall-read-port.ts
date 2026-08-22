@@ -3,6 +3,9 @@ import type {
   RecallQuerySurfaceSelection,
   RecallQueryTerm,
 } from "../../domain/recall-query-surface.js";
+import type {
+  RecallTraversalNeighborhood,
+} from "../../domain/recall-graph-traversal.js";
 
 const SCOPE_KEY_PATTERN =
   /^u:[A-Za-z0-9._-]{1,64}\/p:[A-Za-z0-9._-]{1,64}$/u;
@@ -14,7 +17,8 @@ export type RecallReadErrorCode =
   | "INVALID_RECALL_FTS_REQUEST"
   | "INVALID_RECALL_FTS_CANDIDATE"
   | "INVALID_RECALL_OVERVIEW_REQUEST"
-  | "INVALID_RECALL_OVERVIEW_CANDIDATE";
+  | "INVALID_RECALL_OVERVIEW_CANDIDATE"
+  | "INVALID_RECALL_TRAVERSAL_STATE";
 
 const RECALL_READ_ERROR_MESSAGES: Readonly<
   Record<RecallReadErrorCode, string>
@@ -33,6 +37,8 @@ const RECALL_READ_ERROR_MESSAGES: Readonly<
     "recall overview requires one validated result limit",
   INVALID_RECALL_OVERVIEW_CANDIDATE:
     "recall overview candidate state does not satisfy the read contract",
+  INVALID_RECALL_TRAVERSAL_STATE:
+    "recall traversal state does not satisfy the read contract",
 });
 
 export class RecallReadError extends Error {
@@ -164,6 +170,9 @@ export interface RecallValidClaimSource {
   resolveSurfaceSeeds(
     terms: readonly RecallQueryTerm[],
   ): Promise<RecallQuerySurfaceSelection>;
+  readTraversalNeighborhood(
+    entityId: string,
+  ): Promise<RecallTraversalNeighborhood>;
 }
 
 export interface RecallFtsCandidateSource {
