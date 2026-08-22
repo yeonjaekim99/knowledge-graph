@@ -242,6 +242,30 @@
 - [ ] rejected/중복 입력이 stored parsed index와 후보 ID 위치를 소비하지 않는다.
 - [ ] subject/object occurrence와 response input index를 fixture로 대조한다.
 
+진행 증거 (PR/main 전이므로 상태와 체크는 `IN_PROGRESS`로 유지):
+
+- [REC-005 구현 결정](../implementation/rec-005-record-draft-plan.md)은 REC-003 승인/rejection과
+  REC-004 canonical resolution을 request-local identity로 조합하고, first survivor만 stored
+  draft가 되는 두 단계 selection/finalization seam을 고정한다.
+- tests-only RED `a2e58eb`은 application export 부재로 0/1 실패했다. GREEN `9cdfa39`과 gate
+  `1780b33` 뒤 focused unit·file-backed SQLite target은 14/14, 관련 PRJ-003/005/006과
+  REC-003/004를 포함한 `pnpm verify:rec-005`는 architecture/type/build와 116/116을 통과했다.
+- 최신 `origin/main` `491f3a3`에 semantic rebase해 RCL-005 완료와 RCL-006 `IN_PROGRESS`
+  planning 증거를 보존했다. 공유 export·package/test 문서에는 RCL-005 reader facet,
+  REC-004 writer/finalization과 REC-005 plan이 함께 남는다. RCL-006 planning-only delta는
+  source·test를 바꾸지 않았고, 전체 fast suite 53 files·423/423, PRJ-010 39/39,
+  RCL-005 21/21, RCL-004 15/15, REC-004 70/70, 독립 behavior spike 25/25를 통과했다.
+  roadmap active 73·historical 74·evidence 67/67·ADR 17/17·scenario 24/24·link 425와
+  production dependency audit 취약점 0개도 확인했다. 동등한 REC-005 내용의 rebase 전
+  HEAD `7cb7871` 독립 review는 HIGH/MEDIUM/LOW 0건이었지만 최신 main 통합 뒤 PR/main
+  증거가 아직 없으므로 완료 체크와 진행률은 올리지 않는다.
+- exact survivor body와 DB-global seq는 REC-004 finalizer가 확인하고, 그 뒤에만 compact
+  `c{seq}.{storedIndex}`와 subject/object occurrence candidate를 만든다. duplicate는 첫 survivor의
+  stored index/candidate를 공유하고 survivor/occurrence cursor를 늘리지 않는다.
+- 위 claim ID는 아직 내부 candidate이며 journal append, 기존 claim redirect와 최종
+  created/reinforced/superseded_previous 판정은 REC-006에 남는다. 이 branch에는 성공 event,
+  projection publish 또는 commit surface가 없다.
+
 ### REC-006 — statement append·project·결과 원자성
 
 - 상태: `TODO`

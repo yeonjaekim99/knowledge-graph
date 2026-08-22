@@ -39,6 +39,7 @@
 | `pnpm test:prj-010` | S01~S24 projection prefix, S23 288-prefix metamorphic, S24 process crash |
 | `pnpm test:rec-001` | record input/draft/result schema, Unicode scalar·trim bounds와 result index 계약 |
 | `pnpm test:rec-004` | writer transaction의 entity 해석·ambiguity·global seq·survivor finalization·append parity |
+| `pnpm test:rec-005` | record 승인 원순서, canonical claim dedupe와 input/stored/occurrence mapping |
 | `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
 | `pnpm test:rcl-001` | recall input/result 계약, request snapshot과 scope/fixed-now TEMP aggregate |
 | `pnpm test:rec-002` | versioned secret signature·entropy·allowlist와 safe positional result |
@@ -53,6 +54,7 @@
 | `pnpm test:rcl-005` | bounded 양방향 BFS·literal incident·path/hops와 S12/S13 file SQLite fixture |
 | `pnpm typecheck:rcl-005` | RCL-005 typed traversal input/source/result와 overview depth 경계 compile fixture |
 | `pnpm verify:rcl-005` | RCL-005 architecture/type/build와 focused target |
+| `pnpm verify:rec-005` | architecture/type/build, PRJ-003/005/006·REC-003/004 회귀와 REC-005 target |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -209,3 +211,12 @@ canonical name과 동일한 81-code-point surface는 truncation 전에 raw equal
 한 번만 표시한다. 따라서 manifest 상태가 `implemented`다. 이 상태는 RCL-005 traversal seam의
 production target이 존재한다는 뜻이며 ranking·public Answer/note와 완성 recall vertical은
 RCL-006~008, 성능은 RCL-009/REL-003에 남는다.
+
+REC-005는 REC-003의 승인/rejection snapshot과 REC-004의 canonical subject/object 해석을
+request-local claim identity로 조합한다. 첫 identity만 저장 survivor가 되고 뒤 중복은 첫
+stored index와 내부 claim candidate를 공유하며, secret/ambiguity rejection과 duplicate는
+stored parsed 또는 entity occurrence 위치를 소비하지 않는다. SQLite fixture는 survivor-only
+statement body를 REC-004 finalizer에 묶은 뒤 compact candidate/canonical mapping을 만들고도
+journal·projection을 전혀 commit하지 않음을 검증한다. 실제 과거 claim redirect,
+created/reinforced/superseded_previous 판정과 append/project 결과는 REC-006이 소유하므로 S03의
+vertical manifest target은 계속 `planned`다.
