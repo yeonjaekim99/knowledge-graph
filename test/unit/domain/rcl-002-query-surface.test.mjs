@@ -86,6 +86,10 @@ test("explicit terms take precedence, preserve input order, reuse normalize_v1, 
     { text: "Node.js", surfaceNorm: "node.js" },
   ]);
   assert.equal(result.some((item) => item.text.includes("query")), false);
+  assert.deepEqual(
+    extractRecallQueryTerms({ query: "query is still ignored", terms: [] }),
+    [],
+  );
   assertDeepFrozen(result);
 });
 
@@ -149,7 +153,7 @@ test("surface rows are canonicalized through merge and ID redirect chains before
       idRedirects: [
         redirect("e1.0", "e2.0"),
         redirect("e2.0", "e3.0"),
-        redirect("e11.0", "e10.0"),
+        redirect("e11.0", "e10.0", "rule_change"),
       ],
     }),
   );
@@ -191,7 +195,7 @@ test("surface rows are canonicalized through merge and ID redirect chains before
       idRedirects: [
         redirect("e1.0", "e2.0"),
         redirect("e2.0", "e3.0"),
-        redirect("e11.0", "e10.0"),
+        redirect("e11.0", "e10.0", "rule_change"),
       ],
     }))),
     JSON.stringify(result),

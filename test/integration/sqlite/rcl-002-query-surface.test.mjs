@@ -54,7 +54,7 @@ function entityCommand(id, scopeKey, mergedInto = null) {
   return {
     kind: "run",
     sql: "INSERT INTO entities(id,scope_key,name,normal_name,kind,merged_into,origin_seq) VALUES (?,?,?,?,NULL,?,?)",
-    parameters: [id, scopeKey, `name-${id}`, `normal-${id}`, mergedInto, Number(id.slice(1).split(".")[0])],
+    parameters: [id, scopeKey, `name-${id}`, `name${id}`, mergedInto, Number(id.slice(1).split(".")[0])],
   };
 }
 
@@ -235,7 +235,7 @@ test("fifty-one canonical matches produce fifty ordered seeds plus a truncation 
 });
 
 test("corrupt redirect cycles fail with a payload-redacted typed read error and clean snapshot state", async (t) => {
-  const { factory } = await fixture();
+  const { databasePath, factory } = await fixture();
   t.after(() => factory.close());
   const secret = "secret-cycle-surface";
   await factory.enqueueWriteTransaction([
@@ -255,6 +255,10 @@ test("corrupt redirect cycles fail with a payload-redacted typed read error and 
     redirectCommand("e2.0", "e1.0"),
     surfaceCommand(SCOPE, "secretcyclesurface", "e1.0"),
   ]);
+  const observer = new Database(databasePath, { readonly: true, fileMustExist: true });
+  t.after(() => observer.close());
+  const beforeDump = permanentDump(observer);
+  const beforeVersion = observer.pragma("data_version", { simple: true });
   const service = new RecallSnapshotService(runtime(), createSqliteRecallReadPort(factory));
 
   await assert.rejects(
@@ -273,4 +277,6 @@ test("corrupt redirect cycles fail with a payload-redacted typed read error and 
   const cleanNextCall = await service.withSnapshot((source) =>
     resolveRecallQuerySurface(source, { query: "unrelated" }));
   assert.deepEqual(cleanNextCall.seeds, []);
+  assert.equal(permanentDump(observer), beforeDump);
+  assert.equal(observer.pragma("data_version", { simple: true }), beforeVersion);
 });

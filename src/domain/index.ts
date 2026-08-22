@@ -31,6 +31,20 @@ export {
   normalizeV1,
 } from "./projection-rules.js";
 export {
+  RecallQuerySurfaceError,
+  extractRecallQueryTerms,
+  resolveRecallSurfaceSeeds,
+} from "./recall-query-surface.js";
+export type {
+  RecallQuerySurfaceErrorCode,
+  RecallQuerySurfaceSelection,
+  RecallQueryTerm,
+  RecallSurfaceCandidateState,
+  RecallSurfaceEntityState,
+  RecallSurfaceSeed,
+  RecallSurfaceSeedState,
+} from "./recall-query-surface.js";
+export {
   ProjectionIdentifierError,
   assertCanonicalIdentifier,
   chooseCanonicalIdentifier,

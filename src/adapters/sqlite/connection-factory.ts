@@ -22,6 +22,7 @@ import {
   type SqliteReadResult,
   type SqliteRecallAggregateRowsResult,
   type SqliteRecallSnapshotBeginResult,
+  type SqliteRecallSurfaceStateRowsResult,
   type SqliteTransactionCommand,
   type SqliteWorkerResponse,
   type SqliteWorkerRole,
@@ -112,6 +113,22 @@ function snapshotReadQuery(value: unknown): SqliteReadQuery {
   return command;
 }
 
+function snapshotRecallSurfaceNorms(value: unknown): readonly string[] {
+  if (!Array.isArray(value) || value.length > 10) {
+    return invalidCommand("SQLITE_QUERY_FAILED");
+  }
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const item of value) {
+    if (typeof item !== "string" || item.length === 0 || seen.has(item)) {
+      return invalidCommand("SQLITE_QUERY_FAILED");
+    }
+    seen.add(item);
+    result.push(item);
+  }
+  return Object.freeze(result);
+}
+
 class SqliteWorkerClient {
   readonly #worker: Worker;
   readonly #pending: Map<number, PendingWorkerRequest> = new Map();
@@ -195,6 +212,17 @@ class SqliteWorkerClient {
       type: "recall-snapshot-read",
       snapshotId,
     }) as Promise<SqliteRecallAggregateRowsResult>;
+  }
+
+  public readRecallSurfaceState(
+    snapshotId: number,
+    surfaceNorms: readonly string[],
+  ): Promise<SqliteRecallSurfaceStateRowsResult> {
+    return this.#request({
+      type: "recall-snapshot-surface",
+      snapshotId,
+      surfaceNorms: snapshotRecallSurfaceNorms(surfaceNorms),
+    }) as Promise<SqliteRecallSurfaceStateRowsResult>;
   }
 
   public endRecallSnapshot(
@@ -335,6 +363,11 @@ class SqliteWorkerClient {
       | {
           readonly type: "recall-snapshot-read";
           readonly snapshotId: number;
+        }
+      | {
+          readonly type: "recall-snapshot-surface";
+          readonly snapshotId: number;
+          readonly surfaceNorms: readonly string[];
         }
       | {
           readonly type: "recall-snapshot-end";
@@ -483,6 +516,15 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
         );
         return result.rows;
       },
+      readRawSurfaceState: async (surfaceNorms: readonly string[]) => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+        return this.#client.readRecallSurfaceState(
+          started.snapshotId,
+          surfaceNorms,
+        );
+      },
     });
 
     try {
@@ -508,6 +550,9 @@ export interface SqliteRecallSnapshotSource {
   listRawAggregateRows(): Promise<
     readonly Readonly<Record<string, unknown>>[]
   >;
+  readRawSurfaceState(
+    surfaceNorms: readonly string[],
+  ): Promise<SqliteRecallSurfaceStateRowsResult>;
 }
 
 export type SqliteRecallSnapshotOperation<Result> = (
