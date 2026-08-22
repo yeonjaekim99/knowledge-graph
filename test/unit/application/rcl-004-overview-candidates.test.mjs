@@ -118,7 +118,7 @@ test("overview request validation replaces accessor and Proxy failures with a fr
 });
 
 test("overview capability sync throws, rejections, and hostile thenables become fresh fixed errors", async () => {
-  for (const mode of ["sync", "reject", "then-getter"]) {
+  for (const mode of ["sync", "reject", "then-getter", "then-reject"]) {
     for (const kind of ["typed", "ordinary"]) {
       const marker = `do-not-echo-rcl-004-application-${mode}-${kind}`;
       const injected = payloadError(
@@ -134,12 +134,19 @@ test("overview capability sync throws, rejections, and hostile thenables become 
           if (mode === "reject") {
             return Promise.reject(injected);
           }
-          return Object.create(null, {
-            then: {
-              enumerable: true,
-              get() {
-                throw injected;
+          if (mode === "then-getter") {
+            return Object.create(null, {
+              then: {
+                enumerable: true,
+                get() {
+                  throw injected;
+                },
               },
+            });
+          }
+          return Object.freeze({
+            then(_resolve, reject) {
+              reject(injected);
             },
           });
         },

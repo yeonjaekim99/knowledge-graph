@@ -25,6 +25,26 @@ function invalidOverviewRequest(): never {
   throw new RecallReadError("INVALID_RECALL_OVERVIEW_REQUEST");
 }
 
+function sanitizedOverviewFailure(value: unknown): never {
+  let candidateFailure = false;
+  try {
+    if (value instanceof RecallReadError) {
+      const descriptor = Object.getOwnPropertyDescriptor(value, "code");
+      candidateFailure =
+        descriptor !== undefined &&
+        "value" in descriptor &&
+        descriptor.value === "INVALID_RECALL_OVERVIEW_CANDIDATE";
+    }
+  } catch {
+    candidateFailure = false;
+  }
+  throw new RecallReadError(
+    candidateFailure
+      ? "INVALID_RECALL_OVERVIEW_CANDIDATE"
+      : "INVALID_RECALL_OVERVIEW_REQUEST",
+  );
+}
+
 function snapshotOverviewMethod(
   value: unknown,
 ): RecallOverviewCandidateSource["selectOverviewCandidates"] {
@@ -62,5 +82,11 @@ export async function selectRecallOverviewCandidates(
     return invalidOverviewRequest();
   }
   const method = snapshotOverviewMethod(source);
-  return Reflect.apply(method, source, [limit]) as Promise<RecallOverviewCandidateResult>;
+  try {
+    return await (Reflect.apply(method, source, [limit]) as PromiseLike<
+      RecallOverviewCandidateResult
+    >);
+  } catch (error: unknown) {
+    return sanitizedOverviewFailure(error);
+  }
 }

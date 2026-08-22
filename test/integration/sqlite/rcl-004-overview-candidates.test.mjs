@@ -671,7 +671,7 @@ test("overview envelope, array, row, accessor, and typed-error traps are payload
 test("overview snapshot sync throws, rejections, and hostile thenables become fresh fixed adapter errors", async (t) => {
   const { factory } = await fixture();
   t.after(() => factory.close());
-  for (const mode of ["sync", "reject", "then-getter"]) {
+  for (const mode of ["sync", "reject", "then-getter", "then-reject"]) {
     for (const kind of ["typed", "ordinary"]) {
       const marker = `do-not-echo-rcl-004-adapter-${mode}-${kind}`;
       const injected = payloadAdapterError(kind, marker);
@@ -682,12 +682,19 @@ test("overview snapshot sync throws, rejections, and hostile thenables become fr
         if (mode === "reject") {
           return Promise.reject(injected);
         }
-        return Object.create(null, {
-          then: {
-            enumerable: true,
-            get() {
-              throw injected;
+        if (mode === "then-getter") {
+          return Object.create(null, {
+            then: {
+              enumerable: true,
+              get() {
+                throw injected;
+              },
             },
+          });
+        }
+        return Object.freeze({
+          then(_resolve, reject) {
+            reject(injected);
           },
         });
       };

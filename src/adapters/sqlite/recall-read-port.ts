@@ -1257,10 +1257,10 @@ class SqliteRecallReadPort implements RecallReadPort {
               ) {
                 return invalidOverviewRequest();
               }
-              const rawResult = await snapshot.readRawOverviewState(
-                suppliedLimit,
-              );
               try {
+                const rawResult = await snapshot.readRawOverviewState(
+                  suppliedLimit,
+                );
                 return assembleOverviewCandidates(
                   rawResult,
                   context,
