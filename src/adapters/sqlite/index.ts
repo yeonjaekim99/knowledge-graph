@@ -46,6 +46,9 @@ export { runBundledSqliteMigrations } from "./bundled-migrations.js";
 
 export { CLAIM_AGGREGATE_SQL_SOURCE } from "./claim-aggregate.js";
 export type { ClaimAggregateSqlSource } from "./claim-aggregate.js";
+export { createSqliteRecallReadPort } from "./recall-read-port.js";
+export { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
+export type { RecallSnapshotSqlSource } from "./recall-snapshot-sql.js";
 
 export {
   SqliteProjectionDispatcherError,

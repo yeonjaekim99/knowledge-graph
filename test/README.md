@@ -39,6 +39,7 @@
 | `pnpm test:prj-010` | S01~S24 projection prefix, S23 288-prefix metamorphic, S24 process crash |
 | `pnpm test:rec-001` | record input/draft/result schema, Unicode bounds와 result index 계약 |
 | `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
+| `pnpm test:rcl-001` | recall input/result 계약, request snapshot과 scope/fixed-now TEMP aggregate |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -113,3 +114,9 @@ REC-001은 FND-004의 frozen Draft 2020-12 source와 SDK validator를 재사용�
 독립 ClaimDraft와 typed result를 검증한다. contract fixture는 trim 후 Unicode code-point
 경계, 목적어 XOR, 재해석 pair, trusted metadata 금지와 input/result index coverage를
 검증하며 secret 탐지, DB 해석과 journal write 완료를 주장하지 않는다.
+
+RCL-001은 실제 MCP SDK validator가 search/overview 입력과 RecallResult 닫힌 union을 같은
+Draft 2020-12 source에서 검증하는 contract fixture, trusted runtime snapshot을 정확히 한 번
+소비하는 application fixture, 실제 WAL reader의 deferred transaction·TEMP aggregate를 검증하는
+SQLite fixture를 추가했다. term/FTS/overview/traversal/ranking/Answer 조합은 후속 RCL 작업의
+소유이므로 S09/S10/S19 manifest는 아직 `planned`다.

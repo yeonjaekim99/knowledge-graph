@@ -139,6 +139,14 @@
     `superseded_previous > created > reinforced` 우선순위를 검증하되 detector/entity/dedupe,
     journal/project와 MCP wiring은 REC-002~008/MCP owner에 남겼다. 독립 peer review의 package
     root Low finding도 별도 fix commit으로 닫고 전체 243/243을 재검증한 [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32)를 완료 증거로 고정했다.
+30. RCL-001은 search/overview와 RecallResult의 닫힌 Draft 2020-12 schema를 실제 SDK validator와
+    inferred type에 연결하고 trusted scope/evaluationNow를 한 번 캡처하는 typed application
+    read capability를 만들었다. STO-002 reader worker의 한 `BEGIN DEFERRED` 안에서 PRJ-008 source를
+    scope/fixed-now TEMP aggregate로 materialize하고 모든 column을 명시적으로 alias했다. 리뷰에서
+    concurrent WAL commit 중 claims join도 이전 snapshot을 유지하는 fixture, callback 실패 cleanup,
+    손상 ID fail-closed, trimmed Unicode 4,096자와 hops 상한, journal/projection/FTS dump·외부
+    data_version 불변을 추가했다. term/FTS, traversal/ranking/Answer와 S09/S10/S19 public
+    golden은 RCL-002~008에 남겼다.
 
 ## 의도적으로 남은 상태
 
@@ -166,9 +174,10 @@
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
 | STO-001~008·PRJ-001~010·REC-001 로컬 gate | PASS — REC-001 11/11, FND-004 7/7, architecture/type/build와 전체 Node test 243/243 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
+| RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 5/5, PRJ-008 8/8, PRJ-010 39/39와 architecture/type/build; 최신 main 통합 회귀는 PR review에서 재실행 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — record schema/type/private validator·contract/type fixture와 문서만 추가, detector·entity resolution·journal/application service·MCP catalog/handler·자동 CI 변경 없음 |
+| 변경 범위 | PASS — REC-001 record 계약과 RCL-001 recall 계약·typed read port·reader TEMP transaction을 병존시키고, term/FTS/BFS/ranking/Answer·MCP catalog·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사
 

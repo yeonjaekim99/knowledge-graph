@@ -14,6 +14,12 @@ export {
   recordResultContract,
   validateRecordResultForInput,
 } from "./memory-record-schema-contract.js";
+export {
+  memoryRecallInputContract,
+  recallResultContract,
+  validateMemoryRecallInput,
+  validateRecallResult,
+} from "./memory-recall-contract.js";
 
 /**
  * Inbound MCP wiring depends on application use cases only. FND-004 and MCP-003

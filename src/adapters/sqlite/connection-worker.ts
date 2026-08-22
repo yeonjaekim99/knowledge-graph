@@ -32,6 +32,7 @@ import {
   type SqliteWorkerErrorCode,
   type SqliteWorkerResponse,
 } from "./connection-protocol.js";
+import { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
 
 interface SqliteRunMetadata {
   readonly changes: number;
@@ -40,6 +41,7 @@ interface SqliteRunMetadata {
 
 interface SqliteStatement {
   run(...parameters: readonly SqliteBinding[]): SqliteRunMetadata;
+  run(parameters: Readonly<Record<string, SqliteBinding>>): SqliteRunMetadata;
   get(...parameters: readonly SqliteBinding[]): unknown;
   all(...parameters: readonly SqliteBinding[]): unknown[];
 }
@@ -81,6 +83,16 @@ interface ActiveProjectionReplay {
 
 interface WorkerProjectionReplayState {
   active: ActiveProjectionReplay | null;
+}
+
+interface ActiveRecallSnapshot {
+  readonly snapshotId: number;
+  readonly scopeKey: string;
+  readonly evaluationNow: number;
+}
+
+interface WorkerRecallSnapshotState {
+  active: ActiveRecallSnapshot | null;
 }
 
 const require = createRequire(import.meta.url);
@@ -1518,6 +1530,124 @@ function executeRead(
   return result;
 }
 
+function dropRecallTempAggregate(database: SqliteDatabaseConnection): void {
+  database.exec(RECALL_SNAPSHOT_SQL_SOURCE.dropTempAggregate);
+}
+
+function beginRecallSnapshot(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  scopeKey: string,
+  evaluationNow: number,
+): Readonly<{ snapshotId: number }> {
+  if (
+    state.active !== null ||
+    database.inTransaction ||
+    !REPLAY_SCOPE_PATTERN.test(scopeKey) ||
+    !Number.isSafeInteger(evaluationNow) ||
+    evaluationNow < 0
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+
+  try {
+    dropRecallTempAggregate(database);
+    database.exec("BEGIN DEFERRED");
+    database
+      .prepare(RECALL_SNAPSHOT_SQL_SOURCE.createTempAggregate)
+      .run({ now: evaluationNow, scope_key: scopeKey });
+    if (!database.inTransaction) {
+      throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+    }
+    state.active = Object.freeze({ snapshotId, scopeKey, evaluationNow });
+    return Object.freeze({ snapshotId });
+  } catch (error) {
+    if (database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The safe primary failure remains authoritative.
+      }
+    }
+    state.active = null;
+    try {
+      dropRecallTempAggregate(database);
+    } catch {
+      // Closing the reader is the final cleanup fallback.
+    }
+    throw error;
+  }
+}
+
+function readRecallSnapshotAggregates(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+): Readonly<{
+  rows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+  return Object.freeze({
+    rows: rows(
+      database
+        .prepare(RECALL_SNAPSHOT_SQL_SOURCE.selectValidClaimAggregates)
+        .all(),
+    ),
+  });
+}
+
+function endRecallSnapshot(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  commit: boolean,
+): null {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction ||
+    typeof commit !== "boolean"
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+
+  try {
+    if (commit) {
+      dropRecallTempAggregate(database);
+      database.exec("COMMIT");
+    } else {
+      database.exec("ROLLBACK");
+    }
+    state.active = null;
+    if (!commit) {
+      dropRecallTempAggregate(database);
+    }
+    return null;
+  } catch (error) {
+    if (database.inTransaction) {
+      try {
+        database.exec("ROLLBACK");
+      } catch {
+        // The safe primary failure remains authoritative.
+      }
+    }
+    state.active = null;
+    try {
+      dropRecallTempAggregate(database);
+    } catch {
+      // Closing the reader is the final cleanup fallback.
+    }
+    throw error;
+  }
+}
+
 function isSqliteBusy(error: unknown): boolean {
   return (
     error instanceof Error &&
@@ -1547,6 +1677,7 @@ function handleRequest(
   data: SqliteWorkerData,
   request: SqliteWorkerRequest,
   replayState: WorkerProjectionReplayState,
+  recallState: WorkerRecallSnapshotState,
 ): void {
   if (request.type === "close") {
     try {
@@ -1554,6 +1685,11 @@ function handleRequest(
         database.exec("ROLLBACK");
         replayState.active = null;
       }
+      if (recallState.active !== null && database.inTransaction) {
+        database.exec("ROLLBACK");
+        recallState.active = null;
+      }
+      dropRecallTempAggregate(database);
       database.close();
       post({ type: "success", requestId: request.requestId, result: null });
     } catch (error) {
@@ -1565,6 +1701,100 @@ function handleRequest(
     } finally {
       parentPort?.close();
     }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-begin") {
+    if (
+      data.role !== "reader" ||
+      replayState.active !== null ||
+      recallState.active !== null
+    ) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = beginRecallSnapshot(
+        database,
+        recallState,
+        request.requestId,
+        request.scopeKey,
+        request.evaluationNow,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-read") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = readRecallSnapshotAggregates(
+        database,
+        recallState,
+        request.snapshotId,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-end") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = endRecallSnapshot(
+        database,
+        recallState,
+        request.snapshotId,
+        request.commit,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (recallState.active !== null) {
+    post({
+      type: "failure",
+      requestId: request.requestId,
+      code: "RECALL_SNAPSHOT_FAILED",
+    });
     return;
   }
 
@@ -1788,6 +2018,7 @@ function handleRequest(
 function startWorker(): void {
   let database: SqliteDatabaseConnection | null = null;
   const replayState: WorkerProjectionReplayState = { active: null };
+  const recallState: WorkerRecallSnapshotState = { active: null };
   try {
     const data = readWorkerData(workerData as unknown);
     assertSafeSidecars(data.databasePath);
@@ -1806,6 +2037,7 @@ function startWorker(): void {
         data,
         request,
         replayState,
+        recallState,
       );
     });
   } catch (error) {

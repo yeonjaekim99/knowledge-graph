@@ -15,7 +15,7 @@
 
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
-| RCL-001 | recall 계약·snapshot·유효 aggregate | `IN_PROGRESS` | `log0629` | FND-004, PRJ-008 | — |
+| RCL-001 | recall 계약·snapshot·유효 aggregate | `IN_PROGRESS` | `log0629` | FND-004, PRJ-008 | [구현·로컬 검증](../implementation/rcl-001-recall-contract-snapshot.md) |
 | RCL-002 | query term과 surface seed | `TODO` | `unassigned` | RCL-001, PRJ-005 | — |
 | RCL-003 | 안전한 FTS와 raw fallback | `TODO` | `unassigned` | RCL-001, STO-004 | — |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
@@ -38,11 +38,33 @@
 
 완료 체크:
 
-- [ ] search/overview 판별 union, 기본값과 query/terms/depth/limit 조합을 엄격히 검증한다.
-- [ ] 호출 시작의 scope와 UTC epoch `now`를 한 번 캡처하고 같은 read transaction을 쓴다.
-- [ ] scope/now parameterized query로 `TEMP recall_claim_agg`를 한 번 materialize한다.
-- [ ] aggregate source의 column을 명시적으로 alias해 SQLite 이름 충돌 가능성을 제거한다.
-- [ ] 이후 진입·이동·수집·상충·detail이 이 TEMP 유효 집합만 사용한다.
+- [x] search/overview 판별 union, 기본값과 query/terms/depth/limit 조합을 엄격히 검증한다.
+- [x] 호출 시작의 scope와 UTC epoch `now`를 한 번 캡처하고 같은 read transaction을 쓴다.
+- [x] scope/now parameterized query로 `TEMP recall_claim_agg`를 한 번 materialize한다.
+- [x] aggregate source의 column을 명시적으로 alias해 SQLite 이름 충돌 가능성을 제거한다.
+- [x] 이후 진입·이동·수집·상충·detail이 이 TEMP 유효 집합만 사용한다.
+
+검토 준비 증거:
+
+- [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md)에 FND-004 schema/type/runtime
+  단일 source, request-scoped typed read port, STO-002 reader protocol과 PRJ-008 aggregate 재사용
+  경계를 고정했다.
+- TDD RED는 production build 성공 뒤 새 contract/application/SQLite export 부재로 0/3
+  실패했고 `pnpm verify:rcl-001` GREEN은 contract 4, application 2, SQLite 4의 10/10이다.
+- search/overview 닫힌 union과 기본값, Unicode query/terms·depth/limit 경계, RecallResult
+  claim/raw/detail/UTC/ID 구조 및 payload-redacted input/output 오류를 실제 MCP SDK로 검증했다.
+- runtime capture 1회, parameterized scope/fixed-now TEMP materialization, explicit alias와 손상
+  aggregate fail-closed를 검증했다. callback 중 concurrent WAL commit 전후 두 read가 같은
+  snapshot이고 다음 호출에서만 변경·expiry가 보였다.
+- 성공/실패 recall 전후 journal/projection/FTS canonical dump와 외부 reader `data_version`이
+  변하지 않았다. STO-002 5/5와 PRJ-008 8/8도 회귀했다.
+- 전체 fast suite 36개 파일 242/242, PRJ-010 reference parity 39/39, behavior spike 25/25,
+  roadmap evidence 67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를
+  확인했다.
+- term/surface/FTS/overview/BFS/ranking/Answer assembly/MCP wiring과 성능은 구현하지 않았고
+  RCL-002~009·MCP-003에 남겼다. 따라서 S09/S10/S19 public golden은 아직 `planned`다.
+- 완료 체크는 구현·로컬 검증 기준으로 닫았지만 독립 review, PR과 `main` 병합 전까지
+  작업 상태와 Phase/master 완료 수는 `IN_PROGRESS`, 0/9를 유지한다.
 
 ### RCL-002 — query term과 surface seed
 
