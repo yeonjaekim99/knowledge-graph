@@ -7,6 +7,7 @@
 - 규범 근거: ADR-007, ADR-010, ADR-017
 - 선행 구현: PRJ-001, PRJ-003
 - 구현 branch: `prj-004-effective-event-stream`
+- PR: [#24](https://github.com/yeonjaekim99/knowledge-graph/pull/24)
 
 ## 목적과 범위
 
