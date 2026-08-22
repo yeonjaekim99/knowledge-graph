@@ -46,3 +46,9 @@ normal-name 순서로 entity를 해석하는지 검증한다. ambiguity는 neste
 되돌리고, scope 밖 후보는 노출하지 않으며, `INSERT OR IGNORE` 충돌 뒤 재조회로 수렴한다.
 해석용 provisional entity/surface/redirect는 append 전에 outer savepoint로 전부 되돌려
 journal 없는 projection-only commit 경로가 생기지 않게 한다.
+
+[`rec-004-write-entity-finalization.test.mjs`](rec-004-write-entity-finalization.test.mjs)는 다른
+scope의 journal까지 포함한 DB-global AUTOINCREMENT 다음 seq, ambiguity·REC-005 survivor 제거 뒤
+compact occurrence ID, exact finalization/append body와 actual seq binding을 검증한다. kind의 독립
+trim→NFKC→lowercase 경계, ambiguity candidate의 중복·numeric order·shape와
+`sqlite_sequence` drift도 payload를 노출하지 않고 fail-closed하는지 확인한다.

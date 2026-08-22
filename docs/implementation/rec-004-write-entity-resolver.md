@@ -1,6 +1,6 @@
 # REC-004: transaction-bound write entity resolver
 
-- 상태: 구현·로컬 검증 완료, PR/main 병합 대기
+- 상태: 독립 review 지적 보완·로컬 검증 완료, 재검토와 PR/main 병합 대기
 - 결정일: 2026-08-23
 - 작업: REC-004
 - Owner: `log0629`
@@ -23,6 +23,9 @@ REC-004는 다음 경계를 추가한다.
 - draft별 ambiguity rollback과 구조화된 same-scope candidate 결과
 - 새 entity의 `INSERT OR IGNORE`와 unique collision 뒤 canonical 재조회
 - 이름·별칭 surface, occurrence redirect와 kind 보존의 임시 stage
+- DB 전체 `journal.seq`/`sqlite_sequence`에서 다음 occurrence seq를 잠금 안에서 확정하는 gate
+- REC-005가 고른 survivor만 compact position으로 다시 해석하는 finalization seam
+- finalization의 정확한 statement body와 실제 append seq를 묶는 commit 전 parity gate
 - append 전에 모든 pre-resolution projection stage를 되돌리는 outer SAVEPOINT
 
 비밀값 탐지·마스킹, claim 의미 검증·중복 제거·input/stored index mapping, statement 생성과
@@ -39,14 +42,19 @@ prepare와 append를 연속 실행한다. record 수직 경로가 사용할 세�
 managed writer FIFO
   → BEGIN IMMEDIATE
   → current scope projection snapshot 캡처
+  → DB-global next journal seq 캡처·AUTOINCREMENT 정합성 검사
   → SAVEPOINT recall_record_entity_resolution
   → resolveSqliteWriteEntityDrafts(...)
        draft마다 SAVEPOINT recall_record_entity_draft
-       resolve/stage 또는 그 draft만 rollback
+       worker provisional candidate로 resolve/stage 또는 그 draft만 rollback
+  → REC-005가 resolved draft 중 stored survivor index를 선택
+  → finalizeSqliteWriteEntityDrafts(..., survivor indexes, exact body)
+       outer SAVEPOINT rollback 후 survivor만 compact candidate로 재해석
+       stored parsed의 entity occurrence와 exact body를 final plan에 고정
   → append 시작 직전
        ROLLBACK TO recall_record_entity_resolution
        RELEASE recall_record_entity_resolution
-  → non-empty journal append
+  → non-empty journal append·actual seq/body identity 재검사
   → canonical incremental/replay projection publish
   → commit gate
   → COMMIT
@@ -54,12 +62,15 @@ managed writer FIFO
 
 entity/surface/redirect INSERT는 해석 중 constraint와 후속 draft visibility를 실제 SQLite로
 확인하기 위한 임시 stage일 뿐이다. append 전에 outer SAVEPOINT 전체를 반드시 되돌린다.
-따라서 caller가 resolver 결과와 다른 statement를 만들더라도 임시 projection row가 commit에
-섞이지 않는다. 실제 entity row는 journal event를 입력으로 PRJ-009 projector가 다시 만든다.
+따라서 임시 projection row는 commit에 섞이지 않는다. finalization에 전달한 exact body와
+append body가 다르거나 실제 AUTOINCREMENT seq가 예상과 다르면 projection 계산 전에 전체
+transaction이 실패한다. 실제 entity row는 journal event를 입력으로 PRJ-009 projector가 다시
+만든다.
 
 prepared dispatch의 `commit`은 다음 조건을 worker에서 검사한다.
 
 - resolution SAVEPOINT가 이미 rollback/release됐다.
+- entity resolution을 호출했다면 survivor finalization과 exact body binding이 완료됐다.
 - non-empty journal batch가 실제로 append됐다.
 - append 결과와 desired projection이 기존 commit gate를 통과한다.
 
@@ -70,8 +81,9 @@ raw SQL, database handle, projection-only method를 package root나 application�
 ## draft 해석 순서
 
 worker는 이미 구조·secret 검사를 통과한 내부 draft plan을 방어적으로 다시 검사한다.
-각 reference는 canonical occurrence candidate ID, name, nullable kind와 aliases를 가진다.
-subject를 먼저 해석하고 entity object가 있으면 다음에 해석한다.
+각 reference는 name, nullable kind와 aliases만 가진다. candidate ID는 caller가 전달하지 않고
+worker가 잠금 안의 DB-global next journal seq와 occurrence position으로 발급한다. subject를
+먼저 해석하고 entity object가 있으면 다음에 해석한다.
 
 각 이름은 PRJ-005와 같은 `normalizeV1`을 사용하며 해석은 반드시 다음 순서다.
 
@@ -93,7 +105,18 @@ ambiguity 결과는 `draftIndex`, `subject|object`, numeric ID 순으로 정렬�
 그 subject와 alias가 후속 draft 해석에 남지 않는다. 반대로 앞서 승인된 draft의 stage는 같은
 요청의 후속 draft가 볼 수 있다.
 
-## constraint collision과 scope
+첫 resolve pass에서 ambiguity가 난 draft는 nested savepoint와 함께 position도 되돌린다.
+그 뒤 REC-005가 claim identity 중복을 판정해 survivor `draftIndex`의 strictly ordered subset을
+넘긴다. finalizer는 provisional stage 전체를 버리고 그 subset만 다시 해석하므로 rejected와
+중복 draft는 최종 `e{seq}.{position}`을 소비하지 않는다. survivor 선택 의미는 REC-005가,
+compact ID와 append parity는 REC-004가 각각 소유한다.
+
+## global seq, constraint collision과 scope
+
+`expectedJournalSeq`는 `BEGIN IMMEDIATE` 뒤 DB 전체 `MAX(journal.seq)`와
+`sqlite_sequence('journal')`가 같은지 확인해 `+1`로 계산한다. 현재 scope의 마지막 seq는
+projection meta 비교에만 쓰며 occurrence ID에는 쓰지 않는다. append-only DB에서 두 값이
+어긋나거나 safe integer 범위를 벗어나면 손상으로 보고 payload-redacted failure로 닫는다.
 
 not-found reference는 다음 방어 순서를 쓴다.
 
@@ -137,9 +160,10 @@ redirect, constraint 또는 query 손상은 기존 `SqliteConnectionError`의 �
 `SQLITE_TRANSACTION_FAILED`로 낮춘다.
 
 input wrapper는 accessor·symbol·extra property와 sparse array를 거부하고 호출 전에 immutable
-snapshot을 만든다. worker도 ID, 길이, draft index, candidate uniqueness를 다시 확인한다.
-result wrapper는 각 input draft와 같은 순서/index, canonical entity ID, ambiguity candidate shape를
-검증하고 결과 전체를 재귀적으로 freeze한다.
+snapshot을 만든다. worker도 길이와 strictly increasing draft index를 다시 확인한다. result
+wrapper는 각 input draft와 같은 순서/index, canonical entity ID와 ambiguity candidate의 중복·
+numeric ordering·shape를 검증하고 결과 전체를 재귀적으로 freeze한다. kind는 entity
+`normalizeV1`과 분리해 trim → NFKC → Unicode lowercase만 적용하므로 `-`, `_`, `＿`도 유효하다.
 
 ## TDD와 검증
 
@@ -148,6 +172,15 @@ production 변경 전 첫 RED는 새 target이 import한
 
 ```text
 ERR_MODULE_NOT_FOUND: dist/adapters/sqlite/write-entity-resolver.js
+tests 1, pass 0, fail 1
+```
+
+독립 review에서 scope-local seq와 caller candidate, rejected/duplicate position, kind validator와
+ambiguity result boundary가 발견됐다. 보완 fixture는 production 변경 전에 새 finalizer export가
+없어 module instantiate 단계에서 RED가 됐다.
+
+```text
+missing export: finalizeSqliteWriteEntityDrafts
 tests 1, pass 0, fail 1
 ```
 
@@ -162,7 +195,11 @@ file-backed SQLite target은 다음 정상·경계·실패 경로를 검증한�
 - 다른 scope name 무시, cross-scope candidate-ID collision redaction과 queue 회복
 - malformed input의 payload-redacted failure
 - append 없는 commit 차단
-- resolver stage와 event body가 달라도 append 전에 전체 stage가 rollback되고 journal+projection만 commit
+- 다른 scope의 앞선 journal이 있어도 DB-global 다음 seq로 candidate 발급
+- ambiguity와 REC-005 survivor 선택 뒤 rejected/duplicate position compact 재발급
+- finalization body와 append body가 한 byte라도 다르거나 actual seq가 다르면 전체 rollback
+- `sqlite_sequence`/`MAX(seq)` drift fail-closed
+- `-`, `_`, fullwidth underscore kind와 ambiguity candidate 결과 경계
 
 검증 명령은 다음과 같다.
 
@@ -174,9 +211,10 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 pnpm audit --prod
 ```
 
-RCL-001 PR #34 병합본 위 최종 검증은 REC-004 관련 target 28/28, REC-004 SQLite 8/8,
-RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, 전체 fast 263/263과 PRJ-010 39/39를 통과했다.
-roadmap audit은 67/67, behavior spike는 25/25이며 production dependency 취약점은 0개다.
+review 보완 뒤 REC-004 SQLite target은 13/13, 관련 PRJ-005/009 포함 target은 33/33이다.
+전체 fast 39 files·268/268, RCL-001 10/10, STO-002 7/7, PRJ-010 39/39,
+behavior spike 25/25, roadmap audit 67/67과 production audit 0건을 통과했다. 독립 재검토와
+PR/main 증거 전까지 작업 상태는 `IN_PROGRESS`다.
 S21의 write-time resolver 부분은 production으로 옮겼지만 public `memory_record`와 실제
 alias/revise 수직 경로는 REC-006/008과 REV-006/007이 소유하므로 scenario manifest 상태는
 바꾸지 않는다.
@@ -188,7 +226,8 @@ alias/revise 수직 경로는 REC-006/008과 REV-006/007이 소유하므로 scen
 - ADR-008: PRJ-005 resolver 순서, draft ambiguity, collision reread, kind와 alias homonym 정책을
   같은 writer transaction의 production path로 연결한다.
 - ADR-013: ambiguity를 whole-request error가 아니라 draft별 actionable rejection으로 반환한다.
-  secret·dedupe·stored index와 final RecordResult는 후속 REC owner에 남긴다.
+  secret과 final RecordResult는 후속 REC owner에 남긴다. REC-005가 dedupe survivor와 input/stored
+  index mapping을 결정한 뒤 이 seam에 ordered indexes를 전달한다.
 - ADR-001/007: provisional projection stage는 append 전에 rollback되며 commit은 journal과 canonical
   projection publish를 함께 요구한다.
 

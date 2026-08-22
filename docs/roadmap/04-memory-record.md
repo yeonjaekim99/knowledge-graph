@@ -175,24 +175,31 @@
 - [x] 다른 scope의 ID/후보 존재를 응답에서 드러내지 않는다.
 - [x] write lock 안에서 constraint 충돌 후 재조회해 동시 동일 이름을 하나로 수렴시킨다.
 - [x] kind 불일치와 alias homonym을 자동 merge/split하지 않는다.
+- [x] DB-global next journal seq와 REC-005 survivor finalization 뒤에만 compact occurrence ID를 확정한다.
+- [x] finalized statement body와 실제 append seq가 다르면 projection 전에 전체 transaction을 닫는다.
 
 완료 증거:
 
 - [구현 결정](../implementation/rec-004-write-entity-resolver.md)은 기존 atomic dispatcher의
-  `BEGIN IMMEDIATE` 안에 prepare→draft resolve→append 단계를 두되, pre-resolution
+  `BEGIN IMMEDIATE` 안에 prepare→draft resolve→survivor finalize→append 단계를 두되, pre-resolution
   entity/surface/redirect stage를 append 직전 outer savepoint로 전부 rollback하도록 고정했다.
 - production adapter는 PRJ-005 resolver를 재사용해 same-scope surface 전체 후보를 redirect
   terminal로 바꾼 뒤 exact normal-name 하나만 tie-break한다. 남은 ambiguity는 정렬된 안전한
   후보와 retry note로 해당 draft만 거부하며 object 실패 시 nested savepoint가 그 draft의
   subject/alias stage도 되돌린다.
+- occurrence candidate는 caller 입력이 아니라 잠금 안의 DB-global next seq에서 발급한다.
+  ambiguity 뒤 position을 되돌리고, REC-005가 고른 survivor subset만 outer savepoint에서 다시
+  해석해 rejected/duplicate 위치를 compact한다. finalization의 exact statement body와 실제 append
+  seq가 어긋나면 journal/projection 전에 fail-closed한다.
 - file-backed [REC-004 integration test](../../test/integration/sqlite/rec-004-write-entity-resolver.test.mjs)는
   정상 redirect/신규 object, exact tie-break·ambiguity, 앞·뒤 draft 격리, alias homonym,
   trigger로 만든 실제 unique collision 재조회, cross-scope redaction·queue 회복과 append 없는
   commit 차단을 검증한다.
 - 최초 RED는 production module 부재로 `ERR_MODULE_NOT_FOUND` 0/1이었고 구현 뒤 target은
-  8/8 GREEN이다. RCL-001 병합본 위 재검증은 양쪽 target REC-004 28/28·RCL-001 10/10,
-  STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39와 전체 fast 263/263을 통과했다. PR/main 영속
-  증거가 추가될 때까지 상태와 phase roll-up은 `IN_PROGRESS`로 유지한다.
+  8/8 GREEN이었다. 독립 review 보완 RED는 finalizer export 부재 0/1이었고, 보완 뒤 REC-004
+  13/13·관련 PRJ-005/009 포함 33/33, 전체 fast 268/268, RCL-001 10/10, STO-002 7/7,
+  PRJ-010 39/39, spike 25/25, roadmap 67/67과 production audit 0건이다. 독립 재검토와
+  PR/main 영속 증거가 추가될 때까지 상태와 phase roll-up은 `IN_PROGRESS`로 유지한다.
 
 ### REC-005 — draft 의미 검증·중복 제거·index mapping
 
