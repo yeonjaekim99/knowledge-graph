@@ -87,6 +87,17 @@ export type {
   MissingEntityReference,
   ResolvedEntityReference,
 } from "./projection-entities.js";
+export {
+  ClaimProjectionError,
+  projectClaimSupportState,
+  reduceClaimSupportState,
+} from "./projection-claims.js";
+export type {
+  ClaimOccurrenceProjection,
+  ClaimProjectionErrorCode,
+  ClaimSupportStateProjection,
+  StructuralClaimSupportProjectionRow,
+} from "./projection-claims.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,

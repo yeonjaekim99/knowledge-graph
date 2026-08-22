@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 5/10
+- 진행률: 6/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -20,7 +20,7 @@
 | PRJ-003 | occurrence ID와 redirect registry | `DONE` | `log0629` | PRJ-001, PRJ-002 | [PR #23](https://github.com/yeonjaekim99/knowledge-graph/pull/23) |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `DONE` | `log0629` | PRJ-001, PRJ-003 | [PR #24](https://github.com/yeonjaekim99/knowledge-graph/pull/24) |
 | PRJ-005 | entity·surface·kind 투영 | `DONE` | `log0629` | PRJ-002~004 | [PR #25](https://github.com/yeonjaekim99/knowledge-graph/pull/25) |
-| PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
+| PRJ-006 | claim·support·카디널리티 상태 전이 | `DONE` | `log0629` | PRJ-002~005 | [PR #26](https://github.com/yeonjaekim99/knowledge-graph/pull/26) |
 | PRJ-007 | merge·alias와 claim rewrite | `TODO` | `unassigned` | PRJ-005, PRJ-006 | — |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `TODO` | `unassigned` | PRJ-004, PRJ-006 | — |
 | PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `TODO` | `unassigned` | PRJ-003~008 | — |
@@ -195,20 +195,42 @@
 
 ### PRJ-006 — claim·support·카디널리티 상태 전이
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `prj-006-claim-support-cardinality`
+- PR: [#26](https://github.com/yeonjaekim99/knowledge-graph/pull/26)
 - 근거: ADR-002, ADR-007, ADR-009
 - 선행 작업: PRJ-002~005
 - 결과물: claim/support reducer와 상태 전이 test
 
 완료 체크:
 
-- [ ] 동일 identity는 과거 상태와 무관하게 가장 이른 claim ID를 재사용한다.
-- [ ] `describes`는 기존 active 값을 먼저 supersede한 뒤 대상 claim을 활성화한다.
-- [ ] claim 철회는 과거 support만 끊고 event 철회는 statement의 side effect 전체를 제외한다.
-- [ ] claim 철회는 과거 describes를 복구하지 않고 대체 event 철회는 복구한다.
-- [ ] TTL만으로 구조적 claim state를 쓰기 변경하지 않는다.
-- [ ] first/last seen과 support live 상태가 effective statement 순서와 일치한다.
+- [x] 동일 identity는 과거 상태와 무관하게 가장 이른 claim ID를 재사용한다.
+- [x] `describes`는 기존 active 값을 먼저 supersede한 뒤 대상 claim을 활성화한다.
+- [x] claim 철회는 과거 support만 끊고 event 철회는 statement의 side effect 전체를 제외한다.
+- [x] claim 철회는 과거 describes를 복구하지 않고 대체 event 철회는 복구한다.
+- [x] TTL만으로 구조적 claim state를 쓰기 변경하지 않는다.
+- [x] first/last seen과 support live 상태가 effective statement 순서와 일치한다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-006-claim-support-cardinality.md)에 모든 stored occurrence
+  anchor와 numeric-earliest claim identity, structural support 출력 및 PRJ-008 expiry 경계를
+  고정했다.
+- TDD RED는 아직 없는 claim reducer export에서 실패했고 GREEN은 `pnpm verify:prj-006`
+  15/15이다. PRJ-004 14/14, PRJ-005 11/11과 전체 `pnpm verify:local` 157/157도 통과했다.
+- 강화, entity/literal identity, `describes A→B→A`, claim/event 철회 복구 차이, multi-claim
+  격리, future support 재활성화, same-statement draft 순서, raw-only statement와 numeric
+  `c2<c10`을 정상·경계 fixture로 검증했다.
+- backdated reinterpret의 claim cutoff·later describes 우선순위·event undo와 effective
+  first/last seen을 S04/S15 spike 의미와 독립 대조했다. TTL만 바꾼 출력은 동일하다.
+- stored duplicate, invalid relation/label, missing/future target와 forged PRJ-005 seam은
+  payload·scope·target·cause를 노출하지 않는 typed error로 fail closed한다.
+- 최종 diff 리뷰에서 대량 support의 first/last seen 집계를 단일 순회로 바꿔 JS 함수 인자
+  한도에 의존하지 않게 했다.
+- 독립 behavior spike 25/25, roadmap audit, dependency audit 취약점 0개와 clean source gate를
+  통과했다. 실제 merge/alias, expiry aggregate, SQLite dispatcher와 full prefix parity가 남아
+  S03/S04/S10/S15 target은 `planned`를 유지하며 PRJ-007~010과 REC/REV/RCL owner가 이어받는다.
 
 ### PRJ-007 — merge·alias와 claim rewrite
 
