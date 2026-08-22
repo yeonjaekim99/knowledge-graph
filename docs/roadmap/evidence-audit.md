@@ -48,6 +48,7 @@
 | `E-PROJECTION-ENTITIES` | [PR #25](https://github.com/yeonjaekim99/knowledge-graph/pull/25), [entity 투영 결정](../implementation/prj-005-entity-surface-kind.md), [domain test](../../test/unit/domain/prj-005-entity-surface-kind.test.mjs) | 모든 actual occurrence anchor, live entity/surface/kind reduce, redirect terminal, origin priority, alias 방향, ambiguity·철회·reinterpret와 payload-redacted failure | claim/support는 `E-PROJECTION-CLAIMS`, merge/alias와 rewrite는 `E-PROJECTION-DECISIONS`; DB publish/prefix parity와 S08/S21 완결은 PRJ-009/010·REC-004·REV-006 |
 | `E-PROJECTION-CLAIMS` | [PR #26](https://github.com/yeonjaekim99/knowledge-graph/pull/26), [claim 상태 전이 결정](../implementation/prj-006-claim-support-cardinality.md), [domain test](../../test/unit/domain/prj-006-claim-support-cardinality.test.mjs) | 모든 claim/support anchor, numeric canonical identity, 강화·describes·두 철회 범위·backdated reinterpret와 structural 시각, TTL 비구조화·safe typed error | merge/alias rewrite는 `E-PROJECTION-DECISIONS`; expiry·aggregate·label·contested는 PRJ-008, SQLite publish/prefix parity와 S03/S04/S10/S15 완결은 PRJ-009/010·REC/REV/RCL owner |
 | `E-PROJECTION-DECISIONS` | [PR #27](https://github.com/yeonjaekim99/knowledge-graph/pull/27), [merge·alias 구현 결정](../implementation/prj-007-merge-alias-rewrite.md), [domain test](../../test/unit/domain/prj-007-merge-alias-rewrite.test.mjs) | 의미 stream의 merge·alias, explicit keep·numeric claim survivor, support dedupe, describes 구조적 승자, confirmed alias·후속 해석과 event undo | TTL aggregate는 PRJ-008, SQLite publish와 full prefix parity는 PRJ-009/010; public record/revise application path와 S07/S08/S17/S21 완결은 REC/REV owner |
+| `E-PROJECTION-VALIDITY` | [PR #28](https://github.com/yeonjaekim99/knowledge-graph/pull/28), [TTL·aggregate 구현 결정](../implementation/prj-008-ttl-claim-aggregate.md), [domain test](../../test/unit/domain/prj-008-ttl-validity.test.mjs), [SQLite test](../../test/integration/sqlite/prj-008-claim-aggregate.test.mjs) | effective statement/support expiry, 공통 valid-support CTE, scope/fixed-now aggregate·label·contested와 expiry/scope invariant | SQLite publish·prefix parity는 PRJ-009/010; 실제 read transaction·TEMP materialization과 search/overview 응답은 RCL owner |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -82,7 +83,7 @@
 - [x] `PRJ-005` | baseline: S08/S21이 entity·surface origin과 confirmed alias 후속 해석을 확인했다. | production: `E-PROJECTION-ENTITIES`에서 entity/surface/kind reducer, canonical ambiguity와 claim/statement 철회 차이를 완료했다.
 - [x] `PRJ-006` | baseline: S03/S04/S10/S15가 강화·describes·TTL 비구조화·복원 차이를 확인했다. | production: `E-PROJECTION-CLAIMS`에서 claim/support/cardinality reducer와 의미 순서 test를 완료했다.
 - [x] `PRJ-007` | baseline: S07/S08/S17/S21이 merge·alias·support dedupe·undo를 확인했다. | production: `E-PROJECTION-DECISIONS`에서 collision-safe rewrite와 history-preserving undo reducer를 완료했다.
-- [x] `PRJ-008` | baseline: S09~S11/S19/S23이 scope/now 기반 aggregate·label fallback·read-only를 확인했다. | production: 공통 aggregate source template과 invariant query를 구현한다.
+- [x] `PRJ-008` | baseline: S09~S11/S19/S23이 scope/now 기반 aggregate·label fallback·read-only를 확인했다. | production: `E-PROJECTION-VALIDITY`에서 effective expiry reducer, 공통 aggregate source와 scope/expiry invariant를 완료했다.
 - [x] `PRJ-009` | baseline: S02/S23/S24가 prefix replay·metamorphic·crash 원자성 oracle을 제공한다. | production: 증분 dispatcher와 전체 replay를 각각 구현하고 publish transaction을 보호한다.
 - [x] `PRJ-010` | baseline: `E-SPIKE`의 S01~S24·288 prefix·8 crash case가 reference 결과를 제공한다. | production: 모든 prefix에서 별도 production reducer와 oracle의 black-box parity를 증명한다.
 
@@ -145,14 +146,14 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 21/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`과
-  `PRJ-001`~`007`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 22/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`과
+  `PRJ-001`~`008`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
-- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 7/10이다. 다음 dependency-ready
-  작업은 TTL·aggregate인 `PRJ-008`이다. PRJ-009는 PRJ-008 완료 뒤 시작한다.
+- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 8/10이다. 다음 dependency-ready
+  작업은 dispatcher·전체 replay·무결성 검사인 `PRJ-009`다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

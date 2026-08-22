@@ -44,6 +44,9 @@ export type {
 } from "./migration.js";
 export { runBundledSqliteMigrations } from "./bundled-migrations.js";
 
+export { CLAIM_AGGREGATE_SQL_SOURCE } from "./claim-aggregate.js";
+export type { ClaimAggregateSqlSource } from "./claim-aggregate.js";
+
 export {
   JOURNAL_ID_COLLISION_ATTEMPT_LIMIT,
   JournalAppendError,

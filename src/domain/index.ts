@@ -109,6 +109,23 @@ export type {
   MergeAliasStateProjection,
   ProjectionDecisionErrorCode,
 } from "./projection-decisions.js";
+export {
+  DEFAULT_STATEMENT_TTL,
+  ProjectionValidityError,
+  STATEMENT_TTL_SECONDS,
+  reduceClaimValidityState,
+  resolveEffectiveStatementLifetime,
+} from "./projection-validity.js";
+export type {
+  ClaimValidityProjection,
+  ClaimValidityStructuralInput,
+  DefaultStatementTtl,
+  EffectiveStatementLifetime,
+  ProjectionValidityErrorCode,
+  StatementProvenance,
+  StatementTtl,
+  StatementTtlSeconds,
+} from "./projection-validity.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,

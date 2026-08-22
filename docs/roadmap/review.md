@@ -114,6 +114,12 @@
     후속 statement까지 처음부터 사건이 없었던 결과로 복원한다. 리뷰에서 철회된 duplicate의
     activation 오염과 merge 방향 no-op/cycle을 추가 RED로 고쳤다. TTL aggregate·SQLite publish와
     full prefix parity는 PRJ-008~010에 남겨 S07/S08/S17/S21을 성급히 완료로 올리지 않았다.
+26. PRJ-008은 effective createdAt에서 TTL을 계산해 raw-only를 포함한 모든 statement와
+    support에 같은 expiry를 투영한다. 하나의 valid-support CTE에서 diagnostic view와
+    scope/fixed-now TEMP query를 만들고 count·strongest·last_seen·latest label·expiry·contested를
+    같은 집합에 묶었다. 리뷰에서 cross-scope support 손상과 exact expiry 경계를 추가해
+    aggregate fail-closed, invariant 탐지와 영구 DB read-only를 확인했다. 실제 publish와
+    full prefix/public recall은 PRJ-009/010·RCL에 남겨 S09~S11/S19/S23을 완료로 올리지 않았다.
 
 ## 의도적으로 남은 상태
 
@@ -126,8 +132,8 @@
   로드맵 리뷰가 특정 stack을 선결정하지 않는다.
 - 미착수 제품 task owner는 실제 planning 전까지 `unassigned`다. 시작·완료된 작업만
   planning/구현 PR에서 확정한 owner를 기록한다.
-- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 7/10이다. 다음 dependency-ready
-  작업은 `PRJ-008` TTL·aggregate다.
+- Phase 01은 6/6, Phase 02는 8/8로 종료됐고 Phase 03은 8/10이다. 다음 dependency-ready
+  작업은 `PRJ-009` dispatcher·전체 replay·무결성 검사다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -138,11 +144,11 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| STO-001~008·PRJ-001~007 로컬 gate | PASS — PRJ-007 19/19, PRJ-006 15/15, PRJ-005 11/11, architecture/type/build와 Node test 176/176 |
-| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 176/176과 roadmap audit 재현 |
+| STO-001~008·PRJ-001~008 로컬 gate | PASS — PRJ-008 8/8, PRJ-007 19/19, PRJ-006 15/15, PRJ-004 14/14, architecture/type/build와 Node test 184/184 |
+| 깨끗한 source archive | PASS — frozen lockfile 설치, 전체 local gate 184/184과 roadmap audit 재현 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
-| 변경 범위 | PASS — domain merge/alias·entity/claim rewrite reducer와 PRJ-004~006 seam·unit fixture·문서만 추가, DB mutation·expiry aggregate·public memory/MCP wiring·자동 CI 변경 없음 |
+| 변경 범위 | PASS — domain expiry reducer, SQLite aggregate source·invariant, unit/integration fixture와 문서만 추가, journal/projection publish·public recall/MCP wiring·자동 CI 변경 없음 |
 
 ## 게시 전 재현 검사
 

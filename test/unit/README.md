@@ -18,3 +18,8 @@ PRJ-005의 모든 statement occurrence anchor, live entity/surface/kind reduce, 
 [`domain/prj-005-entity-surface-kind.test.mjs`](domain/prj-005-entity-surface-kind.test.mjs)에
 둔다. confirmed origin은 resolver primitive까지 검증하며 실제 alias/merge event와 claim
 rewrite, SQLite publish 완료를 주장하지 않는다.
+
+PRJ-006/007의 structural claim/support와 merge·alias 결과에 PRJ-008 effective expiry를 붙이는
+fixture는 [`domain/prj-008-ttl-validity.test.mjs`](domain/prj-008-ttl-validity.test.mjs)에 둔다.
+raw-only, reinterpret, merge support, 기본 TTL, freeze·결정성과 redacted failure를 검증하되
+aggregate SQL과 실제 DB read-only는 SQLite integration 계층이 소유한다.
