@@ -31,6 +31,13 @@ const RESOLUTION_ERROR_MESSAGES = Object.freeze({
     "write entity resolution returned an invalid transaction result",
 });
 
+const AMBIGUITY_NOTES = Object.freeze({
+  subject:
+    "subject matches multiple entities; retry with an exact canonical name or confirm an alias or merge",
+  object:
+    "object matches multiple entities; retry with an exact canonical name or confirm an alias or merge",
+});
+
 afterEach(async () => {
   await Promise.allSettled([...openFactories].map((factory) => factory.close()));
   openFactories.clear();
@@ -346,6 +353,101 @@ test("normalizes kind independently from entity names and accepts separator-only
   });
 });
 
+test("rejects ill-formed kind scalars at both adapter and worker boundaries while preserving astral text", async (context) => {
+  await context.test("adapter rejects lone high and low surrogates before invoking the session", async () => {
+    let calls = 0;
+    for (const malformed of ["\ud800", "\udc00"]) {
+      await assert.rejects(
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: async () => {
+              calls += 1;
+              return [];
+            },
+          },
+          {
+            dispatchId: 1,
+            drafts: [draft(0, reference("Safe subject", { kind: malformed }))],
+          },
+        ),
+        (error) => {
+          assert.ok(error instanceof WriteEntityResolutionError);
+          assert.equal(error.code, "INVALID_WRITE_ENTITY_RESOLUTION_INPUT");
+          assert.equal(error.message, RESOLUTION_ERROR_MESSAGES[error.code]);
+          assert.equal("cause" in error, false);
+          return true;
+        },
+      );
+    }
+    assert.equal(calls, 0);
+  });
+
+  await context.test("adapter keeps a valid astral kind after canonical normalization", async () => {
+    let capturedKind;
+    const result = await resolveSqliteWriteEntityDrafts(
+      {
+        resolveEntities: async (_dispatchId, drafts) => {
+          capturedKind = drafts[0].subject.kind;
+          return [
+            {
+              draftIndex: 0,
+              status: "resolved",
+              subjectId: "e1.0",
+              objectId: null,
+            },
+          ];
+        },
+      },
+      {
+        dispatchId: 1,
+        drafts: [draft(0, reference("Safe subject", { kind: " Service😀 " }))],
+      },
+    );
+    assert.equal(capturedKind, "service😀");
+    assert.equal(result[0].status, "resolved");
+  });
+
+  await context.test("worker independently rejects lone surrogates and remains reusable", async () => {
+    const factory = await createStore();
+    for (const malformed of ["\ud800", "\udc00"]) {
+      await assert.rejects(
+        enqueueSqliteProjectionDispatchSession(factory, async (session) => {
+          const prepared = await session.prepare(SCOPE);
+          await session.resolveEntities(prepared.dispatchId, [
+            draft(0, reference("Safe subject", { kind: malformed })),
+          ]);
+        }),
+        (error) => {
+          assert.ok(error instanceof SqliteConnectionError);
+          assert.equal(error.code, "SQLITE_TRANSACTION_FAILED");
+          assert.equal("cause" in error, false);
+          return true;
+        },
+      );
+    }
+
+    await enqueueSqliteProjectionDispatchSession(factory, async (session) => {
+      const prepared = await session.prepare(SCOPE);
+      assert.deepEqual(
+        await session.resolveEntities(prepared.dispatchId, [
+          draft(0, reference("Safe subject", { kind: "Service😀" })),
+        ]),
+        [
+          {
+            draftIndex: 0,
+            status: "resolved",
+            subjectId: "e1.0",
+            objectId: null,
+          },
+        ],
+      );
+      await session.rollback(prepared.dispatchId);
+    });
+    assert.deepEqual(await rows(factory, "SELECT id FROM entities"), []);
+    assert.deepEqual(await rows(factory, "SELECT seq FROM journal"), []);
+  });
+});
+
 test("rejects duplicate, out-of-order, and malformed ambiguity candidates at the adapter boundary", async () => {
   const input = {
     dispatchId: 1,
@@ -389,6 +491,142 @@ test("rejects duplicate, out-of-order, and malformed ambiguity candidates at the
       },
     );
   }
+});
+
+test("rejects payload-bearing notes and results that disagree with the expected draft shape", async (context) => {
+  const candidates = [
+    { entityId: "e1.0", name: "Alpha" },
+    { entityId: "e2.0", name: "Beta" },
+  ];
+  const subjectOnlyInput = {
+    dispatchId: 1,
+    drafts: [draft(0, reference("Safe subject"))],
+  };
+  const objectInput = {
+    dispatchId: 1,
+    drafts: [draft(0, reference("Safe subject"), reference("Safe object"))],
+  };
+
+  await context.test("arbitrary rejected notes cannot echo a path or token", async () => {
+    const payload = "SQL failure at /private/recall.sqlite3 token=synthetic-secret";
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: async () => [
+              {
+                draftIndex: 0,
+                status: "rejected",
+                reason: "ambiguous_entity",
+                field: "subject",
+                candidates,
+                note: payload,
+              },
+            ],
+          },
+          subjectOnlyInput,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      payload,
+      "synthetic-secret",
+    );
+  });
+
+  await context.test("a subject-only draft cannot report object ambiguity", async () => {
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: async () => [
+              {
+                draftIndex: 0,
+                status: "rejected",
+                reason: "ambiguous_entity",
+                field: "object",
+                candidates,
+                note: AMBIGUITY_NOTES.object,
+              },
+            ],
+          },
+          subjectOnlyInput,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      null,
+      "private/recall.sqlite3",
+    );
+  });
+
+  await context.test("a subject-only resolved draft cannot gain an object ID", async () => {
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: async () => [
+              {
+                draftIndex: 0,
+                status: "resolved",
+                subjectId: "e1.0",
+                objectId: "e2.0",
+              },
+            ],
+          },
+          subjectOnlyInput,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      null,
+      "private/recall.sqlite3",
+    );
+  });
+
+  await context.test("an entity-object draft cannot lose its object ID", async () => {
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: async () => [
+              {
+                draftIndex: 0,
+                status: "resolved",
+                subjectId: "e1.0",
+                objectId: null,
+              },
+            ],
+          },
+          objectInput,
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      null,
+      "private/recall.sqlite3",
+    );
+  });
+
+  await context.test("canonical rejected output reconstructs its fixed actionable note", async () => {
+    const result = await resolveSqliteWriteEntityDrafts(
+      {
+        resolveEntities: async () => [
+          {
+            draftIndex: 0,
+            status: "rejected",
+            reason: "ambiguous_entity",
+            field: "subject",
+            candidates,
+            note: AMBIGUITY_NOTES.subject,
+          },
+        ],
+      },
+      subjectOnlyInput,
+    );
+    assert.deepEqual(result, [
+      {
+        draftIndex: 0,
+        status: "rejected",
+        reason: "ambiguous_entity",
+        field: "subject",
+        candidates,
+        note: AMBIGUITY_NOTES.subject,
+      },
+    ]);
+  });
 });
 
 test("replaces input reflection failures with fresh payload-redacted input errors", async (context) => {
