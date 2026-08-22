@@ -126,7 +126,7 @@
 - [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: [구현 결정](../implementation/rcl-004-overview-candidates.md)과 [SQLite fixture](../../test/integration/sqlite/rcl-004-overview-candidates.test.mjs)가 distinct incident count·최근성·숫자 ID 정렬, 10+1/limit+1 절단, canonical depth-0 seed, raw-only scope·graph duplicate 우선과 고정 snapshot/read-only를 통과했다. 독립 review의 async invocation/thenable payload 누출도 fresh fixed application/adapter error로 remediation했다. 최신 main `25eeb72` semantic rebase에서 REC-004 writer resolver와 REC-005 planning을 보존했고, 독립 최종 review HIGH/MEDIUM/LOW 0건과 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)이 완료 증거다. RCL-006~008의 ranking/최종 Answer·public golden은 남아 있다.
 - [x] `RCL-005` | baseline: S12/S13이 양방향 BFS·literal 수집·최단 path·fanout 신호를 확인했다. | production: `E-RECALL-TRAVERSAL`에서 TEMP valid graph source와 bounded traversal/collection, reached parent/path, descriptor snapshot·source boundary fresh error, scope·snapshot·read-only fixture를 구현했다. 독립 최종 review finding 0건과 PR #46이 완료 증거다.
 - [x] `RCL-006` | baseline: S10/S12가 support·상충·ranking·문장 조합을 확인했다. | production: `E-RECALL-RANKING`에서 explicit aggregate alias, bound reached/scope/fixed-now/limit+1 SQL의 정확한 score·tie-break, valid opposite contested, label fallback과 canonical brief를 구현했다. public Answer/detail/payload/more_available/note와 전체 golden은 RCL-007/008에 남아 있다.
-- [x] `RCL-007` | baseline: S13과 ADR-012/014가 절단 신호와 payload budget 계약을 확정했다. | production: detail 100개·1 MiB 예산과 모든 more_available 원인을 구현한다.
+- [x] `RCL-007` | baseline: S13과 ADR-012/014가 절단 신호와 payload budget 계약을 확정했다. | production: `rcl-007-answer-budget`에서 detail 100개·raw/detail 공유 1 MiB 예산, canonical support/time과 모든 more_available 원인의 최종 조립을 구현한다. RCL-008 public golden·negative·invariant와 RCL-009 성능·query-plan은 포함하지 않는다.
 - [x] `RCL-008` | baseline: S09~S13/S19/S21/S22가 결정성·scope·TTL·read-only golden을 제공한다. | production: production recall의 negative/invariant/golden suite를 통과한다.
 - [x] `RCL-009` | baseline: `E-SPIKE`는 기능 fixture를 제공하지만 production latency를 측정하지 않았다. | production: 대표 규모·warm/cold benchmark와 query plan을 기록한다.
 
@@ -164,6 +164,6 @@
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
 - Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-004`와
-  `RCL-001`~`RCL-006`은 완료됐고 `REC-005`는 owner와 격리 branch에서 진행 중이다.
+  `RCL-001`~`RCL-006`은 완료됐고 `REC-005`, `RCL-007`은 owner와 각 격리 branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

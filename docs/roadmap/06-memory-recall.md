@@ -21,7 +21,7 @@
 | RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
 | RCL-005 | BFS 이동·수집·경로 복원 | `DONE` | `log0629` | RCL-001, RCL-002 | [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), [구현 결정](../implementation/rcl-005-bfs-traversal.md) |
 | RCL-006 | ranking·상충·문장 조합 | `DONE` | `log0629` | RCL-005, PRJ-008 | [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49), [Planning PR #47](https://github.com/yeonjaekim99/knowledge-graph/pull/47), [구현 결정](../implementation/rcl-006-ranking-brief.md) |
-| RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
+| RCL-007 | Answer 구성·detail·payload budget | `IN_PROGRESS` | `log0629` | RCL-003, RCL-006 | Branch `rcl-007-answer-budget` |
 | RCL-008 | 결정성·scope·read-only 회귀 suite | `TODO` | `unassigned` | RCL-001~007 | — |
 | RCL-009 | 대표 fixture 성능 baseline | `TODO` | `unassigned` | RCL-008, STO-008 | — |
 
@@ -318,11 +318,21 @@
 
 ### RCL-007 — Answer 구성·detail·payload budget
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rcl-007-answer-budget`
 - 근거: ADR-012, ADR-014
 - 선행 작업: RCL-003, RCL-006
 - 결과물: RecallResult assembler와 truncation ledger
+
+착수 검토:
+
+- 2026-08-23 최신 `main`에서 RCL-003과 RCL-006의 `DONE` 및 Accepted ADR-012/014
+  Decision·Validation, evidence audit의 S13 baseline을 대조했다. 이번 작업은 canonical
+  support·UTC 시각, effective/recorded 시각, brief/full detail, raw/detail 1 MiB·detail 100개
+  예산, 모든 절단 원인의 ledger와 none/error 분리를 최종 `RecallResult`로 조립하는 범위다.
+- RCL-008의 public golden·negative·scope/read-only invariant suite와 RCL-009의 benchmark·
+  query-plan·p95 판정은 각각 후속 작업에 남기며 RCL-007 완료 근거로 선점하지 않는다.
 
 완료 체크:
 
