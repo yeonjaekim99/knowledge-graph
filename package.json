@@ -51,10 +51,12 @@
     "test:rec-001": "pnpm run build && node --test test/contract/mcp/rec-001-record-schema.test.mjs",
     "test:rcl-001": "pnpm run build && node --test test/contract/mcp/rcl-001-memory-recall-contract.test.mjs test/unit/application/rcl-001-recall-snapshot-service.test.mjs test/integration/sqlite/rcl-001-recall-snapshot.test.mjs",
     "test:rec-002": "pnpm run build && node --test test/unit/domain/rec-002-secret-detector.test.mjs",
+    "test:rec-003": "pnpm run build && node --test test/unit/application/rec-003-record-sanitizer.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "typecheck:rec-001": "tsc --noEmit -p tsconfig.rec-001.json",
     "typecheck:rcl-001": "tsc --noEmit -p tsconfig.rcl-001.json",
+    "typecheck:rec-003": "tsc --noEmit -p tsconfig.rec-003.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
     "verify:fnd-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002",
     "verify:fnd-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run build && pnpm run test:fnd-002 && pnpm run test:fnd-003",
@@ -82,6 +84,7 @@
     "verify:rec-001": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rec-001 && pnpm run build && pnpm run test:fnd-004 && pnpm run test:rec-001",
     "verify:rcl-001": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rcl-001 && pnpm run test:rcl-001",
     "verify:rec-002": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:rec-002",
+    "verify:rec-003": "pnpm run check:architecture && pnpm run typecheck && pnpm run typecheck:rec-003 && pnpm run test:rec-001 && pnpm run test:rec-002 && pnpm run test:rec-003",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
