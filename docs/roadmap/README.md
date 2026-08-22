@@ -2,7 +2,7 @@
 
 > 기준일: 2026-08-23
 > 범위: Recall v1 production 구현
-> 현재 상태: **Phase 04와 Phase 06 병렬 진행 중 · REC-001~004/RCL-001~003 완료, RCL-004/RCL-005 진행 중**
+> 현재 상태: **Phase 04와 Phase 06 병렬 진행 중 · REC-001~004/RCL-001~003 완료, REC-005/RCL-004/RCL-005 진행 중**
 
 이 디렉터리는 [Accepted ADR](../adr/README.md)을 팀이 실행할 수 있는 작업 순서와
 체크리스트로 바꾼다. ADR은 **왜와 무엇을**, 이 로드맵은 **순서·담당·완료 증거를**
@@ -24,8 +24,8 @@ REC-003은 [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), RC
 [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), RCL-003은
 [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), REC-004는
 [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)의 구현·독립 review·전체
-회귀와 상태 증거로 완료했다. RCL-004와 RCL-005는 격리 branch에서 진행하며, 병합 시점마다
-phase 상세 상태를 기준으로 이 표를 다시 계산한다.
+회귀와 상태 증거로 완료했다. dependency-ready REC-005, RCL-004와 RCL-005는 격리
+branch에서 진행하며, 병합 시점마다 phase 상세 상태를 기준으로 이 표를 다시 계산한다.
 
 [Evidence-gap audit](evidence-audit.md)의 `[x]`는 제품 작업별 선행 증거 대조가 끝났다는
 뜻이며 제품 작업 진행률에는 포함하지 않는다. 제품 `DONE`은 production 결과물과 해당

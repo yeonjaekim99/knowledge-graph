@@ -19,7 +19,7 @@
 | REC-002 | 비밀값 pattern·entropy 탐지기 | `DONE` | `log0629` | FND-003 | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [구현 결정](../implementation/rec-002-secret-detector.md) |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `DONE` | `log0629` | REC-001, REC-002 | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [구현 결정](../implementation/rec-003-record-sanitizer.md) |
 | REC-004 | write entity 해석과 모호성 처리 | `DONE` | `log0629` | REC-001, PRJ-005 | [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43), [구현 결정](../implementation/rec-004-write-entity-resolver.md) |
-| REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
+| REC-005 | draft 의미 검증·중복 제거·index mapping | `IN_PROGRESS` | `log0629` | REC-003, REC-004 | branch `rec-005-draft-planning` |
 | REC-006 | statement append·project·결과 원자성 | `TODO` | `unassigned` | REC-005, STO-007, PRJ-009 | — |
 | REC-007 | raw-only·기본값·재시도 의미 | `TODO` | `unassigned` | REC-006, PRJ-008 | — |
 | REC-008 | record 보안·편차·통합 회귀 suite | `TODO` | `unassigned` | REC-001~007 | — |
@@ -226,8 +226,9 @@
 
 ### REC-005 — draft 의미 검증·중복 제거·index mapping
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `rec-005-draft-planning`
 - 근거: ADR-002, ADR-009, ADR-013
 - 선행 작업: REC-003, REC-004
 - 결과물: 승인 draft plan과 입력/저장 index mapping
