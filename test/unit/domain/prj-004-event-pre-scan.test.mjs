@@ -135,6 +135,7 @@ test("pre-scan returns an immutable ordered semantic stream and every statement 
     {
       eventId: eventId(1),
       actualSeq: 1,
+      parsed: [literalDraft("테스트 명령", "pnpm test")],
       candidates: [
         {
           draftIndex: 0,
@@ -154,6 +155,7 @@ test("pre-scan returns an immutable ordered semantic stream and every statement 
   assert.equal(Object.isFrozen(result.statements), true);
   assert.equal(Object.isFrozen(result.statementCandidates), true);
   assert.equal(Object.isFrozen(result.statementCandidates[0].candidates), true);
+  assert.equal(Object.isFrozen(result.statementCandidates[0].parsed), true);
   assert.equal(Object.isFrozen(result.events), true);
   assert.equal(Object.isFrozen(result.events[0].parsed), true);
   assert.equal(Object.isFrozen(result.events[3].target), true);
