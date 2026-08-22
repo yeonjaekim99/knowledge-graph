@@ -234,6 +234,8 @@
 - tests-only RED `62e358a`는 기존 build 성공 뒤 새 traversal 제품 관찰점 부재로 0/3
   실패했고, 최소 GREEN `47d7836` 뒤 `pnpm verify:rcl-005`는 unit 5, S12 3, S13 1의
   9/9다.
+- 로컬 diff 재검토 RED `ce974e8`은 non-parent cycle의 ancestor endpoint 손실을 8/9로
+  포착했고 fix `97fb191`은 parent claim/self-loop만 중복 append에서 제외해 9/9로 닫았다.
 - file SQLite에서 scope·expiry가 이동/수집에 들어오지 않고, 같은 WAL snapshot 중 concurrent
   commit은 다음 callback에서만 보이며, 성공·실패 뒤 permanent dump와 외부 `data_version`이
   변하지 않음을 확인했다. cross-scope endpoint 손상과 callback 종료 source는 payload를

@@ -119,6 +119,11 @@ RCL-005의 세 test module이 import 단계에서 0/3 실패했다. 최소 GREEN
 TEMP source, snapshot protocol/adapter, domain validation과 BFS를 연결했고
 `pnpm verify:rcl-005`가 9/9로 통과했다.
 
+로컬 diff 재검토에서 parent 간선이 아닌 cycle edge의 반대 endpoint가 이미 ancestor라는
+이유로 path에서 사라지는 결함을 찾았다. tests-only RED `ce974e8`은 depth 3의 `D→B`를
+`A→B→C→D→B`, 4 hops로 요구해 8/9와 실제 `A→B→C→D`를 포착했다. fix `97fb191`은
+self-loop 또는 anchor의 정확한 parent claim만 append에서 제외해 다시 9/9로 만들었다.
+
 fixture는 다음을 고정한다.
 
 - incoming 방향 시작, literal collection, 별칭·FTS·overview path와 실제 hops
