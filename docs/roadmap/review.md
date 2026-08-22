@@ -3,9 +3,9 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#44 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
+- 성격: 작성자 자체 교차 검토, PR #3~#45 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
   REC-004 독립 review·Promise species 보완·최종 재검토·최신 main 결합 재검증
-- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~003 완료 · REC-005/RCL-004/RCL-005 진행**
+- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~004 완료 · REC-005/RCL-005 진행**
 
 ## 검토 결과
 
@@ -19,7 +19,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 31/66, Phase 01·02·03과 REC-001~004/RCL-001~003 `DONE`, REC-005/RCL-004/RCL-005 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 32/66, Phase 01·02·03과 REC-001~004/RCL-001~004 `DONE`, REC-005/RCL-005 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -237,6 +237,15 @@
     script·evidence와 RCL-001/RCL-002/RCL-003 snapshot 공존을 함께 검증했다.
     [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)이 구현·review·전체 회귀와
     상태 증거를 함께 고정해 제품 roll-up을 31/66으로 올렸다.
+36. RCL-004는 RCL-001의 같은 scope/now snapshot에 typed overview facet을 추가해 유효 incident
+    수·최근성·숫자 entity ID 순으로 10+1 entity seed를 고르고, parsed=[] raw-only 후보를
+    limit+1로 읽되 같은 원문의 유효 graph가 있으면 억제한다. 독립 review에서 sync·Promise·hostile
+    thenable 오류가 payload-bearing 원 객체를 유지하는 MEDIUM을 찾아 13/15 RED로 고정했고,
+    guarded invocation/await와 fresh fixed error로 15/15 GREEN을 만들었다. REC-004 병합 뒤 최신
+    main semantic rebase에서 writer/reader worker seam과 REC-005 planning을 함께 보존했고,
+    post-rebase 독립 최종 review HIGH/MEDIUM/LOW 0건 및 전체 388/388을 확인했다.
+    [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)이 구현·검증·상태 증거를
+    `main`에 고정해 제품 roll-up을 32/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -257,7 +266,8 @@
   [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39),
   [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004는
   [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)으로 완료했다.
-  dependency-ready REC-005, RCL-004와 RCL-005는 격리 branch에서 병렬 진행한다.
+  RCL-004는 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)로 완료했고,
+  dependency-ready REC-005와 RCL-005는 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -278,7 +288,7 @@
 | REC-003 branch gate | PASS — architecture/type, REC-001 11/11·REC-002 13/13·REC-003 17/17, 전체 fast 39개 파일 285/285, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; mutable input 14/15·accessor result 15/16·typed detector error 16/17 RED를 닫았고 독립 review finding HIGH 0/MEDIUM 0 |
 | RCL-002 branch gate | PASS — architecture/type/build, RCL-002 15/15·REC-001 13/13·REC-002 13/13·REC-003 17/17·RCL-001 10/10, 전체 fast 42개 파일 302/302, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | RCL-003 branch gate | PASS — architecture/type/build, RCL-003 21/21·RCL-002 15/15·RCL-001 10/10·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 44개 파일 323/323, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 2,100 support·21 candidate probe 및 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
-| RCL-004 branch gate | PASS — 최신 main `25eeb72` 위 semantic rebase, RCL-004 15/15·REC-004 focused 50/50을 포함한 verify 70/70·RCL-001 10/10·RCL-002 15/15·RCL-003 21/21·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 48개 파일 388/388, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; REC-004 writer resolver·REC-005 planning 보존, 독립 재review 대기 |
+| RCL-004 branch gate | PASS — 최신 main `25eeb72` 위 semantic rebase, RCL-004 15/15·REC-004 focused 50/50을 포함한 verify 70/70·RCL-001 10/10·RCL-002 15/15·RCL-003 21/21·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 48개 파일 388/388, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; REC-004 writer resolver·REC-005 planning 보존, 독립 최종 review HIGH/MEDIUM/LOW 0건 |
 | 변경 범위 | PASS — REC-003 sanitation·RCL-003 FTS와 REC-004 writer resolver를 기존 REC-001/RCL-001 snapshot 경계에 병존시키고, dedupe·journal record service·BFS/ranking/Answer·MCP handler·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사

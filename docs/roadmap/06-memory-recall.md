@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 3/9
+- 진행률: 4/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -18,7 +18,7 @@
 | RCL-001 | recall 계약·snapshot·유효 aggregate | `DONE` | `log0629` | FND-004, PRJ-008 | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md) |
 | RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
 | RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
-| RCL-004 | overview seed와 raw-only 개요 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-003 | [Planning PR #42](https://github.com/yeonjaekim99/knowledge-graph/pull/42), branch `rcl-004-overview-seeds` |
+| RCL-004 | overview seed와 raw-only 개요 | `DONE` | `log0629` | RCL-001, RCL-003 | [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), [구현 결정](../implementation/rcl-004-overview-candidates.md) |
 | RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), branch `rcl-005-bfs-traversal` |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
 | RCL-007 | Answer 구성·detail·payload budget | `TODO` | `unassigned` | RCL-003, RCL-006 | — |
@@ -166,23 +166,23 @@
 
 ### RCL-004 — overview seed와 raw-only 개요
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-004-overview-seeds`
-- Planning PR: [#42](https://github.com/yeonjaekim99/knowledge-graph/pull/42)
+- PR: [#45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)
 - 근거: ADR-010, ADR-012, ADR-014
 - 선행 작업: RCL-001, RCL-003
 - 결과물: deterministic overview candidate provider
 
 완료 체크:
 
-- [ ] distinct 유효 incident claim 수 DESC, 최근성 DESC, entity ID ASC로 정렬한다.
-- [ ] 상위 `min(limit,10)` entity를 depth 0 seed로 쓰고 하나 더 읽어 절단을 판정한다.
-- [ ] claim 랭킹 뒤 남는 칸만 최근 live·unexpired parsed=[] raw로 채운다.
-- [ ] raw-only scope도 overview가 되며 철회/만료 graph 원문은 우회하지 않는다.
-- [ ] 별도 entity answer type을 만들지 않고 entry=overview로 구분한다.
+- [x] distinct 유효 incident claim 수 DESC, 최근성 DESC, entity ID ASC로 정렬한다.
+- [x] 상위 `min(limit,10)` entity를 depth 0 seed로 쓰고 하나 더 읽어 절단을 판정한다.
+- [x] claim 랭킹 뒤 남는 칸만 최근 live·unexpired parsed=[] raw로 채운다.
+- [x] raw-only scope도 overview가 되며 철회/만료 graph 원문은 우회하지 않는다.
+- [x] 별도 entity answer type을 만들지 않고 entry=overview로 구분한다.
 
-branch-local 증거 (독립 review 대기):
+완료 증거:
 
 - [구현 결정](../implementation/rcl-004-overview-candidates.md)에 RCL-001 snapshot 안의 typed
   overview facet, distinct incident count·aggregate 최근성·숫자 entity ID 정렬, canonical
@@ -201,8 +201,11 @@ branch-local 증거 (독립 review 대기):
   포함한 `verify:rec-004` 70/70, 전체 48개 파일 388/388, PRJ-010 39/39와 behavior spike
   25/25도 통과했다. rebase는 REC-004 writer resolver와 REC-005 planning을 보존했고 overview
   facet 외 제품 의미를 추가하지 않았다.
-- 독립 재review와 PR/main merge 전이므로 상태와 완료 체크는 유지한다. claim ranking, 남는 칸
-  조립, `entry: "overview"`, public S19/S22 golden은 RCL-006~008의 남은 gate다.
+- post-rebase 독립 최종 review는 HEAD `cfce53c`에서 HIGH/MEDIUM/LOW 0건, RCL-004
+  15/15, REC-004 70/70, 전체 388/388와 PRJ-010 39/39를 재현했다.
+  [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)이 구현·review·검증을
+  `main`에 함께 고정한다. claim ranking, 남는 칸 조립, 최종 `entry: "overview"`와 public
+  S19/S22 golden은 RCL-006~008의 남은 gate다.
 
 ### RCL-005 — BFS 이동·수집·경로 복원
 

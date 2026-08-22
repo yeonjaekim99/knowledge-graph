@@ -1,6 +1,6 @@
 # RCL-004: 결정적 overview 후보
 
-- 상태: 구현·독립 review remediation·로컬 검증 완료, 독립 재review 대기
+- 상태: 독립 최종 review 완료, [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)로 게시·병합
 - 결정일: 2026-08-23
 - 작업: RCL-004
 - Owner: `log0629`
@@ -140,8 +140,10 @@ STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39를 통과했다. 최종 전체 fast suit
 388/388이고 behavior spike 25/25, roadmap audit 67/67, production dependency audit 0건과
 diff/clean gate도 통과했다.
 
-문서 상태는 독립 재review와 PR/main merge가 끝나기 전까지 `IN_PROGRESS`와 미체크 완료 항목을
-유지한다. S19/S22 public scenario도 final claim/raw Answer와 golden이 아직 없으므로 `planned`다.
+post-rebase 독립 최종 review는 같은 HEAD에서 HIGH/MEDIUM/LOW 0건과 focused·전체 gate를
+재현했다. [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)이 이 구현과
+증거를 `main`에 고정해 RCL-004를 `DONE`으로 만든다. S19/S22 public scenario는 final
+claim/raw Answer와 golden이 아직 없으므로 `planned`다.
 
 최종 재현 명령은 다음과 같다.
 
