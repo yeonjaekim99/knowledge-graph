@@ -162,9 +162,11 @@ redirect, constraint 또는 query 손상은 기존 `SqliteConnectionError`의 �
 input wrapper는 accessor·symbol·extra property와 sparse array를 거부하고 own data descriptor만
 읽는 bounded exact snapshot을 호출 전에 만든다. reflection trap과 이미 오염된 typed error도
 원본 객체를 재사용하지 않고 새 고정 input error로 낮춘다. worker도 길이와 strictly increasing
-draft index를 다시 확인한다. result wrapper는 session Promise를 native `then`으로 소비하고 같은
-descriptor snapshot으로 각 input draft와 동일한 순서/index, resolved object ID의 nullable
-presence, rejected field의 실제 reference 존재 여부를 원본 draft와 대조한다. canonical entity ID,
+draft index를 다시 확인한다. result wrapper는 session Promise를 native async settlement bridge에서
+intrinsic `then`으로 소비하되 `Symbol.species`가 만든 `then` 반환 객체는 폐기한다. 따라서 public
+resolver는 항상 native Promise이며, 같은 descriptor snapshot으로 각 input draft와 동일한
+순서/index, resolved object ID의 nullable presence, rejected field의 실제 reference 존재 여부를
+원본 draft와 대조한다. canonical entity ID,
 ambiguity candidate의 중복·numeric ordering·shape도 검증하고 subject/object별 고정 retry note와
 정확히 일치할 때만 그 고정 문구를 새 결과에 재구성한 뒤 결과 전체를 재귀적으로 freeze한다. session
 call/rejection/result/thenable의 알 수 없는 실패는 새 고정 result error가 된다. rejected 오류의
@@ -213,7 +215,12 @@ session result의 object ID presence와 rejected field가 원본 draft reference
 찾았다. tests-only `39c4a00`은 finalization target 35개 중 27 pass/8 fail RED로 두 경계를
 고정했다. `cb5f2ec`은 각 결과를 snapshotted draft와 대조하고 subject/object별 고정 note만
 검증·재구성하며 두 kind 경계에 Unicode scalar 검사를 추가해 35/35 GREEN으로 닫았다. 이
-보완은 새 독립 재검토를 기다린다.
+보완 뒤 독립 재검토는 `Promise.prototype.then`의 species-controlled 반환 객체를 public
+resolver가 그대로 반환해 settlement와 결과 검증을 우회하는 MEDIUM 경계를 찾았다. tests-only
+`b179166`은 finalization target 42개 중 36 pass/6 fail RED(실패한 child 5개와 parent 집계)를
+고정했다. `68ff959`는 native async bridge 안에서 session Promise settlement만 받아 species
+객체를 버리고, 성공은 검증·동결된 결과로, 실패는 fresh fixed error 또는 fresh canonical SQLite
+error로 변환해 42/42 GREEN으로 닫았다. 이 보완은 새 독립 재검토를 기다린다.
 
 file-backed SQLite target은 다음 정상·경계·실패 경로를 검증한다.
 
@@ -234,6 +241,8 @@ file-backed SQLite target은 다음 정상·경계·실패 경로를 검증한�
 - arbitrary ambiguity note payload 거부, 고정 actionable note 재구성과 원본 draft의 object/field parity
 - input/result Proxy·accessor, session call/rejection/thenable의 fresh payload-redacted 오류와
   allowed code/retry 의미만 보존한 fresh canonical `SqliteConnectionError` 재구성
+- Promise subclass/custom `Symbol.species`가 만든 객체를 public return으로 노출하지 않는 native
+  Promise 경계와 resolve/finalize settlement의 fresh 오류 변환
 
 검증 명령은 다음과 같다.
 
@@ -245,13 +254,13 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 pnpm audit --prod
 ```
 
-최신 보완 뒤 REC-004 SQLite target은 35/35, 관련 PRJ-005/009 포함 target은 63/63다.
+최신 보완 뒤 REC-004 SQLite target은 42/42, 관련 PRJ-005/009 포함 target은 70/70이다.
 REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신 main 결합 상태의
-전체 fast 46 files·366/366, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
+전체 fast 46 files·373/373, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39,
 behavior spike 25/25, roadmap audit 67/67과 production audit 0건을 통과했고
-이번 review의 MEDIUM 1건과 LOW 1건은 로컬에서 보완됐다. 새 독립 재검토와 PR/main 영속
-증거 전까지 작업 상태는 `IN_PROGRESS`다.
+앞선 review의 MEDIUM 1건·LOW 1건과 후속 Promise species MEDIUM 1건은 로컬에서 보완됐다.
+새 독립 재검토와 PR/main 영속 증거 전까지 작업 상태는 `IN_PROGRESS`다.
 S21의 write-time resolver 부분은 production으로 옮겼지만 public `memory_record`와 실제
 alias/revise 수직 경로는 REC-006/008과 REV-006/007이 소유하므로 scenario manifest 상태는
 바꾸지 않는다.

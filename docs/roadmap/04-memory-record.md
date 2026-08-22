@@ -180,6 +180,8 @@
 - [x] finalized statement body와 실제 append seq가 다르면 projection 전에 전체 transaction을 닫는다.
 - [x] session result의 object ID presence와 rejected field를 원본 draft와 대조하고 고정 ambiguity
   note만 새 결과에 재구성한다.
+- [x] session Promise의 custom `Symbol.species` 반환 객체를 폐기하고 resolve/finalize public
+  boundary는 native Promise의 검증된 동결 결과 또는 fresh fixed/canonical 오류만 반환한다.
 
 완료 증거:
 
@@ -209,9 +211,11 @@
   review에서 rejected note payload와 원본 draft 대비 object/field shape 불일치 MEDIUM, kind
   lone surrogate LOW를 찾았다. tests-only `39c4a00`의 27/35 RED를 expected-draft parity·고정
   note reconstruction과 adapter/worker Unicode scalar 검사 `cb5f2ec`으로 35/35 GREEN으로
-  닫았으며 새 독립 재검토는 아직 대기 중이다. 그 뒤
-  REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신 main에
-  semantic rebase했다. 관련 PRJ-005/009 포함 63/63, 전체 fast 46 files·366/366,
+  닫았다. 그 뒤 REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신
+  main에 semantic rebase했다. 이 상태의 독립 재검토가 session Promise subclass의 custom
+  `Symbol.species` 객체가 public return과 settlement를 대체하는 MEDIUM 경계를 찾았다.
+  tests-only `b179166`의 36/42 RED를 native async settlement bridge `68ff959`로 닫아
+  42/42 GREEN을 만들었다. 관련 PRJ-005/009 포함 70/70, 전체 fast 46 files·373/373,
   RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4,
   PRJ-008 8/8, PRJ-010 39/39, spike 25/25,
   roadmap 67/67과 production audit 0건을 재확인했다. 독립 재검토와 PR/main 영속 증거가

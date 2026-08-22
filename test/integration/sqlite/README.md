@@ -53,7 +53,9 @@ compact occurrence ID, exact finalization/append body와 actual seq binding을 �
 trim→NFKC→lowercase 경계, ambiguity candidate의 중복·numeric order·shape와
 `sqlite_sequence` drift도 payload를 노출하지 않고 fail-closed하는지 확인한다. input/result
 Proxy·accessor와 session call/rejection/thenable은 원본 message·cause·prefix·suffix를 버린 새
-고정 error가 된다. factory 의미를 가진 오류도 원본 identity·poisoned prototype·transparent
-Proxy를 재사용하지 않고 allowed code/retry own descriptor에서 fresh canonical
-`SqliteConnectionError`로 복원하며, invalid code를 거부하고 `SQLITE_BUSY` retry metadata를
-유지하는지도 고정한다.
+고정 error가 된다. Promise subclass/custom `Symbol.species`가 만든 반환 객체도 public
+resolve/finalize Promise로 노출하지 않고 native async settlement bridge에서 폐기하며, 성공은
+검증·동결하고 settlement 실패는 새 고정 오류로 바꾼다. factory 의미를 가진 오류도 원본
+identity·poisoned prototype·transparent Proxy를 재사용하지 않고 allowed code/retry own
+descriptor에서 fresh canonical `SqliteConnectionError`로 복원하며, invalid code를 거부하고
+`SQLITE_BUSY` retry metadata를 유지하는지도 고정한다.

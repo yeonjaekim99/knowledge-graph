@@ -4,8 +4,8 @@
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
 - 성격: 작성자 자체 교차 검토, PR #3~#42 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
-  REC-004 독립 review·보완·최신 main 결합 재검증
-- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · REC-004 보완 후 독립 재검토 대기**
+  REC-004 독립 review·Promise species 보완·최신 main 결합 재검증
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · REC-004 Promise species 보완 후 독립 재검토 대기**
 
 ## 검토 결과
 
@@ -226,10 +226,14 @@
     닫았다. 이어진 review는 임의 rejected note payload, 원본 draft와 다른 object ID presence·
     rejected field를 허용하는 MEDIUM 경계와 kind lone surrogate를 허용하는 LOW를 찾았다.
     tests-only `39c4a00`으로 27/35 RED를 고정하고 expected-draft parity, subject/object별 고정
-    note 재구성과 adapter/worker Unicode scalar 검사 `cb5f2ec`으로 35/35 GREEN을 만들었다. 새
-    독립 재검토는 대기 중이다. REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신
-    main에 semantic rebase해 script·evidence와 RCL-001/RCL-002/RCL-003 snapshot 공존을
-    함께 검증했으며 PR/main 증거 전까지
+    note 재구성과 adapter/worker Unicode scalar 검사 `cb5f2ec`으로 35/35 GREEN을 만들었다.
+    최신 main semantic rebase 뒤 독립 재검토는 session Promise subclass의 custom
+    `Symbol.species` 반환 객체가 public resolver의 Promise와 settlement를 대체하는 MEDIUM을
+    찾았다. tests-only `b179166`으로 36/42 RED를 고정하고, native async settlement bridge
+    `68ff959`가 species 반환 객체를 폐기하며 성공 결과를 검증·동결하고 실패를 fresh fixed 또는
+    fresh canonical SQLite error로 변환해 42/42 GREEN을 만들었다. 새 독립 재검토는 대기 중이다.
+    REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신 main의
+    script·evidence와 RCL-001/RCL-002/RCL-003 snapshot 공존을 함께 검증했으며 PR/main 증거 전까지
     REC-004 상태와 roll-up은 바꾸지 않았다.
 
 ## 의도적으로 남은 상태
@@ -261,10 +265,10 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 35/35, 관련 PRJ-005/009 포함 target 63/63, architecture/type/build와 전체 fast 46 files·366/366; 새 독립 재검토 대기 |
+| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 42/42, 관련 PRJ-005/009 포함 target 70/70, architecture/type/build와 전체 fast 46 files·373/373; Promise species 보완 후 새 독립 재검토 대기 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
-| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39; Proxy/accessor·connection-error identity와 result parity/note·kind scalar finding을 로컬에서 닫았고 새 독립 재검토 대기 |
+| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39; Proxy/accessor·connection-error identity·result parity/note·kind scalar·Promise species finding을 로컬에서 닫았고 새 독립 재검토 대기 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |

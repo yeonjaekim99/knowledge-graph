@@ -171,7 +171,9 @@ fixture는 surface 전체 후보의 redirect·exact-name 순서, draft-local amb
 scope 비누출, 실제 unique constraint collision 뒤 재조회, kind·alias homonym 보존과 append 전
 provisional projection rollback을 검증한다. 별도 finalization fixture는 DB-global seq,
 rejected/duplicate survivor compact ID와 exact body/actual seq binding, Proxy/accessor 및 session
-failure의 fresh payload-redacted error 경계를 고정한다. SQLite 오류는 원본 identity·prototype·
-Proxy를 버리고 allowed code/retry 의미만 fresh canonical 객체로 복원한다. duplicate survivor를
+failure의 fresh payload-redacted error 경계를 고정한다. Promise subclass의 custom
+`Symbol.species` 반환 객체는 public resolve/finalize Promise가 될 수 없고 native async bridge가
+검증된 동결 결과 또는 fresh 오류만 정착시킨다. SQLite 오류는 원본 identity·prototype·Proxy를
+버리고 allowed code/retry 의미만 fresh canonical 객체로 복원한다. duplicate survivor를
 고르는 정책과 input/stored index mapping은 REC-005, 공개 record 결과·statement 작성은 REC-006의
 후속 수직 경로에 남는다.
