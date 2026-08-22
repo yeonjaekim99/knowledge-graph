@@ -121,7 +121,7 @@
 - [x] `RCL-001` | baseline: S09/S10/S19가 scope/now snapshot aggregate와 read-only 의미를 확인했고 `E-RUNTIME`이 고정 `evaluationNow`, `E-SCHEMA`가 output 계약 seam을 제공한다. | production: `E-RECALL-FOUNDATION`에서 같은 readonly snapshot의 scope/fixed-now TEMP aggregate와 실제 MemoryRecall/RecallResult schema·typed runtime 계약을 완료했다.
 - [x] `RCL-002` | baseline: S01/S09/S21이 normalize·surface·alias seed 의미를 확인했다. | production: `E-RECALL-SURFACE`에서 query term 후보, canonical surface seed, scope·50+1·결정적 dedupe와 typed snapshot seam을 구현하고 PR review·merge 증거를 고정했다.
 - [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: `E-RECALL-FTS`에서 bound quoted query, RCL-002 표시 term handoff, 실제 phrase 3글자 경계, fixed-snapshot eligible FTS 21/20 전체 검증, valid graph seed/reached pin과 raw-only·duplicate 억제를 구현하고 PR review·merge 증거를 고정했다.
-- [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: overview seed cap·정렬·빈 결과 계약을 구현한다.
+- [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: [구현 결정](../implementation/rcl-004-overview-candidates.md)과 [SQLite fixture](../../test/integration/sqlite/rcl-004-overview-candidates.test.mjs)가 distinct incident count·최근성·숫자 ID 정렬, 10+1/limit+1 절단, canonical depth-0 seed, raw-only scope·graph duplicate 우선과 고정 snapshot/read-only를 통과했다. 독립 review의 async invocation/thenable payload 누출도 fresh fixed application/adapter error로 remediation했다. 최신 main `25eeb72` semantic rebase에서 REC-004 writer resolver와 REC-005 planning을 보존했고, 독립 최종 review HIGH/MEDIUM/LOW 0건과 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45)이 완료 증거다. RCL-006~008의 ranking/최종 Answer·public golden은 남아 있다.
 - [x] `RCL-005` | baseline: S12/S13이 양방향 BFS·literal 수집·최단 path·fanout 신호를 확인했다. | production: TEMP reached와 bounded traversal/collection을 구현한다.
 - [x] `RCL-006` | baseline: S10/S12가 support·상충·ranking·문장 조합을 확인했다. | production: explicit aggregate alias와 결정적 SQL ranking/Answer 조합을 구현한다.
 - [x] `RCL-007` | baseline: S13과 ADR-012/014가 절단 신호와 payload budget 계약을 확정했다. | production: detail 100개·1 MiB 예산과 모든 more_available 원인을 구현한다.
@@ -154,15 +154,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 31/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
-  `PRJ-001`~`010`, `REC-001`~`REC-004`와 `RCL-001`~`RCL-003`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 32/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
+  `PRJ-001`~`010`, `REC-001`~`REC-004`와 `RCL-001`~`RCL-004`가 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
 - Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-004`와
-  `RCL-001`~`RCL-003`은 완료됐고 `REC-005`, `RCL-004`, `RCL-005`는 owner와 격리
+  `RCL-001`~`RCL-004`는 완료됐고 `REC-005`, `RCL-005`는 owner와 격리
   branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

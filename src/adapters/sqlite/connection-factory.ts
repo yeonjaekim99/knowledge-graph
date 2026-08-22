@@ -23,6 +23,7 @@ import {
   type SqliteReadResult,
   type SqliteRecallAggregateRowsResult,
   type SqliteRecallFtsRowsResult,
+  type SqliteRecallOverviewRowsResult,
   type SqliteRecallSnapshotBeginResult,
   type SqliteRecallSurfaceStateRowsResult,
   type SqliteTransactionCommand,
@@ -241,6 +242,17 @@ class SqliteWorkerClient {
     }) as Promise<SqliteRecallFtsRowsResult>;
   }
 
+  public readRecallSnapshotOverview(
+    snapshotId: number,
+    limit: number,
+  ): Promise<SqliteRecallOverviewRowsResult> {
+    return this.#request({
+      type: "recall-snapshot-overview",
+      snapshotId,
+      limit,
+    }) as Promise<SqliteRecallOverviewRowsResult>;
+  }
+
   public endRecallSnapshot(
     snapshotId: number,
     commit: boolean,
@@ -456,6 +468,11 @@ class SqliteWorkerClient {
           readonly phraseLiterals: readonly string[];
         }
       | {
+          readonly type: "recall-snapshot-overview";
+          readonly snapshotId: number;
+          readonly limit: number;
+        }
+      | {
           readonly type: "recall-snapshot-end";
           readonly snapshotId: number;
           readonly commit: boolean;
@@ -629,6 +646,15 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
           phraseLiterals,
         );
       },
+      readRawOverviewState: async (limit: number) => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+        return this.#client.readRecallSnapshotOverview(
+          started.snapshotId,
+          limit,
+        );
+      },
     });
 
     try {
@@ -662,6 +688,9 @@ export interface SqliteRecallSnapshotSource {
     matchExpression: string,
     phraseLiterals: readonly string[],
   ): Promise<SqliteRecallFtsRowsResult>;
+  readRawOverviewState(
+    limit: number,
+  ): Promise<SqliteRecallOverviewRowsResult>;
 }
 
 export type SqliteRecallSnapshotOperation<Result> = (

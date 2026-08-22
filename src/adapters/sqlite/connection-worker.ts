@@ -51,6 +51,7 @@ import {
 } from "./connection-protocol.js";
 import { RECALL_SNAPSHOT_SQL_SOURCE } from "./recall-snapshot-sql.js";
 import { RECALL_FTS_SQL_SOURCE } from "./recall-fts-sql.js";
+import { RECALL_OVERVIEW_SQL_SOURCE } from "./recall-overview-sql.js";
 
 interface SqliteRunMetadata {
   readonly changes: number;
@@ -2900,6 +2901,47 @@ function searchRecallSnapshotFts(
   });
 }
 
+function readRecallSnapshotOverview(
+  database: SqliteDatabaseConnection,
+  state: WorkerRecallSnapshotState,
+  snapshotId: number,
+  limit: number,
+): Readonly<{
+  entityRows: readonly Readonly<Record<string, unknown>>[];
+  rawRows: readonly Readonly<Record<string, unknown>>[];
+}> {
+  if (
+    state.active === null ||
+    state.active.snapshotId !== snapshotId ||
+    !database.inTransaction ||
+    !Number.isSafeInteger(limit) ||
+    limit < 1 ||
+    limit > 50
+  ) {
+    throw new WorkerConnectionFailure("RECALL_SNAPSHOT_FAILED");
+  }
+
+  const seedLimit = Math.min(limit, 10);
+  const bindings = Object.freeze({
+    scope_key: state.active.scopeKey,
+    now: state.active.evaluationNow,
+    overview_seed_probe_limit: seedLimit + 1,
+    overview_raw_probe_limit: limit + 1,
+  });
+  return Object.freeze({
+    entityRows: rows(
+      database
+        .prepare(RECALL_OVERVIEW_SQL_SOURCE.selectEntityCandidates)
+        .all(bindings),
+    ),
+    rawRows: rows(
+      database
+        .prepare(RECALL_OVERVIEW_SQL_SOURCE.selectRawCandidates)
+        .all(bindings),
+    ),
+  });
+}
+
 function endRecallSnapshot(
   database: SqliteDatabaseConnection,
   state: WorkerRecallSnapshotState,
@@ -3102,6 +3144,33 @@ function handleRequest(
         request.snapshotId,
         request.matchExpression,
         request.phraseLiterals,
+      );
+      post({ type: "success", requestId: request.requestId, result });
+    } catch (error) {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: safeFailureCode(error, "RECALL_SNAPSHOT_FAILED"),
+      });
+    }
+    return;
+  }
+
+  if (request.type === "recall-snapshot-overview") {
+    if (data.role !== "reader") {
+      post({
+        type: "failure",
+        requestId: request.requestId,
+        code: "RECALL_SNAPSHOT_FAILED",
+      });
+      return;
+    }
+    try {
+      const result = readRecallSnapshotOverview(
+        database,
+        recallState,
+        request.snapshotId,
+        request.limit,
       );
       post({ type: "success", requestId: request.requestId, result });
     } catch (error) {

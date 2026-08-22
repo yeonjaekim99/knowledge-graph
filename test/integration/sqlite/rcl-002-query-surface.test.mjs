@@ -139,6 +139,7 @@ test("scoped surface candidates resolve through redirect chains with determinist
       "listValidClaimAggregates",
       "resolveSurfaceSeeds",
       "searchFtsCandidates",
+      "selectOverviewCandidates",
     ]);
     assert.equal("query" in source, false);
     assert.equal("sql" in source, false);
