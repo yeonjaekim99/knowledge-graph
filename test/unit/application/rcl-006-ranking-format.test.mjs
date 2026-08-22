@@ -105,6 +105,72 @@ test("brief formatter uses the aggregate label or every ADR-004 default without 
   );
 });
 
+test("brief formatter accepts canonical literals and rejects non-canonical literal identity", () => {
+  assert.equal(
+    formatRecallClaimBrief({
+      subjectName: "테스트 명령",
+      relation: "describes",
+      relationLabel: null,
+      objectName: null,
+      objectValue: "pnpm  test",
+    }),
+    "테스트 명령 = pnpm  test",
+  );
+  assert.throws(
+    () => formatRecallClaimBrief({
+      subjectName: "테스트 명령",
+      relation: "describes",
+      relationLabel: null,
+      objectName: null,
+      objectValue: "ｐｎｐｍ　ｔｅｓｔ",
+    }),
+    (error) => {
+      assert.ok(error instanceof RecallRankingError);
+      assert.equal(error.code, "INVALID_RANKING_STATE");
+      assert.equal(JSON.stringify(error).includes("ｐｎｐｍ"), false);
+      return true;
+    },
+  );
+});
+
+test("ranking rejects a non-canonical literal returned by a fake source", async () => {
+  await assert.rejects(
+    rankRecallClaims(
+      {
+        async selectRankedClaims() {
+          return [rankedState({ objectValue: "ｐｎｐｍ　ｔｅｓｔ" })];
+        },
+      },
+      { limit: 1, reached: [reached] },
+    ),
+    (error) => {
+      assert.ok(error instanceof RecallRankingError);
+      assert.equal(error.code, "INVALID_RANKING_STATE");
+      assert.equal(JSON.stringify(error).includes("ｐｎｐｍ"), false);
+      return true;
+    },
+  );
+});
+
+test("ranking rejects contested state for relations outside uses and rejects", async () => {
+  await assert.rejects(
+    rankRecallClaims(
+      {
+        async selectRankedClaims() {
+          return [rankedState({ contested: true, relation: "contains", score: 6 })];
+        },
+      },
+      { limit: 1, reached: [reached] },
+    ),
+    (error) => {
+      assert.ok(error instanceof RecallRankingError);
+      assert.equal(error.code, "INVALID_RANKING_STATE");
+      assert.equal("cause" in error, false);
+      return true;
+    },
+  );
+});
+
 test("ranking requests only claim/depth with a limit+1 probe and preserves traversal display fields", async () => {
   const calls = [];
   const source = Object.freeze({

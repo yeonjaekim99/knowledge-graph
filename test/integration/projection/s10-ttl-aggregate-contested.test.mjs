@@ -6,7 +6,11 @@ import {
   rankRecallClaims,
 } from "../../../dist/application/recall-ranking.js";
 import { RecallReadError } from "../../../dist/application/ports/recall-read-port.js";
-import { RECALL_RANKING_SQL_SOURCE } from "../../../dist/adapters/sqlite/index.js";
+import {
+  RECALL_RANKING_SQL_SOURCE,
+  SqliteConnectionError,
+} from "../../../dist/adapters/sqlite/index.js";
+import { runSqliteRecallSnapshot } from "../../../dist/adapters/sqlite/connection-factory.js";
 import {
   RCL_006_NOW,
   RCL_006_OTHER_SCOPE,
@@ -53,25 +57,110 @@ function rawRankingRow(overrides = {}) {
   };
 }
 
-async function rankInjectedRaw(factory, rawResult) {
+async function withInjectedSnapshot(factory, snapshot, operation) {
   const reader = await factory.openReader();
   Object.defineProperty(reader, "withRecallSnapshot", {
     configurable: true,
-    value: async (_scopeKey, _evaluationNow, operation) =>
-      operation(Object.freeze({
-        assertActive() {},
-        async readRawRankingRows() {
-          return rawResult;
-        },
-      })),
+    value: async (_scopeKey, _evaluationNow, callback) => callback(snapshot),
   });
   const injectedFactory = Object.freeze({
     async openReader() {
       return reader;
     },
   });
-  return createRecallServiceAt(injectedFactory).withSnapshot((source) =>
-    rankRecallClaims(source, { limit: 1, reached: [reached("c1.0")] }));
+  return createRecallServiceAt(injectedFactory).withSnapshot(operation);
+}
+
+function injectedRawSnapshot(rawResult) {
+  return Object.freeze({
+    assertActive() {},
+    async readRawRankingRows() {
+      return rawResult;
+    },
+  });
+}
+
+async function selectInjectedRaw(factory, rawResult) {
+  return withInjectedSnapshot(
+    factory,
+    injectedRawSnapshot(rawResult),
+    (source) => source.selectRankedClaims([{ claimId: "c1.0", depth: 0 }], 2),
+  );
+}
+
+async function rankInjectedRaw(factory, rawResult) {
+  return withInjectedSnapshot(
+    factory,
+    injectedRawSnapshot(rawResult),
+    (source) => rankRecallClaims(source, {
+      limit: 1,
+      reached: [reached("c1.0")],
+    }),
+  );
+}
+
+function smuggledReadError(marker) {
+  const error = new RecallReadError("INVALID_RECALL_RANKING_STATE");
+  error.name = `Smuggled${marker}`;
+  error.message = marker;
+  error.cause = { marker };
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshReadStateError(error, injected, marker) {
+  const expected = new RecallReadError("INVALID_RECALL_RANKING_STATE");
+  assert.ok(error instanceof RecallReadError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, expected.code);
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("secret" in error, false);
+  assert.equal(JSON.stringify(error).includes(marker), false);
+  return true;
+}
+
+function smuggledConnectionError(marker) {
+  const error = new SqliteConnectionError("SQLITE_QUERY_FAILED");
+  error.name = `Smuggled${marker}`;
+  error.message = marker;
+  error.cause = { marker };
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshConnectionError(error, injected, marker) {
+  const expected = new SqliteConnectionError("SQLITE_QUERY_FAILED");
+  assert.ok(error instanceof SqliteConnectionError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, expected.code);
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.equal(error.retryable, expected.retryable);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("secret" in error, false);
+  assert.equal(JSON.stringify(error).includes(marker), false);
+  return true;
+}
+
+async function expectFactoryCandidateRejection(factory, candidates, injected, marker) {
+  const reader = await factory.openReader();
+  try {
+    await assert.rejects(
+      runSqliteRecallSnapshot(
+        reader,
+        RCL_006_SCOPE,
+        RCL_006_NOW,
+        (snapshot) => snapshot.readRawRankingRows(candidates, 2),
+      ),
+      (error) => assertFreshConnectionError(error, injected, marker),
+    );
+  } finally {
+    await reader.close();
+  }
 }
 
 test("S10 ranking shares fixed aggregate label fallback and entity/literal contested identity without writes", async (t) => {
@@ -289,6 +378,124 @@ test("adapter rejects ranking request accessors without evaluation or payload re
     );
   });
   assert.equal(accessorCalled, false);
+});
+
+test("adapter rejects a non-canonical literal returned by SQLite", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  await assert.rejects(
+    selectInjectedRaw(factory, {
+      rows: [rawRankingRow({ recall_ranking_object_value: "ｐｎｐｍ　ｔｅｓｔ" })],
+    }),
+    (error) => {
+      const expected = new RecallReadError("INVALID_RECALL_RANKING_STATE");
+      assert.ok(error instanceof RecallReadError);
+      assert.equal(error.code, expected.code);
+      assert.equal(error.name, expected.name);
+      assert.equal(error.message, expected.message);
+      assert.equal("cause" in error, false);
+      assert.equal(JSON.stringify(error).includes("ｐｎｐｍ"), false);
+      return true;
+    },
+  );
+});
+
+test("adapter rejects contested state for relations outside uses and rejects", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  await assert.rejects(
+    selectInjectedRaw(factory, {
+      rows: [rawRankingRow({
+        recall_ranking_contested: 1,
+        recall_ranking_score: 4,
+      })],
+    }),
+    (error) => {
+      const expected = new RecallReadError("INVALID_RECALL_RANKING_STATE");
+      assert.ok(error instanceof RecallReadError);
+      assert.equal(error.code, expected.code);
+      assert.equal(error.name, expected.name);
+      assert.equal(error.message, expected.message);
+      assert.equal("cause" in error, false);
+      return true;
+    },
+  );
+});
+
+test("adapter redacts a typed snapshot assertActive failure", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  const marker = "ranking-assert-active-secret";
+  const injected = smuggledReadError(marker);
+  await assert.rejects(
+    withInjectedSnapshot(
+      factory,
+      Object.freeze({
+        assertActive() {
+          throw injected;
+        },
+      }),
+      (source) => source.selectRankedClaims(
+        [{ claimId: "c1.0", depth: 0 }],
+        2,
+      ),
+    ),
+    (error) => assertFreshReadStateError(error, injected, marker),
+  );
+});
+
+test("connection factory snapshots ranking candidate arrays without invoking accessors", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  const marker = "ranking-factory-array-secret";
+  const injected = smuggledConnectionError(marker);
+  let accessorCalled = false;
+  const candidates = [{ claimId: "c1.0", depth: 0 }];
+  Object.defineProperty(candidates, "0", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      accessorCalled = true;
+      throw injected;
+    },
+  });
+  await expectFactoryCandidateRejection(factory, candidates, injected, marker);
+  assert.equal(accessorCalled, false);
+});
+
+test("connection factory snapshots ranking candidate rows without invoking accessors", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  const marker = "ranking-factory-row-secret";
+  const injected = smuggledConnectionError(marker);
+  let accessorCalled = false;
+  const candidate = { claimId: "c1.0", depth: 0 };
+  Object.defineProperty(candidate, "claimId", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      accessorCalled = true;
+      throw injected;
+    },
+  });
+  await expectFactoryCandidateRejection(factory, [candidate], injected, marker);
+  assert.equal(accessorCalled, false);
+});
+
+test("connection factory converts hostile ranking candidate Proxy traps to fresh errors", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  const marker = "ranking-factory-proxy-secret";
+  const injected = smuggledConnectionError(marker);
+  const candidates = new Proxy(
+    [{ claimId: "c1.0", depth: 0 }],
+    {
+      get(target, key, receiver) {
+        if (key === Symbol.iterator) {
+          throw injected;
+        }
+        return Reflect.get(target, key, receiver);
+      },
+      ownKeys() {
+        throw injected;
+      },
+    },
+  );
+  await expectFactoryCandidateRejection(factory, candidates, injected, marker);
 });
 
 test("raw ranking envelopes, arrays, rows, corrupt scope/time, and typed rejection fail closed without payloads", async (t) => {
