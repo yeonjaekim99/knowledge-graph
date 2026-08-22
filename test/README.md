@@ -43,7 +43,7 @@
 | `pnpm test:rec-002` | versioned secret signature·entropy·allowlist와 safe positional result |
 | `pnpm test:rec-003` | record raw 마스킹, draft 부분 거부와 재해석 전체 실패 경계 |
 | `pnpm verify:rec-003` | architecture/type과 REC-001~003 계약·탐지·sanitizer 회귀 |
-| `pnpm test:rcl-002` | deterministic query term, canonical scoped surface seed와 50+1/read-only fixture |
+| `pnpm test:rcl-002` | ordered display query term, canonical scoped surface seed와 50+1/read-only fixture |
 | `pnpm typecheck:rcl-002` | RCL-002 typed seed port와 raw SQL 비노출 compile fixture |
 | `pnpm verify:rcl-002` | RCL-002 architecture/type/build와 focused target |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
@@ -143,6 +143,7 @@ metadata/revise 및 공개 MCP log 누출 검사는 REC-006/008, REV와 MCP-005�
 
 RCL-002는 PRJ-002의 normalize와 PRJ-003/007 canonical redirect primitive를 재사용해 explicit
 term 또는 query 전체+Unicode 문자/숫자 run을 deterministic seed로 바꾼다. domain fixture는
-code-point 순서, duplicate, redirect corruption과 50+1을, application/compile fixture는
+code-point 순서, 같은 norm의 distinct display phrase, cap-before-dedupe, ill-formed UTF-16,
+redirect corruption과 50+1을, application/compile fixture는
 RCL-001 typed capability와 raw SQL 비노출을, 실제 SQLite fixture는 scope·snapshot·read-only를
 검증한다. FTS/BFS/Answer가 아직 없으므로 S09/S21 public scenario status는 바꾸지 않는다.

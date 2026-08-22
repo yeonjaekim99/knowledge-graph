@@ -15,7 +15,7 @@ RCL-002는 search 입력을 결정적 surface lookup term으로 바꾸고, 같�
 이번 범위는 다음만 구현한다.
 
 - 명시 `terms` 우선 또는 query 전체+Unicode 문자/숫자 run 기반 term 추출
-- PRJ-002 `normalizeV1`을 그대로 쓰는 길이 필터·중복 제거
+- PRJ-002 `normalizeV1`을 그대로 쓰는 길이 필터와 표시 후보 보존
 - scope-bound surface exact lookup과 PRJ-003/007 redirect canonicalization
 - term 순서·canonical entity ID 순서·첫 등장 dedupe
 - canonical seed 50+1 절단과 `truncated` 신호
@@ -33,20 +33,26 @@ FTS, surface hit의 유효 incident 판정, overview, BFS, reached/parent map, r
 - `terms` property가 있으면 빈 배열을 포함해 query를 전혀 파생하지 않고 입력 순서를 쓴다.
 - `terms`가 없으면 trim한 query 전체와 `/[\p{L}\p{N}]+/gu` run을 후보로 만든다.
 - 모든 후보는 별도 규칙이 아니라 PRJ-002의 `normalizeV1`을 통과한다.
-- normalized Unicode code point가 2개 미만인 후보와 이미 본 normalized 값은 제외한다.
+- normalized Unicode code point가 2개 미만인 후보만 제외한다. 서로 다른 표시 문자열이나
+  서로 다른 원문 위치가 같은 `surfaceNorm`으로 모여도 이 단계에서는 제거하지 않는다.
 - query 파생 후보는 normalized code-point 길이 DESC, 원문 등장 순서 ASC로 정렬한 뒤 최대
-  10개만 쓴다. 전체 query는 appearance order 0이라 같은 길이에서는 run보다 앞선다.
+  10개만 쓴다. 이 cap은 surface pair 중복 제거보다 먼저 적용한다. 전체 query는 appearance
+  order 0이라 같은 길이에서는 run보다 앞서며, query 전체와 유일한 run이 같은 원문 구간인
+  경우에만 같은 후보를 두 번 만들지 않는다.
 - 형태소 분석, stemming, 조사 제거, 번역, 동의어 확장과 LLM 호출은 없다.
 
 표시용 `text`는 양끝만 trim한 실제 후보를 유지한다. 따라서 RCL-005가 별칭 진입 path를
-복원할 때 normalized lookup key가 아니라 처음 매칭된 사용자 표현을 사용할 수 있다.
+복원할 때 normalized lookup key가 아니라 처음 매칭된 사용자 표현을 사용할 수 있고,
+RCL-003은 NFKC·구두점 차이를 잃지 않은 순서화된 phrase를 그대로 FTS 입력으로 받을 수 있다.
 
 ## surface와 canonical seed
 
 SQLite adapter는 최대 10개 normalized term을 parameter binding한 `requested` CTE로 만들고
 `(scope_key, surface_norm)` index에서 일치 surface 행을 모두 읽는다. raw 행을 51개에서 먼저
 자르지 않는다. 여러 surface row가 같은 terminal로 모일 수 있기 때문에 모든 후보를
-canonicalize한 뒤에만 50+1을 적용해야 하기 때문이다.
+canonicalize한 뒤에만 50+1을 적용해야 하기 때문이다. 표시 후보가 다르지만 normalized
+lookup이 같은 요청도 term order를 잃지 않고 CTE에 남기며, 최종 `(surface_norm, entity_id)`와
+canonical entity 중복은 앞 term의 표시 문자열을 보존한 채 seed 조립에서 제거한다.
 
 각 후보에서 `entities.merged_into`와 `id_redirects`로 도달할 수 있는 closure만 같은 reader
 worker에서 읽는다. application에 row, SQL, connection이나 factory를 노출하지 않는다.
@@ -90,25 +96,32 @@ exact column set, term order, scope, entity/redirect shape와 canonical graph가
 고정 code/message의 `RecallReadError(INVALID_RECALL_SURFACE_STATE)`로 변환한다. submitted query,
 surface, ID, SQL, DB path와 driver cause는 error property/message에 넣지 않는다.
 
+ECMAScript의 ill-formed UTF-16 문자열은 Unicode NFKC 입력으로 간주하지 않는다. public recall
+schema와 공유 `normalizeV1`이 모두 lone surrogate를 payload-redacted 입력 오류로 거부해,
+application과 projection이 서로 다른 문자열을 조용히 받아들이지 않게 한다.
+
 정상 surface miss와 normalized 2자 미만으로 term이 0개가 된 경우는 오류가 아니라 frozen
 empty seed selection이다. FTS 불가 note와 최종 `entry='none'`은 RCL-003/RCL-007에서 조합한다.
 
 ## TDD와 검증
 
-tests-only RED commit `48b1fdd`는 기존 production build 성공 뒤 두 test가 요구한 새
+tests-only RED commit `faf79ec`는 기존 production build 성공 뒤 두 test가 요구한 새
 application module과 domain export가 없어 세 test module이 import 단계에서 0/3 실패했다.
-제품 코드를 넣은 뒤 focused target은 11/11 GREEN이다.
+제품 코드를 넣은 뒤 focused target은 11/11 GREEN이었다. 독립 review의 tests-only RED
+commit `9fc2c54`는 build 성공 뒤 표시 후보 손실·잘못된 cap 순서·ill-formed UTF-16 허용을
+7개 실패로 재현했고, fix 뒤 focused target은 15/15 GREEN이다.
 
 fixture는 다음을 고정한다.
 
-- explicit precedence와 빈 explicit 배열, normalized duplicate, 1/2 code-point 경계
-- query 전체+문자/숫자 run의 code-point 길이/등장 순서와 최대 10개
+- explicit precedence와 빈 explicit 배열, 같은 norm의 구두점 표시 후보, 1/2 code-point 경계
+- query 전체+문자/숫자 run의 code-point 길이/등장 순서, NFKC 동치 표시와 중복 run을 포함한
+  cap-before-dedupe 최대 10개
 - 다의 surface, term 간 canonical entity 첫 등장 dedupe와 BINARY ID 순서
 - merge/ID redirect chain, cycle, 33-hop, kind/scope/dangling/terminal 불일치
 - 실제 file SQLite의 cross-scope 동명 surface 제외와 51→50+truncation
 - 한 snapshot 중 concurrent WAL commit 비가시성, 다음 호출 가시성, 반복 byte 결정성
 - 성공/실패 전후 persistent canonical dump와 observer `data_version` 불변
-- callback 종료 capability와 손상 payload를 echo하지 않는 typed failure
+- callback 종료 capability, ill-formed UTF-16과 손상 payload를 echo하지 않는 typed failure
 
 재현 명령은 다음과 같다.
 
@@ -126,8 +139,8 @@ python3 docs/roadmap/validate.py
 pnpm audit --prod
 ```
 
-최종 로컬 검증은 RCL-002 11/11, RCL-001 10/10, PRJ-002 7/7, PRJ-003 9/9,
-PRJ-005 11/11과 PRJ-007 19/19다. 빠른 전체 suite는 40개 파일 266/266,
+최종 로컬 검증은 RCL-002 15/15, RCL-001 10/10, PRJ-002 7/7, PRJ-003 9/9,
+PRJ-005 11/11과 PRJ-007 19/19다. 빠른 전체 suite는 41개 파일 283/283,
 PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap validator는
 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고 production
 dependency 알려진 취약점은 0개다.

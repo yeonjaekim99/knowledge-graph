@@ -51,8 +51,9 @@ detector의 UTF-16 위치를 raw class marker로 치환하고 모든 draft 문�
 경계를 확인한다. SQLite append/project와 public tool 응답 조립은 이 unit의 범위가 아니다.
 
 RCL-002의 [`domain/rcl-002-query-surface.test.mjs`](domain/rcl-002-query-surface.test.mjs)는
-explicit/query-derived term의 Unicode code-point 순서와 PRJ-002 normalize 재사용, canonical
-redirect chain·다의 surface·50+1·손상 fail-closed를 검증한다.
+explicit/query-derived term의 Unicode code-point 순서, distinct display phrase와
+cap-before-dedupe, PRJ-002 normalize/ill-formed UTF-16 경계, canonical redirect chain·다의
+surface·50+1·손상 fail-closed를 검증한다.
 [`application/rcl-002-query-surface.test.mjs`](application/rcl-002-query-surface.test.mjs)와
 compile fixture는 같은 정책이 RCL-001 snapshot callback의 typed `resolveSurfaceSeeds`만 쓰고
 raw SQL/connection capability를 얻지 못하는지 검증한다.
