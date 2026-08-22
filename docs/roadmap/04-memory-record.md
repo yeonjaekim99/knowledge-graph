@@ -199,9 +199,13 @@
   8/8 GREEN이었다. 독립 review 보완 RED는 finalizer export 부재 0/1이었고, 보완 뒤 REC-004
   adapter의 Proxy/accessor·session 오류 객체 누출을 독립 재검토에서 추가로 찾아 tests-only
   19개 중 6 pass/13 fail과 21개 중 18 pass/3 fail RED로 고정했다. exact descriptor snapshot과
-  fresh fixed input/result error로 닫은 뒤 REC-003·RCL-002 완료와 RCL-005 planning이 반영된
-  최신 main에 semantic rebase했다. REC-004 29/29·관련 PRJ-005/009 포함 49/49, 전체 fast
-  44 files·331/331, RCL-001 10/10, RCL-002 15/15, STO-002 7/7, PRJ-010 39/39, spike 25/25,
+  fresh fixed input/result error로 닫았다. 최종 독립 review에서 canonical own shape여도 원본
+  SQLite error identity가 poisoned prototype·transparent Proxy getter를 유지하고 invalid runtime
+  code를 통과시키는 경계를 찾아, tests-only 33개 중 28 pass/5 fail RED와 allowed code/retry
+  descriptor snapshot→fresh canonical reconstruction의 33/33 GREEN으로 닫았다. 그 뒤
+  REC-003·RCL-002 완료와 RCL-005 planning이 반영된 최신 main에 semantic rebase했다. 관련
+  PRJ-005/009 포함 53/53, 전체 fast 44 files·335/335, RCL-001 10/10, RCL-002 15/15,
+  STO-002 7/7, PRJ-010 39/39, spike 25/25,
   roadmap 67/67과 production audit 0건을 재확인했다. 미해결 HIGH/MEDIUM finding은 없고
   PR/main 영속 증거가 추가될 때까지 상태와 phase roll-up은 `IN_PROGRESS`로 유지한다.
 

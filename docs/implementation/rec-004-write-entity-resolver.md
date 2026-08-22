@@ -165,8 +165,11 @@ input wrapper는 accessor·symbol·extra property와 sparse array를 거부하�
 draft index를 다시 확인한다. result wrapper는 session Promise를 native `then`으로 소비하고 같은
 descriptor snapshot으로 각 input draft와 동일한 순서/index, canonical entity ID와 ambiguity
 candidate의 중복·numeric ordering·shape를 검증한 뒤 결과 전체를 재귀적으로 freeze한다. session
-call/rejection/result/thenable의 알 수 없는 실패는 새 고정 result error가 되며, factory가 만든
-고정 message·descriptor shape의 `SqliteConnectionError`만 transaction 의미를 유지해 통과한다.
+call/rejection/result/thenable의 알 수 없는 실패는 새 고정 result error가 된다. rejected 오류의
+own data descriptor에서 허용된 SQLite connection code와 retry shape를 확인하고 canonical own
+descriptor와 일치할 때만 `connectionErrorFromCode`로 새 오류를 만든다. 원본 identity·prototype·
+Proxy는 절대 통과시키지 않으며 `SQLITE_BUSY`는 새 `SqliteBusyError`의 `retryable=true`와
+`timeoutMs=5000`으로 복원한다.
 kind는 entity `normalizeV1`과 분리해 trim → NFKC → Unicode lowercase만 적용하므로 `-`, `_`,
 `＿`도 유효하다.
 
@@ -195,6 +198,12 @@ tests-only RED는 finalization target 19개 중 6개만 통과했고 13개가 �
 변조된 SQLite 오류 구분까지 확장한 중간 RED는 21개 중 18개 통과·3개 실패였으며, descriptor
 snapshot과 fresh error translation 뒤 21/21 GREEN으로 닫았다.
 
+최종 독립 review는 own shape가 canonical이어도 poisoned prototype 또는 transparent Proxy를 원본
+identity로 다시 던지는 문제와 runtime-invalid connection code를 찾았다. 기존 semantic 보존과
+poisoned prototype·Proxy getter·invalid code·`SQLITE_BUSY` retry fixture는 tests-only 33개 중
+28 pass/5 fail RED였고, allowed code와 exact own descriptor만 snapshot해 fresh canonical error로
+재구성한 뒤 33/33 GREEN으로 닫았다.
+
 file-backed SQLite target은 다음 정상·경계·실패 경로를 검증한다.
 
 - confirmed/redirect surface와 새 object 해석, 기존 kind 보존
@@ -212,7 +221,7 @@ file-backed SQLite target은 다음 정상·경계·실패 경로를 검증한�
 - `sqlite_sequence`/`MAX(seq)` drift fail-closed
 - `-`, `_`, fullwidth underscore kind와 ambiguity candidate 결과 경계
 - input/result Proxy·accessor, session call/rejection/thenable의 fresh payload-redacted 오류와
-  canonical factory `SqliteConnectionError` 보존
+  allowed code/retry 의미만 보존한 fresh canonical `SqliteConnectionError` 재구성
 
 검증 명령은 다음과 같다.
 
@@ -224,9 +233,9 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 pnpm audit --prod
 ```
 
-독립 재검토 보완 뒤 REC-004 SQLite target은 29/29, 관련 PRJ-005/009 포함 target은 49/49다.
+독립 재검토 보완 뒤 REC-004 SQLite target은 33/33, 관련 PRJ-005/009 포함 target은 53/53다.
 REC-003·RCL-002 완료와 RCL-005 planning이 반영된 최신 main 결합 상태의 전체 fast
-44 files·331/331, RCL-001 10/10, RCL-002 15/15, STO-002 7/7, PRJ-010 39/39,
+44 files·335/335, RCL-001 10/10, RCL-002 15/15, STO-002 7/7, PRJ-010 39/39,
 behavior spike 25/25, roadmap audit 67/67과 production audit 0건을 통과했고
 미해결 HIGH/MEDIUM finding은 없다. PR/main 영속 증거 전까지 작업 상태는 `IN_PROGRESS`다.
 S21의 write-time resolver 부분은 production으로 옮겼지만 public `memory_record`와 실제
