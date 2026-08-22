@@ -135,15 +135,17 @@
   positional detector를 writer capability 없는 pure application plan으로 연결한다.
 - 최초 RED는 build 성공 뒤 sanitizer export 부재로 module load가 실패했다. GREEN은 raw
   explicit/entropy 치환, 8개 draft 문자열 category, 부분/전체 거부, 재해석 전체 실패와
-  malformed detector fail-closed를 포함한 target 15/15다.
+  malformed detector fail-closed를 포함한 target 16/16이다.
 - UTF-16 astral 인접 위치와 surrogate split, 겹침·역순·범위 손상, unknown class와 extra
   payload, 앞선 hit 뒤 후속 detector exception을 synthetic 값만으로 검증한다.
 - self-review에서 detector가 caller-owned 입력을 바꾸면 검사값과 승인값이 달라지는 경계를
   14/15 RED로 고정했고, detector 실행 전 raw·mode·draft·alias snapshot으로 15/15 GREEN을
-  만들었다.
+  만들었다. result/finding accessor가 실행되는 경계도 15/16 RED로 고정하고 exact data
+  descriptor와 dense bounded finding snapshot으로 16/16 GREEN을 만들었다.
 - `pnpm verify:rec-003`은 architecture/type과 REC-001 11/11, REC-002 13/13, REC-003
-  15/15를 통과했다. 전체 fast suite 39개 파일 283/283, PRJ-010 39/39, behavior spike
-  25/25, roadmap audit 67/67과 production dependency audit 취약점 0개도 다시 통과했다.
+  16/16을 통과했다. 전체 fast suite 39개 파일 284/284, PRJ-010 39/39, behavior spike
+  25/25, roadmap audit 67/67과 production dependency audit 취약점 0개도 accessor hardening
+  뒤 다시 통과했다.
 - 독립 review와 PR/merge 증거는 게시 전에 추가한다. journal/project 원자성과 전체 저장
   매체 누출 scan은 REC-006/008의 완료를 과장하지 않고 남긴다.
 

@@ -52,7 +52,8 @@ UTF-16 surrogate pair를 자르지 않을 때만 뒤에서 앞으로
 detector가 알려진 class를 반환했지만 범위를 특정할 수 없거나 순서·겹침·Unicode 경계가
 손상됐으면 ADR-011의 보수적 규칙대로 raw 전체를 `[REDACTED:SECRET]`로 바꾼다. registry
 version, class 또는 result shape 자체가 계약과 다르거나 detector가 예외를 던지면
-`DETECTOR_FAILED`로 호출 전체를 중단한다.
+`DETECTOR_FAILED`로 호출 전체를 중단한다. result/finding은 exact enumerable data property와
+dense bounded array로 snapshot하며 accessor를 실행해 값을 얻지 않는다.
 
 ### draft 검사와 부분 성공
 
@@ -97,6 +98,7 @@ GREEN fixture는 다음을 검증한다.
 - detector 예외, unknown class, extra payload와 malformed result의 redacted fail-closed
 - 앞선 hit 뒤의 detector 장애가 숨지 않음
 - detector 실행 중 caller-owned raw/draft/alias 변경이 승인 plan에 섞이지 않음
+- result/finding accessor와 sparse·extra payload가 실행되거나 plan에 섞이지 않음
 - 재해석 부분 성공 금지와 raw-only 재해석
 - 결과, alias 배열과 error rejection 목록의 immutable 경계
 
