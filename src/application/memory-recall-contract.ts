@@ -225,7 +225,7 @@ type ClaimAnswerSchema = Readonly<{
     claim_id: ClaimIdSchema;
     text: Readonly<{ type: "string" }>;
     path: Readonly<{ type: "string" }>;
-    hops: Readonly<{ type: "integer"; minimum: 0; maximum: 3 }>;
+    hops: Readonly<{ type: "integer"; minimum: 0; maximum: 4 }>;
     contested: Readonly<{ type: "boolean" }>;
     support: Readonly<{ $ref: "#/$defs/support" }>;
     detail: Readonly<{ $ref: "#/$defs/detail" }>;
@@ -351,7 +351,7 @@ const recallResultSchema: RecallResultSchema = {
         claim_id: claimIdSchema,
         text: { type: "string" },
         path: { type: "string" },
-        hops: { type: "integer", minimum: 0, maximum: 3 },
+        hops: { type: "integer", minimum: 0, maximum: 4 },
         contested: { type: "boolean" },
         support: { $ref: "#/$defs/support" },
         detail: { $ref: "#/$defs/detail" },

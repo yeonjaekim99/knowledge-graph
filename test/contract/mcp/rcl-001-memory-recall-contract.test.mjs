@@ -125,8 +125,8 @@ test("RecallResult schema accepts strict claim/raw answers without assembling se
         kind: "claim",
         claim_id: "c1.0",
         text: "인증 사용 JWT",
-        path: "인증 → JWT",
-        hops: 1,
+        path: "인증 → 게이트웨이 → 정책 → 서버 → JWT",
+        hops: 4,
         contested: false,
         support: {
           count: 2,
@@ -203,7 +203,7 @@ test("RecallResult rejects malformed IDs/times/support, wrong answer branches, a
       more_available: false,
     },
     {
-      answers: [{ ...baseClaim, hops: 4 }],
+      answers: [{ ...baseClaim, hops: 5 }],
       entry: "surface",
       more_available: false,
     },

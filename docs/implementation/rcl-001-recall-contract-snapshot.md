@@ -33,7 +33,7 @@ MCP adapter의 `createMcpJsonSchemaContract`에 넘긴다. 별도 DTO interface�
 - schema의 default annotation과 runtime 반환은 `mode=search`, `depth=2`, `limit=10`,
   `detail=brief`로 일치한다. overview에는 depth 기본을 만들지 않는다.
 - `RecallResult`는 claim/raw answer를 닫힌 union으로 두고 canonical ID, UTC 초 단위 `Z` 시각,
-  provenance/support/detail 구조, 0~3 hops와 answer 50개·detail statement 100개 상한을
+  provenance/support/detail 구조, 0~4 hops와 answer 50개·detail statement 100개 상한을
   검증한다.
 - validation 실패는 FND-004의 `JsonSchemaValidationError` code/boundary/issue count만 남기며
   submitted value나 SDK issue payload를 보관하지 않는다.
@@ -43,6 +43,10 @@ MCP adapter의 `createMcpJsonSchemaContract`에 넘긴다. 별도 DTO interface�
 제거한 뒤** `InferJsonSchema`를 적용한다. runtime schema와 advertised schema는 default를
 그대로 유지하고 DTO를 손으로 중복 선언하지 않는다. 별도 compile fixture가 search mode 생략,
 overview 금지 field와 raw/claim branch drift를 검사한다.
+
+ADR-012의 depth는 seed에서 incident anchor entity까지의 거리다. depth 3 frontier에서 수집한
+entity-object claim은 path 끝에 아직 없는 반대 entity를 한 번 덧붙일 수 있으므로 합법적
+최대 `hops`는 4다. 5 이상은 depth 경계를 넘으므로 output schema가 거부한다.
 
 ## application capability 경계
 
@@ -116,6 +120,8 @@ cause를 error에 넣지 않는다. 잘못된 scope/now도 reader를 열기 전�
 trimmed Unicode 4,096자와 hops 상한 fixture도 기존 동작에 대해 8/10 RED를 만든 뒤 계약의
 최소 수정으로 다시 10/10 GREEN이 됐다. MCP가 직접 소비하는 Standard Schema validate 경로의
 동일 trim 보장과 UTC calendar date 유효성은 각각 3/4 focused RED 뒤 4/4로 닫았다.
+독립 리뷰에서 발견한 frontier path 상한은 `hops=4` 허용·`hops=5` 거부 fixture가 기존
+schema에 대해 3/4 RED인 것을 확인한 뒤 maximum을 4로 바로잡아 4/4 GREEN으로 닫았다.
 
 재현 명령은 다음과 같다.
 

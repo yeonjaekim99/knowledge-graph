@@ -146,7 +146,9 @@
     concurrent WAL commit 중 claims join도 이전 snapshot을 유지하는 fixture, callback 실패 cleanup,
     손상 ID fail-closed, trimmed Unicode 4,096자와 hops 상한, journal/projection/FTS dump·외부
     data_version 불변을 추가했다. term/FTS, traversal/ranking/Answer와 S09/S10/S19 public
-    golden은 RCL-002~008에 남겼다.
+    golden은 RCL-002~008에 남겼다. 독립 리뷰에서 depth 3 frontier incident의 반대 entity를
+    path에 덧붙이면 `hops=4`가 된다는 ADR-012 경계를 확인해 output 상한을 4로 정정하고 5를
+    거부하는 contract 회귀를 추가했다.
 
 ## 의도적으로 남은 상태
 
