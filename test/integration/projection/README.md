@@ -11,8 +11,8 @@
 - `projection_meta` missing/seq/rules mismatch와 current no-op 분기
 - 여섯 projection table의 독립 `recall-projection-v1` canonical dump parity
 
-PRJ-002의 versioned normalize/relation/literal, PRJ-003의 occurrence ID/redirect와 PRJ-004의
-사건 pre-scan은 domain unit·process fixture로 완료됐지만 아직 projection row를 만드는
-reducer에는 연결되지 않았다. entity/claim 상태 전이와 증분 dispatcher는 PRJ-005~009가
-추가한다. 이 디렉터리의 기반 test가 있다는 사실만으로 S01~S03, S14/S15나 S24 전체
-parity를 완료로 표시하지 않는다.
+PRJ-002의 versioned normalize/relation/literal, PRJ-003의 occurrence ID/redirect,
+PRJ-004의 사건 pre-scan과 PRJ-005의 entity/surface/kind reducer는 domain unit·process
+fixture로 완료됐다. claim/support 상태 전이, merge/alias 사건과 증분 dispatcher는
+PRJ-006~009가 추가한다. 이 디렉터리의 기반 test가 있다는 사실만으로 S01~S03, S08,
+S14/S15, S21이나 S24 전체 parity를 완료로 표시하지 않는다.
