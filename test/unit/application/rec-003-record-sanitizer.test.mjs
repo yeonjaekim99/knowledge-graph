@@ -244,6 +244,28 @@ test("detector exceptions and malformed results fail closed without payload echo
   );
 });
 
+test("detector-owned typed errors are replaced instead of rethrown", () => {
+  const submitted = `typed-error-${SYNTHETIC_GITHUB_TOKEN}`;
+  const detectorError = new RecordSecretSanitizationError("DETECTOR_FAILED");
+  detectorError.message = submitted;
+  detectorError.cause = new Error(`${submitted} SELECT secret FROM journal`);
+  detectorError.prefix = submitted;
+  detectorError.suffix = "/tmp/recall-secret.db";
+
+  assert.throws(
+    () =>
+      sanitizeMemoryRecordSecrets(input([]), () => {
+        throw detectorError;
+      }),
+    (error) => {
+      assert.notEqual(error, detectorError);
+      assert.equal("prefix" in error, false);
+      assert.equal("suffix" in error, false);
+      return sanitizerFailure("DETECTOR_FAILED", submitted)(error);
+    },
+  );
+});
+
 test("reinterpretation rejects the whole successor when any draft contains a secret", () => {
   const reinterpretInput = input(
     [entityDraft(), literalDraft({ object_value: SYNTHETIC_GITHUB_TOKEN })],
