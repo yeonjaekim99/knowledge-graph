@@ -89,6 +89,21 @@ function signature(
   return Object.freeze({ id, secretClass, patternSource, flags });
 }
 
+const SECRET_ASSIGNMENT_KEY_PATTERN_SOURCE =
+  "[A-Za-z0-9_.-]*(?:password|passwd|pwd|secret(?:[_-]?(?:access[_-]?)?(?:key|token))?|api[_-]?key|access[_-]?token|auth[_-]?token)";
+const SECRET_ASSIGNMENT_KEY_BOUNDARY =
+  "(?<![\\p{L}\\p{N}\\p{M}_.-])";
+const DOUBLE_QUOTED_SECRET_VALUE_PATTERN_SOURCE =
+  '"(?:\\\\.|[^"\\\\\\r\\n]){1,512}"';
+const SINGLE_QUOTED_SECRET_VALUE_PATTERN_SOURCE =
+  "'(?:\\\\.|[^'\\\\\\r\\n]){1,512}'";
+
+const ADJACENT_MARKER_WRAPPER_SUFFIX =
+  "(?:[,;:.'\"`()\\[\\]{}<>]\\s*)*$";
+const ADJACENT_MARKER_BOUNDARY = "(?<![\\p{L}\\p{N}\\p{M}_-])";
+const ADJACENT_MARKER_DELIMITER =
+  "(?:\\s+(?:[:=#]\\s*)?|[:=#]\\s*)";
+
 /**
  * Pattern sources are data so registry changes remain reviewable. Provider
  * boundaries deliberately describe ASCII token alphabets instead of using
@@ -104,7 +119,7 @@ export const SECRET_SIGNATURE_REGISTRY: readonly SecretSignatureDefinition[] =
     signature(
       "aws-secret-access-key",
       "aws-secret-access-key",
-      "(?<![A-Za-z0-9_])(?:aws_secret_access_key|aws[-_ ]?secret(?:[-_ ]?access)?[-_ ]?key)\\s*[:=]\\s*[\"']?[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])",
+      "(?<![A-Za-z0-9_])[\"']?(?:aws_secret_access_key|aws[-_ ]?secret(?:[-_ ]?access)?[-_ ]?key)[\"']?\\s*[:=]\\s*[\"']?[A-Za-z0-9/+=]{40}(?![A-Za-z0-9/+=])",
       "iu",
     ),
     signature(
@@ -145,18 +160,25 @@ export const SECRET_SIGNATURE_REGISTRY: readonly SecretSignatureDefinition[] =
     signature(
       "pem-private-key",
       "private-key",
-      "-----BEGIN (?:(?:RSA|DSA|EC|OPENSSH|ENCRYPTED) PRIVATE KEY|PGP PRIVATE KEY BLOCK|PRIVATE KEY)-----",
+      "-----BEGIN ((?:(?:RSA|DSA|EC|OPENSSH|ENCRYPTED) PRIVATE KEY|PGP PRIVATE KEY BLOCK|PRIVATE KEY))-----[\\s\\S]*?(?:-----END \\1-----|$)",
     ),
     signature(
       "credential-url",
       "credential-url",
-      "(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*://[^\\s:/?#]+:[^\\s/@?#]+@[^\\s,;]+",
+      "(?<![A-Za-z0-9+.-])[A-Za-z][A-Za-z0-9+.-]*://[^\\s:/?#]*:[^\\s/@?#]+@[^\\s,;]+",
       "iu",
     ),
     signature(
       "secret-assignment",
       "secret-assignment",
-      "(?<![A-Za-z0-9_])(?:password|passwd|pwd|secret|api[_-]?key|access[_-]?token|auth[_-]?token)\\s*[:=]\\s*(?:\"[^\"\\r\\n]{1,512}\"|'[^'\\r\\n]{1,512}'|[^\\s,;]{1,512})",
+      SECRET_ASSIGNMENT_KEY_BOUNDARY +
+        "[\"']?" +
+        SECRET_ASSIGNMENT_KEY_PATTERN_SOURCE +
+        "[\"']?\\s*[:=]\\s*(?:" +
+        DOUBLE_QUOTED_SECRET_VALUE_PATTERN_SOURCE +
+        "|" +
+        SINGLE_QUOTED_SECRET_VALUE_PATTERN_SOURCE +
+        "|[^\\s,;]{1,512})",
       "iu",
     ),
   ]);
@@ -174,7 +196,7 @@ export const SECRET_ENTROPY_POLICY: SecretEntropyPolicy = Object.freeze({
   minimumBitsPerCodePoint: 4,
   minimumCharacterClasses: 2,
   candidatePatternSource: "[^\\p{White_Space}]{20,}",
-  edgePunctuationPatternSource: "[,;:'\"()\\[\\]{}<>]",
+  edgePunctuationPatternSource: "[,;:.'\"`()\\[\\]{}<>]",
 });
 
 export type EntropyAllowlistMode = "context" | "adjacent";
@@ -206,7 +228,9 @@ function allowlist(
 }
 
 const ADJACENCY_CONTEXTS: readonly SecretFieldContext[] =
-  STORABLE_SECRET_FIELD_CONTEXT_VALUES;
+  STORABLE_SECRET_FIELD_CONTEXT_VALUES.filter(
+    (context) => context !== "metadata.actor" && context !== "metadata.branch",
+  );
 
 /**
  * Entropy allowlists never suppress signature findings. `trusted.local_git_object`
@@ -250,21 +274,30 @@ export const SECRET_ENTROPY_ALLOWLIST_REGISTRY: readonly SecretEntropyAllowlistD
       "adjacent",
       "[0-9A-Fa-f]{7,64}",
       ADJACENCY_CONTEXTS,
-      "(?:commit|sha(?:-?(?:1|224|256|384|512))?)\\s*(?:id)?\\s*[:=#]?\\s*$",
+      ADJACENT_MARKER_BOUNDARY +
+        "(?:commit|sha(?:-?(?:1|224|256|384|512))?)(?:\\s+id)?" +
+        ADJACENT_MARKER_DELIMITER +
+        ADJACENT_MARKER_WRAPPER_SUFFIX,
     ),
     allowlist(
       "adjacent-checksum-hash",
       "adjacent",
       "[0-9A-Fa-f]{7,64}",
       ADJACENCY_CONTEXTS,
-      "(?:checksum|hash)\\s*[:=#]?\\s*$",
+      ADJACENT_MARKER_BOUNDARY +
+        "(?:checksum|hash)" +
+        ADJACENT_MARKER_DELIMITER +
+        ADJACENT_MARKER_WRAPPER_SUFFIX,
     ),
     allowlist(
       "adjacent-build-identifier",
       "adjacent",
       "(?:[0-9A-Fa-f]{7,64}|(?:bld_|build[-_])[0-7][0-9A-HJKMNP-TV-Z]{25})",
       ADJACENCY_CONTEXTS,
-      "build(?:[-_ ]?id)?\\s*[:=#]?\\s*$",
+      ADJACENT_MARKER_BOUNDARY +
+        "build(?:[-_ ]?id)?" +
+        ADJACENT_MARKER_DELIMITER +
+        ADJACENT_MARKER_WRAPPER_SUFFIX,
     ),
   ]);
 
@@ -569,6 +602,24 @@ function trimEntropyCandidateEdges(
   };
 }
 
+function qualifiesAsHighEntropy(
+  token: string,
+  calculateEntropy: (value: string) => number,
+): boolean {
+  if (
+    Array.from(token).length < SECRET_ENTROPY_POLICY.minimumCodePoints ||
+    characterClassCount(token) <
+      SECRET_ENTROPY_POLICY.minimumCharacterClasses
+  ) {
+    return false;
+  }
+  const entropy = calculateEntropy(token);
+  if (!Number.isFinite(entropy) || entropy < 0) {
+    throw new Error("entropy calculator returned an invalid score");
+  }
+  return entropy >= SECRET_ENTROPY_POLICY.minimumBitsPerCodePoint;
+}
+
 function scanEntropy(
   value: string,
   context: SecretFieldContext,
@@ -589,23 +640,29 @@ function scanEntropy(
       continue;
     }
     const { token, startCodeUnit } = candidate;
-    if (
-      Array.from(token).length < SECRET_ENTROPY_POLICY.minimumCodePoints ||
-      characterClassCount(token) <
-        SECRET_ENTROPY_POLICY.minimumCharacterClasses ||
-      entropyCandidateIsAllowlisted(value, token, startCodeUnit, context)
-    ) {
+    if (entropyCandidateIsAllowlisted(value, token, startCodeUnit, context)) {
       continue;
     }
-    const entropy = calculateEntropy(token);
-    if (!Number.isFinite(entropy) || entropy < 0) {
-      throw new Error("entropy calculator returned an invalid score");
-    }
-    if (entropy >= SECRET_ENTROPY_POLICY.minimumBitsPerCodePoint) {
+    if (qualifiesAsHighEntropy(token, calculateEntropy)) {
       findings.push({
         secretClass: "high-entropy",
         startCodeUnit,
         endCodeUnit: startCodeUnit + token.length,
+      });
+      continue;
+    }
+
+    const wasTrimmed =
+      startCodeUnit !== match.index || token.length !== segment.length;
+    if (
+      wasTrimmed &&
+      !entropyCandidateIsAllowlisted(value, segment, match.index, context) &&
+      qualifiesAsHighEntropy(segment, calculateEntropy)
+    ) {
+      findings.push({
+        secretClass: "high-entropy",
+        startCodeUnit: match.index,
+        endCodeUnit: match.index + segment.length,
       });
     }
   }

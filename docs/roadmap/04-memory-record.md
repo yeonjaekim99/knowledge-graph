@@ -90,13 +90,16 @@
   signature 우선순위, Unicode code-point entropy, UTF-16 slice 위치와 context-bound
   allowlist를 고정했다.
 - 최초 TDD RED는 production export 부재로 target 0/1이었고, 독립 리뷰 보강 RED는
-  internal punctuation과 64-hex `metadata.branch` fixture에서 8/10이었다. 수정 뒤
-  `pnpm verify:rec-002` target 10/10과 architecture/type/build, 전체 `pnpm test` 38개 파일
-  265/265를
+  internal punctuation과 64-hex `metadata.branch` fixture에서 8/10이었다. root review의
+  exact-20 edge-symbol fixture도 wrapper trim fail-open을 10/11 RED로 재현했다. 이어
+  namespaced/quoted assignment, empty-user credential URL, complete/truncated PEM masking 범위,
+  marker delimiter·Unicode boundary와 actor/branch allowlist 우회를 9/13, 11/13, 12/13 RED로
+  고정했다. 수정 뒤 `pnpm verify:rec-002` target 13/13과 architecture/type/build, 전체
+  `pnpm test` 38개 파일 268/268을
   통과했다.
 - synthetic fixture만으로 AWS/GitHub/GitLab/Google/Slack/Stripe, JWT, PEM, credential URL,
-  assignment와 한국어 조사·문장부호, internal punctuation segmentation, 임의 hex branch 및
-  19/20자·4.0-bit entropy 경계를 검증한다.
+  assignment와 한국어 조사·문장부호, internal/edge punctuation segmentation, 임의 hex
+  actor/branch, standalone marker+delimiter 및 19/20자·4.0-bit entropy 경계를 검증한다.
 - result와 typed error에는 match/value/prefix/suffix/cause가 없고 registry/result는 freeze된다.
   application의 scan-before-write 연결, raw 마스킹과 draft 부분 거부는 REC-003에 남고
   transaction·log/MCP 전체 누출 검사는 REC-008/MCP-005에 남긴다.

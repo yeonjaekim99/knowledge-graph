@@ -48,6 +48,14 @@ ASCII alphabet을 negative lookaround로 검사한다. 한글은 그 ASCII alpha
 않으므로 한국어 조사나 문장부호가 바로 붙어도 provider class가 유지되고, ASCII 식별자
 안에 포함된 부분 문자열은 provider signature로 오인하지 않는다.
 
+일반 assignment는 quoted JSON/object key와 `DB_PASSWORD`, `dbPassword`,
+`CLIENT_SECRET`, `SECRET_KEY`, `AWS_SECRET_ACCESS_KEY` 같은 separator·camelCase
+namespace를 같은 key family로 판정한다. quoted value의 escape도 구간 안에 유지한다.
+credential URL은 Redis처럼 username이 비어 있는 `scheme://:password@host`도 포함한다.
+완전한 PEM은 matching END marker까지, END가 잘린 PEM은 입력 끝까지 `private-key` 구간으로
+반환한다. REC-003이 finding interval만 치환해도 복구 가능한 key body가 남지 않게 하는
+경계다.
+
 ## entropy와 위치 단위
 
 entropy 후보의 길이, 빈도와 Shannon score는 `Array.from(value)`의 Unicode code point로
@@ -56,11 +64,14 @@ entropy 후보의 길이, 빈도와 Shannon score는 `Array.from(value)`의 Unic
 않는다.
 
 후보 segmentation은 Unicode whitespace를 넘지 않는 하나의 run에서 시작한다. run 양끝의
-`, ; : ' " ( ) [ ] { } < >`는 문장 wrapper로 제거하지만 내부의 같은 기호는 token 일부로
+``, ; : . ' " ` ( ) [ ] { } < >``는 문장 wrapper로 제거하지만 내부의 같은 기호는 token 일부로
 유지한다. 따라서 `Aa0_Bb1-Cc:2+Dd3/Ee4=` 같은 compact credential은 중간 `:`에서
 쪼개지지 않고, 공백이 있는 일반 문장을 하나의 entropy 후보로 합치지도 않는다. 길이,
 문자 class, allowlist와 entropy는 wrapper를 제거한 값에 순서대로 적용하고 반환 위치도
-제거된 code-unit만큼 조정한다. 이 경계는 `SECRET_ENTROPY_POLICY`의 frozen pattern source로
+제거된 code-unit만큼 조정한다. 다만 제거한 기호까지 포함한 원래 run이 20자·4.0 bits·2 class
+경계를 만족하는데 trimmed 값만 실패하면, 기호가 실제 secret 일부일 수 있으므로 원래 run을
+다시 평가해 전체 위치를 보류한다. typed/adjacent allowlist가 trimmed 값에 성립하면 이 보수적
+fallback도 실행하지 않는다. 이 경계는 `SECRET_ENTROPY_POLICY`의 frozen pattern source로
 고정한다.
 
 반환 위치는 의도적으로 Unicode 문자 index가 아니라 JavaScript UTF-16 code-unit의
@@ -111,6 +122,9 @@ allowlist는 token 모양만 보고 전역 적용하지 않는다.
   확정한 context에서만 허용한다.
 - 7~64자리 hex는 인접한 `commit`, `sha`, `checksum`, `hash`, `build id` marker가 있거나
   해당 typed reference context일 때만 entropy에서 제외한다.
+- 인접 marker는 Unicode letter/number identifier의 suffix가 아니어야 하고, hex 앞에 최소
+  하나의 whitespace 또는 `:`, `=`, `#` delimiter가 있어야 한다. delimiter 다음의 괄호,
+  backtick 같은 표시 wrapper는 허용한다. `uncommit <hex>`, `commit<hex>`는 allowlist가 아니다.
 - `reference.build_id`는 문서화된 `bld_`/`build-` + ULID/hex 모양만 허용한다.
 - `trusted.local_git_object`는 detector가 Git을 조회한다는 뜻이 아니다. STO-006/후속
   adapter가 configured local repository에서 object를 확인한 뒤 그 OID 값 일부에만 선택할
@@ -118,6 +132,8 @@ allowlist는 token 모양만 보고 전역 적용하지 않는다.
   64-hex branch는 high-entropy hit다. STO-006이 마련한 `MetadataTextSanitizer` seam의 후속
   구현은 trusted resolver의 `detached:<oid>` 결과를 구분하고 검증된 `<oid>` substring에만
   `trusted.local_git_object` context를 적용해야 한다. detector는 Git IO나 그 검증을 하지 않는다.
+- `metadata.actor`와 `metadata.branch`에는 adjacent marker allowlist도 적용하지 않는다.
+  `commit.<hex>` 같은 symbolic branch가 검증된 detached OID로 승격되는 우회가 없어야 한다.
 - production에서 활성인 provider signature는 어떤 context와 allowlist로도 통과하지 않는다.
 
 이 선택은 정상 build/hash 오탐을 제한하면서 임의 random 문자열에 대한 전역 예외를 만들지
@@ -154,15 +170,31 @@ fixture로 추가한 뒤 실행했다. 기존 구현은 두 경우 모두 findin
 10개 중 8 pass, 2 fail이었다. production 수정은 공백 단위 deterministic segmentation과
 `trusted.local_git_object` 전용 context 축소에만 한정했다.
 
+root·독립 review는 다음 보안 경계를 tests-only RED로 추가했다.
+
+- 양끝 `: ;` 또는 괄호가 secret의 기호 class인 exact-20 token: 10/11
+- namespaced assignment, empty-user credential URL, complete PEM 범위와 delimiter 없는 marker:
+  9/13
+- escaped quoted assignment와 truncated PEM 범위: 11/13
+- `SECRET_KEY`/`SECRET_ACCESS_KEY` family: 12/13
+
+wrapper trim 뒤 18자가 되는 token은 trimmed allowlist를 먼저 존중한 뒤 원래 run을 보수적으로
+재평가한다. marker는 독립 Unicode 경계와 필수 delimiter를 요구하고 actor/branch를 adjacent
+allowlist에서 제외한다. assignment·URL·PEM은 masking consumer가 finding interval만으로도
+전체 credential을 제거할 수 있게 범위를 넓혔다.
+
 GREEN fixture는 다음을 확인한다.
 
 - provider별 explicit synthetic signature family와 frozen registry
 - GitHub token의 한국어 조사·emoji·문장부호 인접, ASCII identifier 내부 비매치
 - entropy의 19/20 code-point, 정확히 4.0 bits, 1/2 class와 surrogate-pair 경계
-- 내부 `: , ; ( ) [ ] { } < >`를 유지하고 양끝 wrapper를 제외하는 공백 단위 segmentation,
-  공백 포함 일반 prose 비결합
-- 문맥 없는 high-entropy hex 거부와 commit/SHA/checksum/hash/build·typed ID allowlist
-- 임의 64-hex `metadata.branch` 거부와 검증된 OID substring 전용 trusted context seam
+- 내부 ``: , ; . ` ( ) [ ] { } < >``를 유지하고 양끝 wrapper를 제외하는 공백 단위 segmentation,
+  공백 포함 일반 prose 비결합과 exact-boundary edge-symbol fallback
+- 문맥 없는 high-entropy hex 거부, standalone marker+delimiter를 요구하는
+  commit/SHA/checksum/hash/build·typed ID allowlist
+- 임의/marker-shaped 64-hex actor·branch 거부와 검증된 OID substring 전용 trusted context seam
+- quoted/namespaced/camel assignment, escaped value, empty-user credential URL과
+  complete/truncated PEM의 전체 masking 범위
 - raw, note, alias, kind, relation label, actor/branch를 포함한 13개 저장 context 공유
 - explicit signature 우선순위, assignment/entropy overlap의 안전 구간 합집합,
   non-overlap·결정적 frozen result와 payload 부재
@@ -178,10 +210,14 @@ python3 -m unittest discover -s spikes/adr-behavior -p 'test_*.py' -v
 git diff --check
 ```
 
-REC-002 target 10/10, 전체 빠른 suite 38개 파일 265/265와 독립 behavior oracle 25/25를
+REC-002 target 13/13, 전체 빠른 suite 38개 파일 268/268과 독립 behavior oracle 25/25를
 통과했다.
 roadmap validator는 active 73·historical 74·evidence 67/67·ADR 17/17·scenario 24/24와
 acyclic dependency를 확인했고 production dependency audit은 알려진 취약점 0개다.
+독립 review의 32,768자 near-miss·unmatched PEM·다중 assignment probe는 catastrophic
+backtracking을 보이지 않았다. 다만 입력 하나에 수천 개의 독립 assignment가 있으면 finding
+생성과 병합 비용도 결과 수에 비례한다. schema의 입력 상한 안에서 허용하는 LOW 성능 위험이며,
+REC-008 부하 fixture에서 관찰해 필요하면 request-level finding cap을 fail-closed로 추가한다.
 
 ## 후속 작업 경계
 

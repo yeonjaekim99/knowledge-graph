@@ -114,6 +114,8 @@ test("explicit synthetic provider, JWT, private-key, URL, and assignment shapes 
     ["-----BEGIN PRIVATE KEY-----", "private-key"],
     ["-----BEGIN ENCRYPTED PRIVATE KEY-----", "private-key"],
     ["postgresql://fixture-user:synthetic-password@localhost/recall", "credential-url"],
+    ["redis://:synthetic-only-value@localhost", "credential-url"],
+    ["postgresql://:synthetic-only-value@localhost/recall", "credential-url"],
     ["password=synthetic-only-value", "secret-assignment"],
     ["pwd=x", "secret-assignment"],
   ];
@@ -124,6 +126,70 @@ test("explicit synthetic provider, JWT, private-key, URL, and assignment shapes 
       [finding.startCodeUnit, finding.endCodeUnit],
       [0, value.length],
       secretClass,
+    );
+  }
+});
+
+test("generic secret assignments include quoted JSON and object keys", () => {
+  for (const [input, expectedClass, expectedValue] of [
+    ['{"password":"synthetic-only-value"}', "secret-assignment", "synthetic-only-value"],
+    ["{'secret': 'synthetic-only-value'}", "secret-assignment", "synthetic-only-value"],
+    ['{"api_key":"synthetic-only-value"}', "secret-assignment", "synthetic-only-value"],
+    ["DB_PASSWORD=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ["CLIENT_SECRET=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ["JWT_SECRET: synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ['SESSION_SECRET="synthetic-only-value"', "secret-assignment", "synthetic-only-value"],
+    ['{"client_secret":"synthetic-only-value"}', "secret-assignment", "synthetic-only-value"],
+    [
+      '{"password":"synthetic\\\"only\\\"value"}',
+      "secret-assignment",
+      'synthetic\\\"only\\\"value',
+    ],
+    ["dbPassword=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ["OPENAI_API_KEY=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ["SECRET_KEY=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ["API_SECRET_KEY=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ["JWT_SECRET_KEY=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    ['{"secret_key":"synthetic-only-value"}', "secret-assignment", "synthetic-only-value"],
+    ["MY_AWS_SECRET_ACCESS_KEY=synthetic-only-value", "secret-assignment", "synthetic-only-value"],
+    [
+      `{"aws_secret_access_key":"${"A".repeat(40)}"}`,
+      "aws-secret-access-key",
+      "A".repeat(40),
+    ],
+  ]) {
+    const finding = onlyFinding(
+      detectSecretPatterns(input),
+      expectedClass,
+    );
+    assert.equal(
+      input.slice(finding.startCodeUnit, finding.endCodeUnit).includes(
+        expectedValue,
+      ),
+      true,
+      input,
+    );
+  }
+});
+
+test("PEM findings cover complete and truncated credential bodies", () => {
+  for (const pem of [
+    [
+      "-----BEGIN PRIVATE KEY-----",
+      "AAAAAAAAAAAAAAAA",
+      "AAAAAAAAAAAAAAAA",
+      "-----END PRIVATE KEY-----",
+    ].join("\n"),
+    [
+      "-----BEGIN PRIVATE KEY-----",
+      "BBBBBBBBBBBBBBBB",
+      "BBBBBBBBBBBBBBBB",
+    ].join("\n"),
+  ]) {
+    const finding = onlyFinding(detectSecretPatterns(pem), "private-key");
+    assert.deepEqual(
+      [finding.startCodeUnit, finding.endCodeUnit],
+      [0, pem.length],
     );
   }
 });
@@ -220,6 +286,24 @@ test("entropy candidates retain internal punctuation without joining prose acros
   );
 });
 
+test("edge punctuation cannot shrink a qualifying secret below the entropy boundary", () => {
+  for (const token of [
+    ":Aa0_Bb1-Cc2+Dd3/Ee;",
+    "(Aa0_Bb1-Cc2+Dd3/Ee)",
+  ]) {
+    assert.equal(Array.from(token).length, 20, token);
+    const finding = onlyFinding(
+      detectSecretEntropy(token, "raw_text"),
+      "high-entropy",
+    );
+    assert.deepEqual(
+      [finding.startCodeUnit, finding.endCodeUnit],
+      [0, token.length],
+      token,
+    );
+  }
+});
+
 test("entropy allowlists are shape- and context-bound while explicit patterns always win", () => {
   onlyFinding(detectSecretEntropy(BALANCED_HEX, "raw_text"), "high-entropy");
   assert.equal(
@@ -249,6 +333,39 @@ test("entropy allowlists are shape- and context-bound while explicit patterns al
       .length,
     0,
   );
+  for (const wrapped of [
+    `commit (${BALANCED_HEX})`,
+    `commit [${BALANCED_HEX}]`,
+    `sha: \`${BALANCED_HEX}\``,
+    `checksum <${BALANCED_HEX}>`,
+    `commit .${BALANCED_HEX}.`,
+  ]) {
+    assert.equal(
+      detectSecretEntropy(wrapped, "raw_text").findings.length,
+      0,
+      wrapped,
+    );
+  }
+  for (const attackerControlledMarker of [
+    `commit${BALANCED_HEX}`,
+    `hash${BALANCED_HEX}`,
+    `sha256${BALANCED_HEX}`,
+    `buildid${BALANCED_HEX}`,
+    `uncommit ${BALANCED_HEX}`,
+    `secretcommit ${BALANCED_HEX}`,
+    `notsha: ${BALANCED_HEX}`,
+    `mychecksum=${BALANCED_HEX}`,
+    `rehash ${BALANCED_HEX}`,
+    `rebuild-id=${BALANCED_HEX}`,
+    `비밀commit ${BALANCED_HEX}`,
+    `écommit ${BALANCED_HEX}`,
+    `秘密sha: ${BALANCED_HEX}`,
+  ]) {
+    onlyFinding(
+      detectSecretEntropy(attackerControlledMarker, "raw_text"),
+      "high-entropy",
+    );
+  }
 
   for (const context of [
     "reference.commit_sha",
@@ -263,6 +380,16 @@ test("entropy allowlists are shape- and context-bound while explicit patterns al
     detectSecretEntropy(arbitrarySymbolicHexBranch, "metadata.branch"),
     "high-entropy",
   );
+  for (const [context, attackerControlledMetadata] of [
+    ["metadata.branch", `commit.${BALANCED_HEX}`],
+    ["metadata.branch", `hash=${BALANCED_HEX}`],
+    ["metadata.actor", `sha:${BALANCED_HEX}`],
+  ]) {
+    onlyFinding(
+      detectSecretEntropy(attackerControlledMetadata, context),
+      "high-entropy",
+    );
+  }
 
   const uuid = "01234567-89ab-4cde-8f01-23456789abcd";
   onlyFinding(detectSecretEntropy(uuid, "raw_text"), "high-entropy");
