@@ -31,6 +31,7 @@
 | `pnpm test:prj-002` | 정규화·리터럴 identity·relation registry와 locale fixture |
 | `pnpm test:prj-003` | occurrence ID·canonical 선택·redirect와 rules dry-run |
 | `pnpm test:prj-004` | 사건 효력 pre-scan·supersedes·retraction과 effective stream |
+| `pnpm test:prj-005` | entity anchor·surface 해석·kind 선택과 ambiguity fixture |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -83,3 +84,8 @@ PRJ-004는 한 scope journal의 event retraction과 supersedes graph를 pre-scan
 payload를 root order에 놓고 실제 occurrence ID·recorded 시각을 보존한다. S14/S15의 이
 부분은 domain unit fixture로 검증하지만 claim/support·describes reducer와 SQLite prefix
 parity가 남아 있으므로 두 scenario target은 `planned`를 유지한다.
+
+PRJ-005는 모든 실제 statement의 entity anchor를 유지하면서 live statement만 surface와
+kind에 기여시키고, redirected surface 전체 canonicalization·exact-name tie-break·ambiguity를
+순수 reducer fixture로 검증한다. 실제 merge/alias 사건, record preflight, claim rewrite와
+SQLite prefix parity가 남아 있어 S08/S21 target은 `planned`를 유지한다.

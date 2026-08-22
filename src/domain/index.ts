@@ -69,6 +69,24 @@ export type {
   ProjectionPreScanResult,
   StatementCandidateRegistration,
 } from "./projection-event-pre-scan.js";
+export {
+  EntityProjectionError,
+  projectEntitySurfaceKinds,
+  reduceEntitySurfaceKinds,
+  resolveEntityReference,
+  strongestSurfaceOrigin,
+} from "./projection-entities.js";
+export type {
+  AmbiguousEntityCandidate,
+  AmbiguousEntityReference,
+  EntityKindMaintenanceCandidate,
+  EntityOccurrenceProjection,
+  EntityProjectionErrorCode,
+  EntityReferenceResolution,
+  EntitySurfaceKindProjection,
+  MissingEntityReference,
+  ResolvedEntityReference,
+} from "./projection-entities.js";
 export type {
   CanonicalRelation,
   CanonicalRelationDefinition,

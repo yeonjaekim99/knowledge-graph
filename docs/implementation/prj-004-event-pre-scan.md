@@ -105,7 +105,7 @@ ADR-010의 effective `createdAt`을 사용해 수행한다.
 `ProjectionPreScanResult`는 다음 세 collection을 반환한다.
 
 - `statements`: 모든 statement의 actual/root anchor, 최종 상태와 effective/recorded metadata
-- `statementCandidates`: 모든 실제 parsed occurrence의 candidate ID
+- `statementCandidates`: 모든 실제 statement의 frozen parsed payload와 occurrence candidate ID
 - `events`: live statement leaf, 모든 retraction과 retraction되지 않은 merge/alias의 총순서
 
 결과와 중첩 배열·JSON payload·target은 재귀적으로 변경할 수 없다. `ProjectionPreScanError`는

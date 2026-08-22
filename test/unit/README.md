@@ -12,3 +12,9 @@ anchor fixture는
 12,000단계 cycle/cascade fixture는 stack 안전성만 확인하며 release 성능 판정은 별도
 performance 계층이 소유한다. 이 fixture도 entity/claim reducer나 SQLite publish 완료를
 주장하지 않는다.
+
+PRJ-005의 모든 statement occurrence anchor, live entity/surface/kind reduce, 다의 surface
+해석과 철회 범위 fixture는
+[`domain/prj-005-entity-surface-kind.test.mjs`](domain/prj-005-entity-surface-kind.test.mjs)에
+둔다. confirmed origin은 resolver primitive까지 검증하며 실제 alias/merge event와 claim
+rewrite, SQLite publish 완료를 주장하지 않는다.

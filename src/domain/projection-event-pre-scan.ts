@@ -106,6 +106,7 @@ export interface PreScannedStatement {
 export interface StatementCandidateRegistration {
   readonly eventId: string;
   readonly actualSeq: number;
+  readonly parsed: readonly unknown[];
   readonly candidates: readonly OccurrenceCandidates[];
 }
 
@@ -700,6 +701,7 @@ export function preScanProjectionEvents(value: unknown): ProjectionPreScanResult
       Object.freeze({
         eventId: event.eventId,
         actualSeq: event.seq,
+        parsed: body.parsed,
         candidates: body.candidates,
       }),
     );
