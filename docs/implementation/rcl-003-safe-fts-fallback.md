@@ -26,7 +26,8 @@ BFS/ranking/final `RecallResult` 조합은 RCL-005~008, MCP wiring은 MCP-003에
 
 `prepareRecallFtsQuery`는 application 계층에서 다음 순서로만 FTS 계획을 만든다.
 
-1. 내부 candidate collection이 배열·문자열·최대 10개 계약인지 검사한다.
+1. 내부 candidate collection이 dense data array·문자열·최대 10개 계약인지 값 getter를
+   실행하지 않고 snapshot한다.
 2. C0/C1 제어 문자를 제거하고 양끝을 trim한다.
 3. 기존 ADR-006 `normalizeV1` 결과가 Unicode code point 3개 이상인 후보만 남긴다.
 4. 표시 문자열의 `"`를 `""`로 escape하고 각각 하나의 quoted phrase literal로 감싼다.
@@ -161,6 +162,11 @@ candidate guard는 hardening commit `4d81a35`에, stored raw text 보존은 `281
 발견했다. compatibility-equivalent 두 원문과 matched-term assertion을 먼저 추가해 8/10 RED를
 확인한 뒤 phrase 순서 보존과 integer rowid constraint를 `cec212d`에서 고쳐 10/10 GREEN으로
 닫았다.
+
+내부 typed seam도 sparse/accessor-backed array를 평범한 문자열 배열처럼 처리하면 untyped
+예외 또는 getter 실행이 생길 수 있었다. 두 malformed fixture가 unit target을 2/3 RED로
+만드는 것을 먼저 확인하고, bounded code-point 순회와 data descriptor snapshot을 `3a2e165`에
+적용해 accessor를 한 번도 읽지 않은 3/3, focused 10/10 GREEN으로 닫았다.
 
 최종 local gate는 architecture/type/build, RCL-003 10/10, RCL-001 10/10, STO-002 7/7,
 STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 39개 파일 265/265, PRJ-010 독립
