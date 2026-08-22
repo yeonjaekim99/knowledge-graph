@@ -5,6 +5,7 @@ import {
   getRelationDefinition,
   normalizeLiteralIdentity,
   normalizeRelationLabel,
+  normalizeV1,
 } from "../domain/index.js";
 import type { ClaimDraft } from "./memory-record-contract.js";
 
@@ -31,6 +32,7 @@ const AMBIGUITY_NOTES = Object.freeze({
 const SECRET_CLASSES: ReadonlySet<string> = new Set([
   ...SECRET_SIGNATURE_REGISTRY.map(({ secretClass }) => secretClass),
   "high-entropy",
+  "secret",
 ]);
 const SECRET_NOTE_PATTERN =
   /^Secret detected at claims\[([0-9]+)\]\.(subject|subject_kind|object|object_kind|object_value|relation_label|subject_aliases\[([0-9]+)\]|object_aliases\[([0-9]+)\]) \(class=([a-z0-9-]+)\); remove the secret and retry\.$/u;
@@ -289,9 +291,11 @@ function aliasArray(
   code: RecordDraftPlanningErrorCode,
 ): readonly string[] {
   return Object.freeze(
-    plainDataArray(value, 20, code).map((alias) =>
-      boundedText(alias, 256, code),
-    ),
+    plainDataArray(value, 20, code).map((alias) => {
+      const text = boundedText(alias, 256, code);
+      normalizeV1(text);
+      return text;
+    }),
   );
 }
 
@@ -304,6 +308,7 @@ function snapshotDraft(
     return fail(code);
   }
   const subject = boundedText(source["subject"], 1_024, code);
+  normalizeV1(subject);
   const relation = getRelationDefinition(source["relation"]).relation;
   const hasObject = Object.hasOwn(source, "object");
   const hasObjectValue = Object.hasOwn(source, "object_value");
@@ -327,6 +332,7 @@ function snapshotDraft(
   };
   if (hasObject) {
     const object = boundedText(source["object"], 1_024, code);
+    normalizeV1(object);
     return Object.freeze({
       ...common,
       object,

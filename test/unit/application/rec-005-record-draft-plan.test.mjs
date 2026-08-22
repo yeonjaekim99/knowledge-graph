@@ -323,6 +323,11 @@ test("rejects broken coverage, resolution parity and semantic draft shape", () =
       resolutions: [resolved(0, "e1.0", "e1.1")],
     },
     {
+      approvedDrafts: [approved(1, entityDraft()), approved(0, literalDraft())],
+      rejectedClaims: [],
+      resolutions: [resolved(1, "e1.0", "e1.1"), resolved(0, "e1.2")],
+    },
+    {
       approvedDrafts: validApproved,
       resolutions: [],
     },
@@ -342,6 +347,10 @@ test("rejects broken coverage, resolution parity and semantic draft shape", () =
       approvedDrafts: [approved(0, { ...entityDraft(), extra: true })],
       resolutions: [resolved(0, "e1.0", "e1.1")],
     },
+    {
+      approvedDrafts: [approved(0, entityDraft({ subject: "---" }))],
+      resolutions: [resolved(0, "e1.0", "e1.1")],
+    },
   ];
 
   for (const value of cases) {
@@ -353,6 +362,24 @@ test("rejects broken coverage, resolution parity and semantic draft shape", () =
 });
 
 test("rejects forged sanitizer and ambiguity notes instead of forwarding payload", () => {
+  assert.deepEqual(
+    selection({
+      approvedDrafts: [],
+      rejectedClaims: [
+        rejected(
+          0,
+          "Secret detected at claims[0].subject (class=secret); remove the secret and retry.",
+        ),
+      ],
+      resolutions: [],
+    }).outcomes,
+    [
+      rejected(
+        0,
+        "Secret detected at claims[0].subject (class=secret); remove the secret and retry.",
+      ),
+    ],
+  );
   assert.throws(
     () =>
       selection({
