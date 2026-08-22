@@ -5,7 +5,7 @@
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
 - 성격: 작성자 자체 교차 검토, PR #3~#49 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
   REC-004/RCL-006 독립 review·보완·최종 재검토
-- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~006 완료 · REC-005 진행**
+- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~006 완료 · REC-005/RCL-007 진행**
 
 ## 검토 결과
 
@@ -19,7 +19,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 34/66, Phase 01·02·03과 REC-001~004/RCL-001~006 `DONE`, REC-005 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 34/66, Phase 01·02·03과 REC-001~004/RCL-001~006 `DONE`, REC-005/RCL-007 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -261,6 +261,12 @@
     닫았고, remediation HEAD 독립 재리뷰는 HIGH/MEDIUM/LOW 0건과 전체 429/429를 재현했다.
     [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)가 구현·검증·상태 증거를
     `main`에 고정해 제품 roll-up을 34/66으로 올린다.
+39. RCL-007 착수 검토는 RCL-003의 bounded FTS/raw 후보와 RCL-006의 limit+1 ranked claim을
+    최종 `RecallResult`로 조립하는 production gap만 승인했다. `log0629`를 단일 owner로,
+    `rcl-007-answer-budget`을 구현 branch로 예약한다. Accepted ADR-012/014와 evidence audit의
+    S13 baseline을 재사용하되 RCL-008 public golden·negative·scope/read-only invariant와
+    RCL-009 benchmark·query-plan·p95를 완료 근거로 선점하지 않는다. 상태만 `IN_PROGRESS`로
+    바뀌므로 제품 roll-up은 34/66 그대로다.
 
 ## 의도적으로 남은 상태
 
@@ -284,7 +290,8 @@
   RCL-004는 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), RCL-005는
   [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), RCL-006은
   [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)로 완료했고 REC-005는
-  격리 branch에서 진행한다. RCL-007은 다음 dependency-ready planning 대상이다.
+  격리 branch에서 진행한다. RCL-007도 선행 작업 완료를 확인하고
+  `rcl-007-answer-budget` 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
