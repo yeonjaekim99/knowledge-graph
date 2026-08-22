@@ -1,7 +1,7 @@
 # SQLite 저장 경로와 startup 운영 계약
 
 - 소유 작업: `STO-001`, `STO-002`, `STO-003`, `STO-004`, `STO-007`, `STO-008`, `PRJ-001`,
-  `PRJ-002`
+  `PRJ-002`, `PRJ-003`, `PRJ-004`
 - 규범 근거: ADR-001, ADR-005, ADR-007, ADR-017
 - 적용 범위: Recall v1 production DB path·capability gate, connection lifecycle, migration gate,
   v1 physical schema, append-only journal storage primitive, process/WAL recovery gate, scope
@@ -161,6 +161,13 @@ many-to-one redirect 계획 또는 one-to-many 배포 차단·정비 후보를 �
 부분 게시하지 않는다. 실제 rules version 승격, 승인과 원자 replay는 PRJ-009/010과
 REL-006/007이 구현한다.
 
+PRJ-004의 `preScanProjectionEvents`는 PRJ-001이 snapshot한 한 scope journal을 쓰기 없이
+검증해 statement 최종 상태, 실제 occurrence candidate와 effective event 총순서를 만든다.
+event retraction과 supersedes는 과거 event만 가리키고 cycle·복수 live leaf·metadata drift를
+safe error로 거부한다. 재해석 leaf는 실제 seq 기반 ID와 recorded 시각을 유지하되 root의
+order/created/provenance/ttl을 승계한다. 이 함수 자체는 SQLite를 열거나 projection row를
+게시하지 않으며 PRJ-005~009 reducer/dispatcher가 같은 transaction 경계에서 소비해야 한다.
+
 ## 권한 정책
 
 | 대상 | POSIX 기본값 | 책임 |
@@ -178,7 +185,7 @@ Windows에서는 POSIX mode bit가 ACL을 대신하지 않는다. 지원 target�
 
 ## 아직 포함하지 않은 것
 
-- Phase 03: occurrence ID primitive의 event/entity/claim reducer 연결, pre-scan, 증분 dispatcher와
+- Phase 03: occurrence ID와 pre-scan의 entity/claim reducer 연결, 증분 dispatcher와
   journal+projection crash parity
 - Phase 08: 실제 MCP 8-client load, kill/restart와 처리량·지연 판정
 
@@ -201,6 +208,7 @@ pnpm test:sto-004
 pnpm test:sto-007
 pnpm test:sto-008
 pnpm test:prj-001
+pnpm verify:prj-004
 pnpm verify:local
 python3 docs/roadmap/validate.py
 ```

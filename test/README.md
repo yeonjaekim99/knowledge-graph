@@ -30,6 +30,7 @@
 | `pnpm test:prj-001` | scope full replay와 canonical projection 계약 |
 | `pnpm test:prj-002` | 정규화·리터럴 identity·relation registry와 locale fixture |
 | `pnpm test:prj-003` | occurrence ID·canonical 선택·redirect와 rules dry-run |
+| `pnpm test:prj-004` | 사건 효력 pre-scan·supersedes·retraction과 effective stream |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -77,3 +78,8 @@ PRJ-003은 저장된 draft occurrence 후보 ID, numeric canonical 선택, scope
 redirect 압축과 rules 변경 dry-run을 domain unit fixture로 구현했다. 실제 event reducer와
 SQLite publish가 아직 없으므로 S03/S07/S23/S24 target은 후속 owner가 production 경로에
 연결하고 prefix parity를 검증할 때까지 기존 상태를 유지한다.
+
+PRJ-004는 한 scope journal의 event retraction과 supersedes graph를 pre-scan해 live leaf
+payload를 root order에 놓고 실제 occurrence ID·recorded 시각을 보존한다. S14/S15의 이
+부분은 domain unit fixture로 검증하지만 claim/support·describes reducer와 SQLite prefix
+parity가 남아 있으므로 두 scenario target은 `planned`를 유지한다.

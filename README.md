@@ -47,3 +47,4 @@ PR에 로컬 검증 결과를 남겨야 합니다.
 - [PRJ-001 scope replay와 canonical projection 계약](docs/implementation/prj-001-replay-contract.md)
 - [PRJ-002 정규화·관계·리터럴 동일성 규칙](docs/implementation/prj-002-normalization-relations.md)
 - [PRJ-003 occurrence ID와 redirect registry](docs/implementation/prj-003-occurrence-redirects.md)
+- [PRJ-004 사건 pre-scan과 effective statement stream](docs/implementation/prj-004-event-pre-scan.md)
