@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 6/10
+- 진행률: 7/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -21,7 +21,7 @@
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `DONE` | `log0629` | PRJ-001, PRJ-003 | [PR #24](https://github.com/yeonjaekim99/knowledge-graph/pull/24) |
 | PRJ-005 | entity·surface·kind 투영 | `DONE` | `log0629` | PRJ-002~004 | [PR #25](https://github.com/yeonjaekim99/knowledge-graph/pull/25) |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `DONE` | `log0629` | PRJ-002~005 | [PR #26](https://github.com/yeonjaekim99/knowledge-graph/pull/26) |
-| PRJ-007 | merge·alias와 claim rewrite | `IN_PROGRESS` | `log0629` | PRJ-005, PRJ-006 | — |
+| PRJ-007 | merge·alias와 claim rewrite | `DONE` | `log0629` | PRJ-005, PRJ-006 | [PR #27](https://github.com/yeonjaekim99/knowledge-graph/pull/27) |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `TODO` | `unassigned` | PRJ-004, PRJ-006 | — |
 | PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `TODO` | `unassigned` | PRJ-003~008 | — |
 | PRJ-010 | prefix oracle·metamorphic·crash parity | `TODO` | `unassigned` | PRJ-009, STO-008 | — |
@@ -234,20 +234,39 @@
 
 ### PRJ-007 — merge·alias와 claim rewrite
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `prj-007-merge-alias-rewrite`
+- PR: [#27](https://github.com/yeonjaekim99/knowledge-graph/pull/27)
 - 근거: ADR-002, ADR-007~009, ADR-015
 - 선행 작업: PRJ-005, PRJ-006
 - 결과물: merge/alias event reducer와 undo 가능한 rewrite
 
 완료 체크:
 
-- [ ] merge cycle을 거부하고 absorb surface·claim·support를 keep으로 안전하게 옮긴다.
-- [ ] claim survivor를 origin_seq와 숫자 index로 선택하고 중복 support를 잃지 않는다.
-- [ ] 서로 다른 describes 충돌은 의미 순서가 최신인 하나만 active로 만든다.
-- [ ] alias 확인과 철회가 남은 기여의 가장 강한 origin으로 되돌아간다.
-- [ ] merge/alias event 철회 replay가 사건이 없었던 현재 투영과 같고 history는 보존된다.
+- [x] merge cycle을 거부하고 absorb surface·claim·support를 keep으로 안전하게 옮긴다.
+- [x] claim survivor를 origin_seq와 숫자 index로 선택하고 중복 support를 잃지 않는다.
+- [x] 서로 다른 describes 충돌은 의미 순서가 최신인 하나만 active로 만든다.
+- [x] alias 확인과 철회가 남은 기여의 가장 강한 origin으로 되돌아간다.
+- [x] merge/alias event 철회 replay가 사건이 없었던 현재 투영과 같고 history는 보존된다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-007-merge-alias-rewrite.md)에 final-ID 사후 치환 대신
+  statement·claim 철회·merge·alias를 함께 줄이는 의미 stream, anchor/redirect와 후속 owner
+  경계를 고정했다.
+- 첫 TDD RED는 아직 없는 decision reducer export에서 실패했다. ADR 대조 리뷰에서 철회된
+  duplicate activation이 describes 승자를 오염시키는 반례를 추가 RED로 재현했고, 최종 state와
+  같은 구조적 기여만 activation에 합치도록 수정했다.
+- target 19/19와 전체 local gate 176/176을 통과했다. numeric `c2 < c10`, support collision,
+  backdated reinterpret, same-direction merge no-op·reverse cycle과 payload-redacted failure를
+  정상·경계·실패 fixture로 검증했다.
+- merge/alias event 철회 뒤 후속 statement까지 사건이 없었던 replay와 byte-equivalent하며,
+  live merge에서는 absorb entity와 losing claim row·모든 occurrence anchor를 보존한다.
+- PRJ-005 11/11, PRJ-006 15/15, 독립 behavior spike 25/25, architecture/type/build,
+  roadmap audit와 dependency audit 취약점 0개를 통과했다. TTL aggregate·SQLite publish·전체
+  prefix parity가 남아 S07/S08/S17/S21 manifest는 `planned`로 유지하고 PRJ-008~010과
+  REC/REV owner가 이어받는다.
 
 ### PRJ-008 — TTL·aggregate와 조회용 유효성 source
 
