@@ -137,22 +137,29 @@
 - [구현 결정](../implementation/rcl-003-safe-fts-fallback.md)에 query escaping, 실제 bound
   phrase 3자 gate, RCL-001 snapshot/PRJ-008 TEMP aggregate 재사용, eligibility 선별 뒤 21/20
   SQL, endpoint seed와 depth-0 reached pin, raw-only·동일 원문 graph 우선 경계를 고정했다.
-- rebased test-only `4b33cb7`에서 기존 build 성공 뒤 missing production module로 새 두 test
-  module이 0/2 RED였고, product `f707c86`·hardening `7d088a6`·`fb2aef5`·`3a023f2`·`e1bebb1`
-  뒤 첫 focused target이 10/10 GREEN이었다. 독립 review RED `f8a186f`의 eligible cap,
-  exact phrase code-point와 Proxy/accessor 경계는 fix `ca21753` 뒤 14/14 GREEN이다. 후속 review
-  RED `595d283`의 typed-error 객체 smuggling과 aggregate-backed invalid draft index는 fix
-  `aa633b4` 뒤 17/17 GREEN이다.
+- rebased test-only `6d9a84f`에서 기존 build 성공 뒤 missing production module로 새 두 test
+  module이 0/2 RED였고, product `3d25722`와 단계별 hardening 뒤 첫 focused target이 10/10
+  GREEN이었다. 독립 review RED `69555b7`의 eligible cap, exact phrase code-point와
+  Proxy/accessor 경계는 fix `a4dfd22` 뒤 14/14 GREEN이다. 후속 review RED `1a64d00`의
+  typed-error 객체 smuggling과 aggregate-backed invalid draft index는 fix `6b121b6` 뒤 17/17
+  GREEN이다. 최종 review RED `5536f2b`의 used missing-support와 malformed 21번째 sentinel은
+  fix `0db93ef` 뒤 bounded 21개를 전부 검증하면서 앞 20개만 사용하는 20/20 GREEN이다.
+- 최신 `main` `f0b0660`으로 semantic rebase하고 test-only `8d5d304`·구현 `4924b19`에서
+  RCL-002의 ordered `selection.terms[].text`를 FTS에 전달하되 `surfaceNorm`을 phrase로 쓰지 않는
+  경계를 고정했다. 통합 fixture `4835796`는 실제 snapshot에 surface/FTS reader·worker facet을
+  모두 보존하고 raw SQL/connection은 노출하지 않는지 확인한다.
 - operator/quote/control/Korean/emoji와 NFKC-equivalent 별도 phrase, 실제 bound phrase 3자 경계,
   scope·expiry·retraction·supersede, entity/literal endpoint, raw duplicate와 저장 원문 공백
   보존, suppressed raw/dead parsed의 cap 비소비, eligible 21개 절단, 반복 결정성, 고정
-  snapshot, persistent dump/data_version, fresh typed error와 invalid-index fail-closed 및
-  payload-redacted corruption을 실제 file SQLite에서 검증했다.
-- 전체 fast 40개 파일 285/285, PRJ-010 39/39, behavior spike 25/25, roadmap evidence
+  snapshot, persistent dump/data_version, fresh typed error, missing-support·invalid-index·sentinel
+  fail-closed 및 payload-redacted corruption을 실제 file SQLite에서 검증했다. dead·expired·
+  cross-scope support는 손상으로 오판하지 않는다.
+- focused RCL-003 21/21, RCL-002 15/15, 전체 fast 44개 파일 323/323, PRJ-010 39/39,
+  behavior spike 25/25, roadmap evidence
   67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - 최종 BFS/ranking/Answer/MCP와 overview는 포함하지 않았고 S11/S22 public manifest도
   `planned`로 유지한다. root reviewer가 PR·merge 증거를 확인할 때까지 상태·체크·진행률은
-  `IN_PROGRESS`와 1/9를 유지한다.
+  `IN_PROGRESS`와 2/9를 유지한다.
 
 ### RCL-004 — overview seed와 raw-only 개요
 

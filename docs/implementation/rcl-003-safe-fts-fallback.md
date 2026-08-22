@@ -46,19 +46,21 @@ MATCH 가능하지만 NFKC 뒤에는 두 code point이고, `㍿`은 실제 phras
 숨기지 않고 `kind=unavailable`, `fts_query_unavailable` note와 빈 후보를 반환한다. 다른
 schema/connection 오류는 이 경로로 낮추지 않는다.
 
-RCL-002와 합칠 때는 그 단계가 이미 고정한 ordered `RecallQueryTerm.text`만 이 경계로 넘긴다.
-semantic integration hunk는 `searchFtsCandidates(selection.terms.map((term) => term.text))`이며,
-surface identity용 `surfaceNorm`은 FTS phrase로 사용하지 않는다. 이 branch는 아직 병합되지 않은
-RCL-002 구현을 cherry-pick하지 않고 이 단일 값 경계만 문서로 고정한다.
+RCL-002가 병합된 최신 `main`으로 semantic rebase한 뒤, 그 단계가 고정한 ordered
+`RecallQueryTerm.text`만 `searchFtsCandidates(selection.terms.map((term) => term.text))`로
+넘긴다. surface identity용 `surfaceNorm`은 FTS phrase로 사용하지 않는다. normalize 결과가
+같아도 표시 문자열이 다른 fullwidth/ASCII와 구두점 후보가 이 handoff 뒤에도 별개로 남는 것을
+runtime·compile fixture로 고정했다.
 
 ## RCL-001 snapshot 안의 SQL 경계
 
-기존 `RecallSnapshotService.withSnapshot` callback은 다음 두 facet을 합친
+기존 `RecallSnapshotService.withSnapshot` callback은 다음 세 facet을 합친
 `RecallSnapshotSource`만 받는다.
 
 ```text
 RecallSnapshotSource
   ├─ listValidClaimAggregates()
+  ├─ resolveSurfaceSeeds(terms)
   └─ searchFtsCandidates(candidates)
        ├─ terms
        ├─ subject/object seeds
@@ -99,7 +101,8 @@ INSERT/UPDATE/DELETE/REPLACE가 없다.
 
 ## graph seed와 reached pin
 
-앞 20개 statement 각각에서 현재 support인 행만 `temp.recall_claim_agg`와 join한다.
+bounded 21개 statement 전부에서 현재 support인 행만 `temp.recall_claim_agg`와 join해
+decode·validation하고, 앞 20개 statement만 seed/reached/raw 출력에 사용한다.
 support는 `live=1`, unexpired, active/current-scope claim이어야 하며 subject/object entity도
 현재 scope의 non-merged canonical ID인지 adapter에서 다시 검사한다.
 
@@ -153,6 +156,7 @@ driver cause 없이 typed error로 바꾼다. 그 뒤 candidate/support의 exact
 - fixed-now 이후 expiry와 statement/support expiry 일치
 - provenance, effective/recorded epoch, finite FTS rank
 - rank/seq/draft/endpoint 정렬과 row 중복 없음
+- parsed가 비어 있으면 support가 0개이고, parsed가 있으면 유효 support가 최소 1개임
 
 손상이 하나라도 있으면 `INVALID_RECALL_FTS_CANDIDATE`로 전체 호출을 닫고 row 값, raw text,
 SQL, DB path와 driver cause를 error에 넣지 않는다. 성공·실패·skip 모두 TEMP 외 product
@@ -160,11 +164,11 @@ state를 쓰지 않으며 외부 reader의 canonical dump와 `PRAGMA data_versio
 
 ## TDD와 검증
 
-기존 production build가 성공한 뒤 rebased test-only commit `4b33cb7`에서 focused command는 아직
+기존 production build가 성공한 뒤 rebased test-only commit `6d9a84f`에서 focused command는 아직
 없는 `dist/application/recall-fts-query.js` import 때문에 새 unit/SQLite 두 모듈이 0/2 RED였다.
-제품 구현 commit `f707c86` 뒤 `pnpm verify:rcl-003`은 unit 3개와 file-backed SQLite 7개,
+제품 구현 commit `3d25722` 뒤 `pnpm verify:rcl-003`은 unit 3개와 file-backed SQLite 7개,
 총 10/10 GREEN이다. downstream raw base type, depth-0 pin과 full 4,096-code-point query
-candidate guard는 hardening commit `7d088a6`에, stored raw text 보존은 `fb2aef5`에 분리했다.
+candidate guard는 hardening commit `1f61759`에, stored raw text 보존은 `576577d`에 분리했다.
 
 자체 diff review에서는 모든 candidate가 3자 미만이면 worker call을 하지 않아 callback 종료
 뒤 stale source가 성공 응답을 만들 수 있는 lifecycle 결함을 발견했다. 보관한 source의 짧은
@@ -177,36 +181,56 @@ candidate guard는 hardening commit `7d088a6`에, stored raw text 보존은 `fb2
 마지막으로 NFKC가 같은 fullwidth/ASCII phrase를 dedupe하면 실제 trigram token 하나를 놓치고,
 숫자 binding을 그대로 쓴 FTS5 rowid probe가 행 제약을 적용하지 않는 것을 실제 SQLite fixture로
 발견했다. compatibility-equivalent 두 원문과 matched-term assertion을 먼저 추가해 8/10 RED를
-확인한 뒤 phrase 순서 보존과 integer rowid constraint를 `3a023f2`에서 고쳐 10/10 GREEN으로
+확인한 뒤 phrase 순서 보존과 integer rowid constraint를 `7550020`에서 고쳐 10/10 GREEN으로
 닫았다.
 
 내부 typed seam도 sparse/accessor-backed array를 평범한 문자열 배열처럼 처리하면 untyped
 예외 또는 getter 실행이 생길 수 있었다. 두 malformed fixture가 unit target을 2/3 RED로
-만드는 것을 먼저 확인하고, bounded code-point 순회와 data descriptor snapshot을 `e1bebb1`에
+만드는 것을 먼저 확인하고, bounded code-point 순회와 data descriptor snapshot을 `6a97332`에
 적용해 accessor를 한 번도 읽지 않은 3/3, focused 10/10 GREEN으로 닫았다.
 
 독립 review는 candidate eligibility보다 앞선 SQL `LIMIT 21`, normalize 결과로 측정한 trigram
-길이와 candidate container/row Proxy 예외 누출을 추가로 발견했다. test-only `f8a186f`는 valid
+길이와 candidate container/row Proxy 예외 누출을 추가로 발견했다. test-only `69555b7`은 valid
 graph seq 1 뒤의 suppressed raw 20개와 dead parsed 20개, `a\u0301b`/`㍿`, accessor/Proxy trap을
-각각 RED로 고정했다. fix `ca21753`은 eligibility를 SQL cap 앞으로 옮기고 actual display phrase를
+각각 RED로 고정했다. fix `a4dfd22`는 eligibility를 SQL cap 앞으로 옮기고 actual display phrase를
 측정하며 exact descriptor snapshot으로 외부 payload를 닫아 focused 14/14를 통과했다. 기존
 eligible raw 21개 fixture도 그대로 20개와 정확한 truncation을 반환해 순서·절단 회귀가 없다.
 
 후속 독립 재리뷰는 검사 중 던져진 `RecallReadError`를 신뢰하면 Proxy가 같은 타입의 객체에
 message/cause와 임의 필드를 붙여 redaction 경계를 통과시킬 수 있고, same-scope live·unexpired
 aggregate support의 stored draft index가 범위를 벗어나면 eligibility에서 사라져 손상이 빈 검색
-성공으로 보이는 문제를 확인했다. test-only `595d283`은 request와 adapter envelope/row/array의
+성공으로 보이는 문제를 확인했다. test-only `1a64d00`은 request와 adapter envelope/row/array의
 typed-error smuggling 및 실제 file SQLite invalid-index와 dead·expired·cross-scope 대조군을 추가해
-focused 14/17 RED를 만들었다. fix `aa633b4`는 검사 예외의 타입과 identity를 전혀 신뢰하지 않고
+focused 14/17 RED를 만들었다. fix `6b121b6`는 검사 예외의 타입과 identity를 전혀 신뢰하지 않고
 각 경계의 새 고정 오류를 만들며, 범위를 벗어난 aggregate-backed support만 validation candidate로
 남겼다. valid graph duplicate는 계속 범위 안의 support만 인정하므로 invalid history가 raw를
 정상 graph처럼 억제하지 않고, 해당 malformed statement가 후보이면 전체 호출은 fail closed한다.
 
-최종 local gate는 architecture/type/build, RCL-003 17/17, RCL-001 10/10, STO-002 7/7,
-STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 40개 파일 285/285, PRJ-010 독립
+최종 소스 재리뷰에서는 worker와 adapter가 앞 20개만 support 조회·검증해 `parsedCount>0`인데
+support가 0개인 used candidate와 malformed 21번째 sentinel을 빈 성공 또는 정상 truncation으로
+숨길 수 있음을 actual file SQLite와 fake port로 확인했다. test-only `5536f2b`가 missing-support,
+malformed/valid sentinel 및 dead·expired·cross-scope 대조군을 RED로 고정했고, fix `0db93ef`는
+bounded 21개 전부의 support를 최대 2,100행까지 decode·validate하되 출력은 앞 20개로 유지해
+focused 20/20을 통과했다.
+
+RCL-002가 포함된 `f0b0660` 위 semantic rebase 뒤 test-only `8d5d304`는 같은 `surfaceNorm`을
+가진 distinct 표시 term이 FTS에 전달되는 compile/runtime 경계를 RED로 고정했다. 구현
+`4924b19`는 `selection.terms.map((term) => term.text)`만 narrow FTS source에 넘기며, 통합 fixture
+`4835796`는 실제 snapshot source가 surface와 FTS facet을 함께 제공하고 raw SQL/connection은
+계속 숨기는 것을 확인했다.
+
+최종 local gate는 architecture/type/build, RCL-003 21/21, RCL-002 15/15, RCL-001 10/10,
+STO-002 7/7, STO-004 4/4와 PRJ-008 8/8이다. 전체 fast suite는 44개 파일 323/323, PRJ-010 독립
 reference parity는 39/39, behavior spike는 25/25다. roadmap validator는 phase 9,
 active task 73, historical task 74, retired 1, evidence 67/67, ADR 17/17과 scenario 24/24를
 통과했고 production dependency 알려진 취약점은 0개였다.
+
+최종 SQL/source review에서도 user phrase·scope·now·event·rowid는 전부 binding으로 전달되고,
+FTS column payload를 읽거나 product table을 변경하는 문장은 없었다. 후보는 21개이고 adapter가
+받아들이는 support envelope는 2,100행으로 제한된다. candidate query가 graph duplicate
+상관 subquery를 eligibility와 표시 계산에서 반복하고 결정적 rank 정렬에 임시 B-tree를 쓸 수
+있는 비용은 남지만, 이는 RCL-009의 대표 fixture/query-plan 성능 gate이며 RCL-003 정확성이나
+merge를 막는 미해결 HIGH/MEDIUM finding은 아니다.
 
 최종 재현 명령은 다음과 같다.
 

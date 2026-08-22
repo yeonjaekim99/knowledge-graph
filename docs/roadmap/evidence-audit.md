@@ -119,7 +119,7 @@
 
 - [x] `RCL-001` | baseline: S09/S10/S19가 scope/now snapshot aggregate와 read-only 의미를 확인했고 `E-RUNTIME`이 고정 `evaluationNow`, `E-SCHEMA`가 output 계약 seam을 제공한다. | production: `E-RECALL-FOUNDATION`에서 같은 readonly snapshot의 scope/fixed-now TEMP aggregate와 실제 MemoryRecall/RecallResult schema·typed runtime 계약을 완료했다.
 - [x] `RCL-002` | baseline: S01/S09/S21이 normalize·surface·alias seed 의미를 확인했다. | production: `E-RECALL-SURFACE`에서 query term 후보, canonical surface seed, scope·50+1·결정적 dedupe와 typed snapshot seam을 구현하고 PR review·merge 증거를 고정했다.
-- [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: branch에서 bound quoted query, 실제 phrase 3글자 경계, fixed-snapshot eligible FTS 21/20, valid graph seed/reached pin과 raw-only·duplicate 억제를 구현했으며 PR review와 `main` merge 증거는 아직 남아 있다.
+- [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: branch에서 bound quoted query, RCL-002 표시 term handoff, 실제 phrase 3글자 경계, fixed-snapshot eligible FTS 21/20 전체 검증, valid graph seed/reached pin과 raw-only·duplicate 억제를 구현했으며 PR review와 `main` merge 증거는 아직 남아 있다.
 - [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: overview seed cap·정렬·빈 결과 계약을 구현한다.
 - [x] `RCL-005` | baseline: S12/S13이 양방향 BFS·literal 수집·최단 path·fanout 신호를 확인했다. | production: TEMP reached와 bounded traversal/collection을 구현한다.
 - [x] `RCL-006` | baseline: S10/S12가 support·상충·ranking·문장 조합을 확인했다. | production: explicit aggregate alias와 결정적 SQL ranking/Answer 조합을 구현한다.
