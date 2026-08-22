@@ -232,13 +232,7 @@ function runDetector(
 ): CheckedDetection {
   try {
     return checkDetectionResult(value, detect(value, context));
-  } catch (error: unknown) {
-    if (
-      error instanceof RecordSecretSanitizationError &&
-      error.code === "DETECTOR_FAILED"
-    ) {
-      throw error;
-    }
+  } catch {
     throw new RecordSecretSanitizationError("DETECTOR_FAILED");
   }
 }
