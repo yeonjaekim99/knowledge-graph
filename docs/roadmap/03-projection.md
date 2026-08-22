@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 2/10
+- 진행률: 3/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
-| PRJ-003 | occurrence ID와 redirect registry | `TODO` | `unassigned` | PRJ-001, PRJ-002 | — |
+| PRJ-003 | occurrence ID와 redirect registry | `DONE` | `log0629` | PRJ-001, PRJ-002 | [PR #23](https://github.com/yeonjaekim99/knowledge-graph/pull/23) |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
 | PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
@@ -91,20 +91,37 @@
 
 ### PRJ-003 — occurrence ID와 redirect registry
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `prj-003-occurrence-redirects`
+- PR: [#23](https://github.com/yeonjaekim99/knowledge-graph/pull/23)
 - 근거: ADR-002
 - 선행 작업: PRJ-001, PRJ-002
 - 결과물: 후보 ID 발급, canonical 선택과 redirect resolver
 
 완료 체크:
 
-- [ ] 저장된 parsed index와 subject→entity object 발생 순서로 모든 후보 ID를 계산하며,
+- [x] 저장된 parsed index와 subject→entity object 발생 순서로 모든 후보 ID를 계산하며,
       기존 entity로 해석된 occurrence도 위치를 소비한다.
-- [ ] dedupe/rule change는 가장 이른 후보를, 명시적 merge는 keep을 canonical로 삼는다.
-- [ ] redirect를 최종 canonical로 압축하고 cycle·종류 혼합·32 hop 초과를 손상으로 거부한다.
-- [ ] 외부 ID 정규식과 scope를 redirect 전후 모두 검증한다.
-- [ ] one-to-many rules dry-run은 배포 차단 결과와 정비 후보를 만든다.
+- [x] dedupe/rule change는 가장 이른 후보를, 명시적 merge는 keep을 canonical로 삼는다.
+- [x] redirect를 최종 canonical로 압축하고 cycle·종류 혼합·32 hop 초과를 손상으로 거부한다.
+- [x] 외부 ID 정규식과 scope를 redirect 전후 모두 검증한다.
+- [x] one-to-many rules dry-run은 배포 차단 결과와 정비 후보를 만든다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-003-occurrence-redirects.md)에 저장 occurrence 위치,
+  숫자 canonical 선택, redirect 손상·압축과 non-mutating rules dry-run 경계를 고정했다.
+- TDD RED는 아직 없는 identifier domain export 때문에 실패했고, GREEN은
+  `pnpm verify:prj-003` 9/9과 전체 `pnpm verify:local` 117/117이다.
+- entity/literal object, alias, 반복 subject가 위치를 소비하는 차이와 event/entity/claim
+  canonical 정규식, `e9.10 < e10.2` 숫자 비교를 fixture로 검증했다.
+- entity와 claim 정상 chain, source/target scope, self·dangling·duplicate·cycle·kind/scope
+  손상과 32/33-hop 경계를 safe typed error로 검증했다.
+- many-to-one은 입력 순서와 무관한 redirect 계획을, one-to-many는 ID-only maintenance와
+  전체 배포 차단을 반환하며 journal·projection·DB를 수정하지 않는다.
+- 실제 pre-scan, entity/claim 상태 reducer, merge/alias event, DB publish와 RecordResult
+  index mapping은 완료로 과장하지 않고 PRJ-004~009와 REC-005에 남겼다.
 
 ### PRJ-004 — 사건 pre-scan과 effective statement 계산
 
