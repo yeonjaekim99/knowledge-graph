@@ -56,6 +56,7 @@
 | `E-SECRET-DETECTOR` | [PR #36](https://github.com/yeonjaekim99/knowledge-graph/pull/36), [detector 구현 결정](../implementation/rec-002-secret-detector.md), [domain test](../../test/unit/domain/rec-002-secret-detector.test.mjs) | versioned provider signature·Unicode entropy·context allowlist, ASCII 경계, UTF-16 위치 전용 frozen result와 payload-redacted typed failure를 제공하는 IO·writer 없는 pure detector | application scan-before-write·raw 마스킹·draft 거부·write rollback은 REC-003, log/DB/FTS 전체 scan과 확장 공식 provider corpus는 REC-008/MCP-005/REL-005 |
 | `E-RECORD-SANITIZER` | [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38), [sanitizer 구현 결정](../implementation/rec-003-record-sanitizer.md), [application test](../../test/unit/application/rec-003-record-sanitizer.test.mjs), [type fixture](../../test/unit/application/rec-003-record-sanitizer.type-test.ts) | positional raw class 마스킹·불명확 위치 전체 fallback, 모든 draft 저장 문자열의 부분 거부, immutable original-index plan과 payload-redacted fail-closed·재해석 전체 실패 | journal/FTS append·projection 원자성은 REC-006, 전체 DB/WAL/log/MCP 누출 scan은 REC-008/MCP-005, revise 문자열 처리는 Phase 05 owner |
 | `E-RECALL-SURFACE` | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [RCL-002 구현 결정](../implementation/rcl-002-query-surface.md), [domain test](../../test/unit/domain/rcl-002-query-surface.test.mjs), [application test](../../test/unit/application/rcl-002-query-surface.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-002-query-surface.test.mjs) | PRJ-002 normalize를 재사용하되 distinct display/NFKC·구두점 후보와 cap-before-dedupe를 보존한 term, ill-formed UTF-16 거부, PRJ-003/007 terminal redirect 검증, scoped polysemy·surface pair first-occurrence dedupe, 50+1과 같은 RCL-001 snapshot의 typed read-only seam | 보존된 표시 phrase의 FTS/surface-no-answer fallback은 RCL-003, BFS/path는 RCL-005, note/Answer와 public golden은 RCL-007/008 |
+| `E-RECALL-FTS` | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [RCL-003 구현 결정](../implementation/rcl-003-safe-fts-fallback.md), [application test](../../test/unit/application/rcl-003-fts-query.test.mjs), [SQLite test](../../test/integration/sqlite/rcl-003-fts-fallback.test.mjs) | bound phrase literal과 실제 표시 code-point gate, eligible-first 21/20 candidate·2,100 support 전체 검증, valid graph seed/reached pin, parsed=[] raw-only·동일 원문 graph 우선, RCL-002 term.text handoff와 payload-redacted snapshot seam | overview는 RCL-004, BFS/path는 RCL-005, ranking/Answer와 public golden은 RCL-006~008, broad-query plan·성능은 RCL-009 |
 
 상세 scenario-to-task 연결은 [ADR·spike 추적성](traceability.md)이 소유한다. 이 문서는
 그 연결을 작업 시작 관점에서 다시 읽어 “무엇을 재사용하고 무엇이 남았는가”를 고정한다.
@@ -119,7 +120,7 @@
 
 - [x] `RCL-001` | baseline: S09/S10/S19가 scope/now snapshot aggregate와 read-only 의미를 확인했고 `E-RUNTIME`이 고정 `evaluationNow`, `E-SCHEMA`가 output 계약 seam을 제공한다. | production: `E-RECALL-FOUNDATION`에서 같은 readonly snapshot의 scope/fixed-now TEMP aggregate와 실제 MemoryRecall/RecallResult schema·typed runtime 계약을 완료했다.
 - [x] `RCL-002` | baseline: S01/S09/S21이 normalize·surface·alias seed 의미를 확인했다. | production: `E-RECALL-SURFACE`에서 query term 후보, canonical surface seed, scope·50+1·결정적 dedupe와 typed snapshot seam을 구현하고 PR review·merge 증거를 고정했다.
-- [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: branch에서 bound quoted query, RCL-002 표시 term handoff, 실제 phrase 3글자 경계, fixed-snapshot eligible FTS 21/20 전체 검증, valid graph seed/reached pin과 raw-only·duplicate 억제를 구현했으며 PR review와 `main` merge 증거는 아직 남아 있다.
+- [x] `RCL-003` | baseline: S01/S11/S22가 safe FTS·TTL·raw 부활 방지 fallback을 확인했다. | production: `E-RECALL-FTS`에서 bound quoted query, RCL-002 표시 term handoff, 실제 phrase 3글자 경계, fixed-snapshot eligible FTS 21/20 전체 검증, valid graph seed/reached pin과 raw-only·duplicate 억제를 구현하고 PR review·merge 증거를 고정했다.
 - [x] `RCL-004` | baseline: S19/S22가 overview 결정성·raw-only fallback을 확인했다. | production: overview seed cap·정렬·빈 결과 계약을 구현한다.
 - [x] `RCL-005` | baseline: S12/S13이 양방향 BFS·literal 수집·최단 path·fanout 신호를 확인했다. | production: TEMP reached와 bounded traversal/collection을 구현한다.
 - [x] `RCL-006` | baseline: S10/S12가 support·상충·ranking·문장 조합을 확인했다. | production: explicit aggregate alias와 결정적 SQL ranking/Answer 조합을 구현한다.
@@ -153,15 +154,15 @@
 
 ## 감사 결론
 
-- active 제품 작업 완료 수는 현재 29/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
-  `PRJ-001`~`010`, `REC-001`~`REC-003`과 `RCL-001`~`RCL-002`가 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
+- active 제품 작업 완료 수는 현재 30/66이다. `FND-001`~`FND-005`, `FND-007`, `STO-001`~`008`,
+  `PRJ-001`~`010`, `REC-001`~`REC-003`과 `RCL-001`~`RCL-003`이 production artifact와 검증·PR 증거를 갖춰 `DONE`이며 나머지 active 작업은 각
   production gate를 유지한다.
 - `FND-006`은 구현 완료가 아니라 [범위 제외 결정](../implementation/fnd-006-ci-retirement.md)에
   따라 retired된 stable ID다. historical evidence row에는 남지만 완료율에는 포함하지 않는다.
 - 기존 검증을 그대로 반복할 작업도 0개다. 각 작업은 위 baseline을 fixture·oracle·결정으로
   재사용하고 production 열에 적힌 차이만 구현한다.
 - Phase 01은 6/6, Phase 02는 8/8, Phase 03은 10/10으로 종료됐다. `REC-001`~`REC-003`과
-  `RCL-001`~`RCL-002`는 완료됐고 `REC-004`, `RCL-003`, `RCL-005`는 owner와 격리
+  `RCL-001`~`RCL-003`은 완료됐고 `REC-004`, `RCL-005`는 owner와 격리
   branch에서 진행 중이다.
 - 새 증거가 생기거나 작업 의미가 바뀌면 구현 PR에서 이 문서의 해당 행과 phase 완료
   체크를 함께 갱신한다.

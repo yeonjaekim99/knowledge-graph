@@ -1,10 +1,11 @@
 # RCL-003: 안전한 FTS와 raw fallback 후보
 
-- 상태: 구현·로컬 검증 완료 후보 — PR review와 `main` 병합 전까지 roadmap `IN_PROGRESS`
+- 상태: 구현·독립 review·검증 완료, [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)
 - 결정일: 2026-08-23
 - 작업: RCL-003
 - Owner: `log0629`
 - 구현 branch: `rcl-003-fts-fallback`
+- 완료 PR: [#41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)
 - 규범 근거: ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 구현: STO-004, PRJ-008, RCL-001
 - 규범 관계: Accepted ADR을 대체하지 않는 implementation decision
@@ -248,8 +249,8 @@ pnpm audit --prod
 ```
 
 S11/S22 manifest는 final public Answer와 overview까지 완결됐다는 뜻이 아니므로 `planned`를
-유지한다. RCL-003의 branch-local 완료 체크와 PR/main merge 증거 반영은 root reviewer가
-수행하며 그 전까지 task/phase/master 상태와 진행률은 바꾸지 않는다.
+유지한다. 독립 최종 review가 HIGH/MEDIUM/LOW 0건으로 끝났고 [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)이
+branch-local 체크와 검증·merge 증거를 영속화한다.
 
 ## ADR 영향 검토
 

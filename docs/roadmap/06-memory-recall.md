@@ -1,7 +1,7 @@
 # Phase 06 — memory_recall 검색·탐색·응답
 
 - 상태: `IN_PROGRESS`
-- 진행률: 2/9
+- 진행률: 3/9
 - 선행 phase: Phase 03 `DONE`
 - 주요 근거: ADR-003, ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 증거 감사: [Phase 06 baseline과 production gap](evidence-audit.md#phase-06-recall)
@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | RCL-001 | recall 계약·snapshot·유효 aggregate | `DONE` | `log0629` | FND-004, PRJ-008 | [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34), [구현 결정](../implementation/rcl-001-recall-contract-snapshot.md) |
 | RCL-002 | query term과 surface seed | `DONE` | `log0629` | RCL-001, PRJ-005 | [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39), [구현 결정](../implementation/rcl-002-query-surface.md) |
-| RCL-003 | 안전한 FTS와 raw fallback | `IN_PROGRESS` | `log0629` | RCL-001, STO-004 | — |
+| RCL-003 | 안전한 FTS와 raw fallback | `DONE` | `log0629` | RCL-001, STO-004 | [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41), [구현 결정](../implementation/rcl-003-safe-fts-fallback.md) |
 | RCL-004 | overview seed와 raw-only 개요 | `TODO` | `unassigned` | RCL-001, RCL-003 | — |
 | RCL-005 | BFS 이동·수집·경로 복원 | `IN_PROGRESS` | `log0629` | RCL-001, RCL-002 | [Planning PR #40](https://github.com/yeonjaekim99/knowledge-graph/pull/40), branch `rcl-005-bfs-traversal` |
 | RCL-006 | ranking·상충·문장 조합 | `TODO` | `unassigned` | RCL-005, PRJ-008 | — |
@@ -114,25 +114,26 @@
 
 ### RCL-003 — 안전한 FTS와 raw fallback
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `rcl-003-fts-fallback`
+- PR: [#41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)
 - 근거: ADR-005, ADR-010, ADR-012, ADR-014
 - 선행 작업: RCL-001, STO-004
 - 결과물: FTS candidate query와 graph/raw 진입 변환
 
 완료 체크:
 
-- [ ] 사용자 문자열을 FTS operator가 아닌 escaped phrase literal로만 만든다.
-- [ ] 제어 문자 제거·trim 뒤 실제 MATCH phrase가 3자 미만인 후보뿐이면 FTS를 생략하고
+- [x] 사용자 문자열을 FTS operator가 아닌 escaped phrase literal로만 만든다.
+- [x] 제어 문자 제거·trim 뒤 실제 MATCH phrase가 3자 미만인 후보뿐이면 FTS를 생략하고
   이유 있는 none note를 준비한다.
-- [ ] graph 또는 raw fallback에 eligible한 live·unexpired statement를 21개 읽어 20개만
+- [x] graph 또는 raw fallback에 eligible한 live·unexpired statement를 21개 읽어 20개만
   쓰고 절단을 기록한다.
-- [ ] 유효 support claim의 양 끝을 seed로 만들고 원 claim을 reached에 고정한다.
-- [ ] live·unexpired parsed=[]만 raw이며 죽은 parsed claim 원문으로 fallback하지 않는다.
-- [ ] 같은 raw_text의 유효 graph statement가 있으면 raw-only 복제 답을 제거한다.
+- [x] 유효 support claim의 양 끝을 seed로 만들고 원 claim을 reached에 고정한다.
+- [x] live·unexpired parsed=[]만 raw이며 죽은 parsed claim 원문으로 fallback하지 않는다.
+- [x] 같은 raw_text의 유효 graph statement가 있으면 raw-only 복제 답을 제거한다.
 
-현재 구현 증거(PR review·`main` 병합 전):
+완료 증거:
 
 - [구현 결정](../implementation/rcl-003-safe-fts-fallback.md)에 query escaping, 실제 bound
   phrase 3자 gate, RCL-001 snapshot/PRJ-008 TEMP aggregate 재사용, eligibility 선별 뒤 21/20
@@ -158,8 +159,10 @@
   behavior spike 25/25, roadmap evidence
   67/67·ADR 17/17·scenario 24/24와 production dependency 취약점 0개를 확인했다.
 - 최종 BFS/ranking/Answer/MCP와 overview는 포함하지 않았고 S11/S22 public manifest도
-  `planned`로 유지한다. root reviewer가 PR·merge 증거를 확인할 때까지 상태·체크·진행률은
-  `IN_PROGRESS`와 2/9를 유지한다.
+  `planned`로 유지한다. 독립 최종 review에서 HIGH/MEDIUM/LOW 0건과 2,100 support·21개
+  후보 전체 검증을 재현했다. [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)이
+  구현·review remediation·semantic integration·전체 회귀와 상태 증거를 함께 게시해
+  RCL-003의 영속적인 완료 근거가 된다.
 
 ### RCL-004 — overview seed와 raw-only 개요
 
