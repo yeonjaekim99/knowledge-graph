@@ -51,4 +51,6 @@ journal 없는 projection-only commit 경로가 생기지 않게 한다.
 scope의 journal까지 포함한 DB-global AUTOINCREMENT 다음 seq, ambiguity·REC-005 survivor 제거 뒤
 compact occurrence ID, exact finalization/append body와 actual seq binding을 검증한다. kind의 독립
 trim→NFKC→lowercase 경계, ambiguity candidate의 중복·numeric order·shape와
-`sqlite_sequence` drift도 payload를 노출하지 않고 fail-closed하는지 확인한다.
+`sqlite_sequence` drift도 payload를 노출하지 않고 fail-closed하는지 확인한다. input/result
+Proxy·accessor와 session call/rejection/thenable은 원본 message·cause·prefix·suffix를 버린 새
+고정 error가 되고, factory가 만든 canonical `SqliteConnectionError`만 유지하는지도 고정한다.

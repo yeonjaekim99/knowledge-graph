@@ -4,8 +4,8 @@
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
 - 성격: 작성자 자체 교차 검토, PR #3~#42 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
-  REC-004 독립 review 지적 보완·재검토 대기
-- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · REC-004 독립 재검토 대기**
+  REC-004 독립 review·보완·최신 main 결합 재검증
+- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · 차단 결함 0개**
 
 ## 검토 결과
 
@@ -216,8 +216,12 @@
     file-backed fixture로 검증했다. 독립 review에서 scope-local seq/caller candidate와
     rejected·duplicate occurrence position, kind validator와 ambiguity result boundary를 찾아
     worker-owned DB-global seq와 REC-005 survivor finalization, exact body/actual seq binding으로
-    보완했다. dedupe survivor 선택·stored index는 REC-005, public record 조립은 REC-003/006에
-    남기며 독립 재검토와 PR/main 증거 전까지 REC-004 상태와 roll-up은 바꾸지 않았다.
+    보완했다. dedupe survivor 선택·stored index는 REC-005, public record 조립은 REC-006에
+    남긴다. 재검토에서 input/result Proxy·accessor와 fake session이 payload-bearing 오류 객체를
+    그대로 내보내는 경계를 찾아 descriptor-only snapshot, fresh input/result error와 canonical
+    SQLite error 보존으로 닫았다. REC-003·RCL-002 완료와 RCL-005 planning이 반영된 최신 main에
+    semantic rebase해 script·evidence와 RCL-001/RCL-002 snapshot 공존을 함께 검증했으며 PR/main
+    증거 전까지 REC-004 상태와 roll-up은 바꾸지 않았다.
 
 ## 의도적으로 남은 상태
 
@@ -248,10 +252,10 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 13/13, 관련 PRJ-005/009 포함 target 33/33, architecture/type/build와 전체 fast 39 files·268/268 |
+| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 29/29, 관련 PRJ-005/009 포함 target 49/49, architecture/type/build와 전체 fast 44 files·331/331 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
-| REC-004 교차 gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-010 39/39; 독립 재검토는 별도 대기 |
+| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, STO-002 7/7, PRJ-010 39/39; Proxy/accessor redaction finding을 닫고 독립 재검토 미해결 HIGH/MEDIUM 0건 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
