@@ -38,7 +38,9 @@ type RecordSecretSanitizationResult = {
 ```
 
 승인 draft는 입력 객체를 보유하지 않는 깊이 1의 immutable clone이며 alias 배열도 복사해
-freeze한다. `inputIndex`는 원래 `claims` 위치다. stored `parsed` index, occurrence ID와 요청
+freeze한다. raw, 재해석 여부와 모든 draft clone은 detector를 호출하기 전에 한 번에
+snapshot한다. 따라서 잘못된 주입 구현이 caller-owned 객체를 바꿔도 검사한 값과 후속 plan의
+값이 달라지지 않는다. `inputIndex`는 원래 `claims` 위치다. stored `parsed` index, occurrence ID와 요청
 내 duplicate mapping은 REC-005가 승인 survivor를 확정한 뒤 계산한다.
 
 ### raw 마스킹
@@ -94,6 +96,7 @@ GREEN fixture는 다음을 검증한다.
 - UTF-16 astral 인접 slice, 겹침·역순·surrogate split·범위 손상 fallback
 - detector 예외, unknown class, extra payload와 malformed result의 redacted fail-closed
 - 앞선 hit 뒤의 detector 장애가 숨지 않음
+- detector 실행 중 caller-owned raw/draft/alias 변경이 승인 plan에 섞이지 않음
 - 재해석 부분 성공 금지와 raw-only 재해석
 - 결과, alias 배열과 error rejection 목록의 immutable 경계
 
