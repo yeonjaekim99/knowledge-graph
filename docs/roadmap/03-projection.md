@@ -17,7 +17,7 @@
 |---|---|---|---|---|---|
 | PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
-| PRJ-003 | occurrence ID와 redirect registry | `TODO` | `unassigned` | PRJ-001, PRJ-002 | — |
+| PRJ-003 | occurrence ID와 redirect registry | `IN_PROGRESS` | `log0629` | PRJ-001, PRJ-002 | `prj-003-occurrence-redirects` |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
 | PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
@@ -91,8 +91,9 @@
 
 ### PRJ-003 — occurrence ID와 redirect registry
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `prj-003-occurrence-redirects`
 - 근거: ADR-002
 - 선행 작업: PRJ-001, PRJ-002
 - 결과물: 후보 ID 발급, canonical 선택과 redirect resolver
