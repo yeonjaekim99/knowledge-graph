@@ -20,6 +20,10 @@
 진행률은 수동 퍼센트가 아니라 `DONE 작업 수 / 전체 작업 수`로만 표시한다. 상세 문서의
 작업 상태와 증거가 원본이며 이 표는 각 PR에서 함께 갱신하는 roll-up이다.
 
+첫 wave 중 REC-002는 branch의 구현 체크와 로컬 target 검증을 닫았지만 review, PR과
+`main` 병합 전이므로 `IN_PROGRESS`와 제품 24/66 roll-up을 유지한다. 병렬 branch의
+병합 시점에는 각 phase 상세 상태를 기준으로 이 표를 한 번에 다시 계산한다.
+
 [Evidence-gap audit](evidence-audit.md)의 `[x]`는 제품 작업별 선행 증거 대조가 끝났다는
 뜻이며 제품 작업 진행률에는 포함하지 않는다. 제품 `DONE`은 production 결과물과 해당
 phase의 완료 체크·PR 증거가 있을 때만 계산한다.

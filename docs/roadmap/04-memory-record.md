@@ -16,7 +16,7 @@
 | ID | 작업 | 상태 | Owner | 선행 작업 | 증거 |
 |---|---|---|---|---|---|
 | REC-001 | record 입력·출력 schema와 domain 계약 | `DONE` | `log0629` | FND-004, PRJ-009 | [PR #32](https://github.com/yeonjaekim99/knowledge-graph/pull/32), [구현 결정](../implementation/rec-001-record-contract.md) |
-| REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | — |
+| REC-002 | 비밀값 pattern·entropy 탐지기 | `IN_PROGRESS` | `log0629` | FND-003 | [구현 결정](../implementation/rec-002-secret-detector.md) |
 | REC-003 | raw 마스킹과 draft 부분 거부 | `TODO` | `unassigned` | REC-001, REC-002 | — |
 | REC-004 | write entity 해석과 모호성 처리 | `IN_PROGRESS` | `log0629` | REC-001, PRJ-005 | — |
 | REC-005 | draft 의미 검증·중복 제거·index mapping | `TODO` | `unassigned` | REC-003, REC-004 | — |
@@ -73,14 +73,31 @@
 
 완료 체크:
 
-- [ ] AWS/GitHub/JWT 등 명시 pattern과 긴 random 문자열 entropy 검사를 분리한다.
-- [ ] provider token 경계는 Unicode `\b` 대신 ASCII lookaround를 쓰고 한국어 조사·문장부호
+- [x] AWS/GitHub/JWT 등 명시 pattern과 긴 random 문자열 entropy 검사를 분리한다.
+- [x] provider token 경계는 Unicode `\b` 대신 ASCII lookaround를 쓰고 한국어 조사·문장부호
       인접 fixture로 class 판정을 검증한다.
-- [ ] allowlist와 커밋 SHA·hash 같은 오탐 fixture를 코드 리뷰 가능한 registry로 둔다.
-- [ ] 탐지 결과는 종류와 위치만 제공하고 원문 secret을 복사하지 않는다.
-- [ ] note, alias, kind, relation label을 포함한 모든 저장 가능 문자열에 같은 detector를 쓴다.
-- [ ] detector 내부 예외는 fail-closed typed error가 되고 어떤 write도 시작하지 않는다.
-- [ ] detector fixture와 로그에 실제 credential을 사용하지 않는다.
+- [x] allowlist와 커밋 SHA·hash 같은 오탐 fixture를 코드 리뷰 가능한 registry로 둔다.
+- [x] 탐지 결과는 종류와 위치만 제공하고 원문 secret을 복사하지 않는다.
+- [x] note, alias, kind, relation label을 포함한 모든 저장 가능 문자열에 같은 detector를 쓴다.
+- [x] detector 내부 예외는 fail-closed typed error가 되고 어떤 write도 시작하지 않는다.
+- [x] detector fixture와 로그에 실제 credential을 사용하지 않는다.
+
+검토 대기 증거:
+
+- [구현 결정](../implementation/rec-002-secret-detector.md)에 `secret-detector-v1`, explicit
+  signature 우선순위, Unicode code-point entropy, UTF-16 slice 위치와 context-bound
+  allowlist를 고정했다.
+- TDD RED는 production export 부재로 target 0/1이었고, 구현 뒤
+  `pnpm verify:rec-002` target 9/9과 architecture/type/build, 전체 `pnpm test` 241/241을
+  통과했다.
+- synthetic fixture만으로 AWS/GitHub/GitLab/Google/Slack/Stripe, JWT, PEM, credential URL,
+  assignment와 한국어 조사·문장부호, 19/20자·4.0-bit entropy 경계를 검증한다.
+- result와 typed error에는 match/value/prefix/suffix/cause가 없고 registry/result는 freeze된다.
+  raw 마스킹, draft 부분 거부, transaction·log/MCP 연결은 REC-003/REC-008/MCP-005에 남긴다.
+- 독립 behavior spike 25/25, roadmap active 73·historical 74·evidence 67/67과 dependency
+  audit 알려진 취약점 0개를 확인했다.
+- 완료 체크는 구현·로컬 검증 기준으로 닫았지만 상태와 Phase/master 완료 수는 review,
+  PR과 `main` 병합 전까지 `IN_PROGRESS`로 유지한다.
 
 ### REC-003 — raw 마스킹과 draft 부분 거부
 

@@ -40,6 +40,7 @@
 | `pnpm test:rec-001` | record input/draft/result schema, Unicode bounds와 result index 계약 |
 | `pnpm verify:rec-001` | architecture/type/build, FND-004 회귀와 REC-001 target |
 | `pnpm test:rcl-001` | recall input/result 계약, request snapshot과 scope/fixed-now TEMP aggregate |
+| `pnpm test:rec-002` | versioned secret signature·entropy·allowlist와 safe positional result |
 | `pnpm verify:local` | architecture, type, build와 빠른 전체 suite |
 
 ## TDD 순서
@@ -120,3 +121,9 @@ Draft 2020-12 source에서 검증하는 contract fixture, trusted runtime snapsh
 소비하는 application fixture, 실제 WAL reader의 deferred transaction·TEMP aggregate를 검증하는
 SQLite fixture를 추가했다. term/FTS/overview/traversal/ranking/Answer 조합은 후속 RCL 작업의
 소유이므로 S09/S10/S19 manifest는 아직 `planned`다.
+
+REC-002는 [`unit/domain/rec-002-secret-detector.test.mjs`](unit/domain/rec-002-secret-detector.test.mjs)에서
+IO 없는 versioned signature/entropy detector를 검증한다. fixture는 실제 credential이 아닌
+형식 전용 synthetic 값만 사용하고, 결과·typed error가 탐지 문자열을 보유하지 않는지
+검사한다. 마스킹, draft 부분 거부와 transaction rollback은 REC-003 이후 수직 경로가
+소유하므로 이 unit suite가 S18 production target 완료를 주장하지 않는다.
