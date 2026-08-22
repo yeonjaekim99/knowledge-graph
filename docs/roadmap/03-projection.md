@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 8/10
+- 진행률: 9/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -23,7 +23,7 @@
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `DONE` | `log0629` | PRJ-002~005 | [PR #26](https://github.com/yeonjaekim99/knowledge-graph/pull/26) |
 | PRJ-007 | merge·alias와 claim rewrite | `DONE` | `log0629` | PRJ-005, PRJ-006 | [PR #27](https://github.com/yeonjaekim99/knowledge-graph/pull/27) |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `DONE` | `log0629` | PRJ-004, PRJ-006 | [PR #28](https://github.com/yeonjaekim99/knowledge-graph/pull/28) |
-| PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `TODO` | `unassigned` | PRJ-003~008 | — |
+| PRJ-009 | 증분 dispatcher·전체 replay·무결성 검사 | `DONE` | `log0629` | PRJ-003~008 | [PR #29](https://github.com/yeonjaekim99/knowledge-graph/pull/29) |
 | PRJ-010 | prefix oracle·metamorphic·crash parity | `TODO` | `unassigned` | PRJ-009, STO-008 | — |
 
 ## 상세 체크리스트
@@ -304,19 +304,34 @@
 
 ### PRJ-009 — 증분 dispatcher·전체 replay·무결성 검사
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `DONE`
+- Owner: `log0629`
+- Branch: `prj-009-projection-dispatcher`
+- PR: [#29](https://github.com/yeonjaekim99/knowledge-graph/pull/29)
 - 근거: ADR-001, ADR-007, ADR-017
 - 선행 작업: PRJ-003~008
 - 결과물: event dispatcher, replay service와 commit gate
 
 완료 체크:
 
-- [ ] 일반 statement/claim retraction/새 merge·alias는 증분, 과거 의미 변경은 scope replay로 분기한다.
-- [ ] journal append와 projection 적용이 같은 transaction에서 성공 또는 rollback된다.
-- [ ] commit 전 active support, describes uniqueness, redirect, last_seq와 FK를 검증한다.
-- [ ] 손상 감지 시 부분 수선하지 않고 명확한 오류 또는 scope replay를 선택한다.
-- [ ] 성공 반환 직후 같은 connection과 새 reader에서 read-your-writes를 보장한다.
+- [x] 일반 statement/claim retraction/새 merge·alias는 증분, 과거 의미 변경은 scope replay로 분기한다.
+- [x] journal append와 projection 적용이 같은 transaction에서 성공 또는 rollback된다.
+- [x] commit 전 active support, describes uniqueness, redirect, last_seq와 FK를 검증한다.
+- [x] 손상 감지 시 부분 수선하지 않고 명확한 오류 또는 scope replay를 선택한다.
+- [x] 성공 반환 직후 같은 connection과 새 reader에서 read-your-writes를 보장한다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-009-projection-dispatcher.md)에 top-level reducer 조립,
+  incremental/replay 분기, worker transaction과 commit gate를 고정했다.
+- 일반 statement, confirmed alias 후속 해석, merge·support rewrite와 claim 철회의 모든 안전
+  prefix가 같은 prefix의 full production reducer와 byte-equivalent다.
+- 실제 file DB에서 missing/rules/last-seq/invariant replay, multi-event rollback, FTS/meta
+  원자성, ID collision 재시도, scope 격리와 기존·신규 reader read-your-writes를 검증했다.
+- `pnpm verify:prj-009` 9/9와 전체 빠른 suite 193/193, architecture/type/build, roadmap
+  audit, 독립 behavior spike 25/25, clean archive와 production dependency audit를 통과했다.
+- production source는 spike module을 import하지 않으며 전체 S01~S24/metamorphic/crash
+  parity는 범위를 키우지 않고 PRJ-010에 유지했다.
 
 ### PRJ-010 — prefix oracle·metamorphic·crash parity
 

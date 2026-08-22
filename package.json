@@ -46,6 +46,7 @@
     "test:prj-006": "pnpm run build && node --test test/unit/domain/prj-006-claim-support-cardinality.test.mjs",
     "test:prj-007": "pnpm run build && node --test test/unit/domain/prj-007-merge-alias-rewrite.test.mjs",
     "test:prj-008": "pnpm run build && node --test test/unit/domain/prj-008-ttl-validity.test.mjs test/integration/sqlite/prj-008-claim-aggregate.test.mjs",
+    "test:prj-009": "pnpm run build && node --test test/unit/domain/prj-009-projection-dispatcher.test.mjs test/integration/projection/prj-009-atomic-dispatcher.test.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "typecheck:fnd-004": "tsc --noEmit -p tsconfig.fnd-004.json",
     "verify:fnd-001": "node scripts/verify-fnd-001.mjs",
@@ -70,6 +71,7 @@
     "verify:prj-006": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-006",
     "verify:prj-007": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-007",
     "verify:prj-008": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-008",
+    "verify:prj-009": "pnpm run check:architecture && pnpm run typecheck && pnpm run test:prj-009",
     "verify:local": "pnpm run verify:fnd-007"
   },
   "dependencies": {
