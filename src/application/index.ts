@@ -49,3 +49,21 @@ export type {
   RecordSecretSanitizationResult,
   RejectedRecordClaim,
 } from "./memory-record-sanitizer.js";
+export {
+  RecordDraftPlanningError,
+  finalizeRecordDraftPlan,
+  selectRecordDraftSurvivors,
+} from "./memory-record-draft-plan.js";
+export type {
+  AcceptedRecordDraftPlanOutcome,
+  DuplicateRecordDraftPlanOutcome,
+  FinalizedRecordDraftMapping,
+  FinalizedRecordDraftPlan,
+  FinalizedRecordDraftPlanOutcome,
+  RecordDraftPlanOutcome,
+  RecordDraftPlanningErrorCode,
+  RecordDraftSurvivorPlan,
+  RecordEntityOccurrenceMapping,
+  RejectedRecordDraftPlanOutcome,
+  StoredRecordDraft,
+} from "./memory-record-draft-plan.js";

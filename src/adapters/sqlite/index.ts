@@ -16,6 +16,7 @@ export {
   finalizeSqliteWriteEntityDrafts,
   resolveSqliteWriteEntityDrafts,
 } from "./write-entity-resolver.js";
+export { finalizeSqliteRecordDraftPlan } from "./record-draft-plan.js";
 export type {
   WriteEntityDraftResolution,
   WriteEntityDraftResolutionInput,
