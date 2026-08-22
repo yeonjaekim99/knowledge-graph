@@ -1,6 +1,6 @@
 # REC-004: transaction-bound write entity resolver
 
-- 상태: 독립 review 지적 보완·로컬 검증 완료, 재검토와 PR/main 병합 대기
+- 상태: 독립 최종 review 완료, [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)로 게시·병합
 - 결정일: 2026-08-23
 - 작업: REC-004
 - Owner: `log0629`
@@ -220,7 +220,8 @@ resolver가 그대로 반환해 settlement와 결과 검증을 우회하는 MEDI
 `b179166`은 finalization target 42개 중 36 pass/6 fail RED(실패한 child 5개와 parent 집계)를
 고정했다. `68ff959`는 native async bridge 안에서 session Promise settlement만 받아 species
 객체를 버리고, 성공은 검증·동결된 결과로, 실패는 fresh fixed error 또는 fresh canonical SQLite
-error로 변환해 42/42 GREEN으로 닫았다. 이 보완은 새 독립 재검토를 기다린다.
+error로 변환해 42/42 GREEN으로 닫았다. 새 독립 최종 review는 같은 HEAD에서 이 경계와
+전체 diff를 다시 검토해 HIGH/MEDIUM/LOW 0건으로 판정했다.
 
 file-backed SQLite target은 다음 정상·경계·실패 경로를 검증한다.
 
@@ -259,8 +260,10 @@ REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최�
 전체 fast 46 files·373/373, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39,
 behavior spike 25/25, roadmap audit 67/67과 production audit 0건을 통과했고
-앞선 review의 MEDIUM 1건·LOW 1건과 후속 Promise species MEDIUM 1건은 로컬에서 보완됐다.
-새 독립 재검토와 PR/main 영속 증거 전까지 작업 상태는 `IN_PROGRESS`다.
+앞선 review의 MEDIUM 1건·LOW 1건과 후속 Promise species MEDIUM 1건은 모두 로컬에서
+보완됐고, 새 독립 최종 review가 focused 50/50과 전체 gate를 재현했다.
+[PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)이 이 구현과 증거를
+`main`에 고정해 작업 상태를 `DONE`으로 만든다.
 S21의 write-time resolver 부분은 production으로 옮겼지만 public `memory_record`와 실제
 alias/revise 수직 경로는 REC-006/008과 REV-006/007이 소유하므로 scenario manifest 상태는
 바꾸지 않는다.

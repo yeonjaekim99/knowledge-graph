@@ -3,9 +3,9 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#42 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
-  REC-004 독립 review·Promise species 보완·최신 main 결합 재검증
-- 결과: **Phase 01·02·03 종료 · REC-001~003/RCL-001~003 완료 · REC-004/RCL-004/RCL-005 진행 · REC-004 Promise species 보완 후 독립 재검토 대기**
+- 성격: 작성자 자체 교차 검토, PR #3~#43 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
+  REC-004 독립 review·Promise species 보완·최종 재검토·최신 main 결합 재검증
+- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~003 완료 · RCL-004/RCL-005 진행**
 
 ## 검토 결과
 
@@ -19,7 +19,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 30/66, Phase 01·02·03과 REC-001~003/RCL-001~003 `DONE`, REC-004/RCL-004/RCL-005 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 31/66, Phase 01·02·03과 REC-001~004/RCL-001~003 `DONE`, RCL-004/RCL-005 병렬 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -231,10 +231,12 @@
     `Symbol.species` 반환 객체가 public resolver의 Promise와 settlement를 대체하는 MEDIUM을
     찾았다. tests-only `b179166`으로 36/42 RED를 고정하고, native async settlement bridge
     `68ff959`가 species 반환 객체를 폐기하며 성공 결과를 검증·동결하고 실패를 fresh fixed 또는
-    fresh canonical SQLite error로 변환해 42/42 GREEN을 만들었다. 새 독립 재검토는 대기 중이다.
+    fresh canonical SQLite error로 변환해 42/42 GREEN을 만들었다. 새 독립 최종 review는
+    HIGH/MEDIUM/LOW 0건과 focused 50/50을 재현했다.
     REC-003·RCL-002·RCL-003 완료와 RCL-004·RCL-005 planning이 반영된 최신 main의
-    script·evidence와 RCL-001/RCL-002/RCL-003 snapshot 공존을 함께 검증했으며 PR/main 증거 전까지
-    REC-004 상태와 roll-up은 바꾸지 않았다.
+    script·evidence와 RCL-001/RCL-002/RCL-003 snapshot 공존을 함께 검증했다.
+    [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)이 구현·review·전체 회귀와
+    상태 증거를 함께 고정해 제품 roll-up을 31/66으로 올렸다.
 
 ## 의도적으로 남은 상태
 
@@ -253,7 +255,8 @@
   [PR #38](https://github.com/yeonjaekim99/knowledge-graph/pull/38),
   [PR #34](https://github.com/yeonjaekim99/knowledge-graph/pull/34),
   [PR #39](https://github.com/yeonjaekim99/knowledge-graph/pull/39),
-  [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004,
+  [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004는
+  [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)으로 완료했다.
   dependency-ready RCL-004와 RCL-005는 격리 branch에서 병렬 진행한다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
@@ -265,10 +268,10 @@
 | `python3 docs/roadmap/validate.py` | PASS — phase 9, active task 73, historical task 74, retired 1, evidence audit 67/67, cycle 0 |
 | 추적성 검사 | PASS — ADR 17/17, spike scenario 24/24 |
 | Markdown link·공백·conflict marker 검사 | PASS — 오류 0 |
-| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 42/42, 관련 PRJ-005/009 포함 target 70/70, architecture/type/build와 전체 fast 46 files·373/373; Promise species 보완 후 새 독립 재검토 대기 |
+| REC-004 보완·관련 projection·전체 로컬 gate | PASS — REC-004 42/42, 관련 PRJ-005/009 포함 target 70/70, architecture/type/build와 전체 fast 46 files·373/373; Promise species 보완 뒤 새 독립 최종 review HIGH/MEDIUM/LOW 0건과 focused 50/50 |
 | 기존 main 깨끗한 source baseline | PASS — `pnpm 11.22.0` frozen lockfile 설치, 당시 전체 local gate 232/232와 roadmap audit 재현 |
 | RCL-001 branch gate | PASS — RCL-001 10/10, STO-002 7/7, PRJ-008 8/8, PRJ-010 39/39, 전체 255/255와 architecture/type/build; 독립 review 미해결 finding 0개 |
-| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39; Proxy/accessor·connection-error identity·result parity/note·kind scalar·Promise species finding을 로컬에서 닫았고 새 독립 재검토 대기 |
+| REC-004 교차 gate | PASS — RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, PRJ-010 39/39; Proxy/accessor·connection-error identity·result parity/note·kind scalar·Promise species finding을 닫고 독립 최종 review를 통과 |
 | dependency audit | PASS — production 알려진 취약점 0개 |
 | behavior spike 전체 회귀 | PASS — 25/25 |
 | REC-002 branch gate | PASS — architecture/type/build, target 13/13와 전체 빠른 suite 38개 파일 268/268; 독립 review 미해결 HIGH/MEDIUM 0건 |
