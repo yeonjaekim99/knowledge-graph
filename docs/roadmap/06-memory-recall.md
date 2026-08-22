@@ -182,6 +182,22 @@
 - [ ] raw-only scope도 overview가 되며 철회/만료 graph 원문은 우회하지 않는다.
 - [ ] 별도 entity answer type을 만들지 않고 entry=overview로 구분한다.
 
+branch-local 증거 (독립 review 대기):
+
+- [구현 결정](../implementation/rcl-004-overview-candidates.md)에 RCL-001 snapshot 안의 typed
+  overview facet, distinct incident count·aggregate 최근성·숫자 entity ID 정렬, canonical
+  depth-0 seed와 `min(limit,10)+1` 절단을 고정했다.
+- RCL-003의 same-raw valid-graph predicate를 재사용해 live·unexpired parsed=[]만 effective
+  created_at·journal seq 순서로 `limit+1` 읽으며, raw-only scope와 죽은 graph history 비부활을
+  실제 file SQLite에서 검증했다. 이 배열은 RCL-007이 ranked claim 뒤 남는 칸에만 쓰는 후보
+  pool이고 RCL-004가 final Answer를 조립하지 않는다.
+- test-only `c4cfb7b`은 기존 build 성공 뒤 missing overview production module로 0/2 RED였고,
+  product `9c7c767` 뒤 focused 13/13 GREEN이다. RCL-001 10/10, RCL-002 15/15,
+  RCL-003 21/21, STO-002 7/7, STO-004 4/4, PRJ-008 8/8, 전체 46개 파일 336/336,
+  PRJ-010 39/39와 behavior spike 25/25도 통과했다.
+- 독립 review와 PR/main merge 전이므로 상태와 완료 체크는 유지한다. claim ranking, 남는 칸
+  조립, `entry: "overview"`, public S19/S22 golden은 RCL-006~008의 남은 gate다.
+
 ### RCL-005 — BFS 이동·수집·경로 복원
 
 - 상태: `IN_PROGRESS`

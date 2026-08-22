@@ -177,3 +177,13 @@ failure의 fresh payload-redacted error 경계를 고정한다. Promise subclass
 버리고 allowed code/retry 의미만 fresh canonical 객체로 복원한다. duplicate survivor를
 고르는 정책과 input/stored index mapping은 REC-005, 공개 record 결과·statement 작성은 REC-006의
 후속 수직 경로에 남는다.
+
+RCL-004는 [`unit/application/rcl-004-overview-candidates.test.mjs`](unit/application/rcl-004-overview-candidates.test.mjs)와
+[`integration/sqlite/rcl-004-overview-candidates.test.mjs`](integration/sqlite/rcl-004-overview-candidates.test.mjs)에서
+RCL-001 snapshot의 typed overview facet을 검증한다. fixture는 유효 distinct incident claim 수,
+aggregate 최근성, 숫자 entity ID 순서의 canonical depth-0 seed와 `min(limit,10)+1` 절단,
+effective created_at·journal seq 순서의 live·unexpired parsed=[] raw `limit+1` 후보를 확인한다.
+raw-only scope, same-raw valid graph 우선, expired/retracted graph history 비부활, fixed scope/now와
+persistent dump/data_version 불변, sentinel까지의 fail-closed·payload redaction도 실제 file
+SQLite에서 고정한다. claim ranking·남는 칸 조립·public `entry: "overview"`와 final Answer는
+RCL-006~008 소유이므로 S19/S22 manifest는 계속 `planned`다.
