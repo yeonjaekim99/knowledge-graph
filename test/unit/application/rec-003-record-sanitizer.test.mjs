@@ -392,3 +392,22 @@ test("unknown classes and payload-bearing detector results fail closed", () => {
     );
   }
 });
+
+test("sanitation snapshots caller-owned raw and drafts before detector execution", () => {
+  const recordInput = input([
+    entityDraft({ subject_aliases: ["repo"], object_aliases: ["DB"] }),
+  ]);
+  const detect = () => {
+    recordInput.raw_text = SYNTHETIC_GITHUB_TOKEN;
+    recordInput.claims[0].subject = SYNTHETIC_GITHUB_TOKEN;
+    recordInput.claims[0].subject_aliases[0] = SYNTHETIC_GITHUB_TOKEN;
+    recordInput.claims[0].object_aliases[0] = SYNTHETIC_GITHUB_TOKEN;
+    return emptyDetection();
+  };
+
+  const result = sanitizeMemoryRecordSecrets(recordInput, detect);
+  assert.equal(result.maskedRawText, "안전한 원문");
+  assert.equal(result.approvedDrafts[0].draft.subject, "저장소");
+  assert.deepEqual(result.approvedDrafts[0].draft.subject_aliases, ["repo"]);
+  assert.deepEqual(result.approvedDrafts[0].draft.object_aliases, ["DB"]);
+});
