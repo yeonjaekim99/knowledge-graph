@@ -130,7 +130,7 @@ REC-004 finalizer가 transaction 전체를 닫으며 candidate plan을 만들지
 
 ## TDD와 검증
 
-tests-only RED `c6285e3`은 production build 뒤 application export가 없어 module load에서
+tests-only RED `e23fa27`은 production build 뒤 application export가 없어 module load에서
 실패했다.
 
 ```text
@@ -138,8 +138,8 @@ SyntaxError: application/index.js does not provide RecordDraftPlanningError
 tests 1, pass 0, fail 1
 ```
 
-GREEN `e11f6e8`은 pure selection/finalization과 rollback-only SQLite 결합을 구현했다.
-후속 gate `21e65a2`는 compile fixture, task 전용 명령, strictly ordered 승인 index,
+GREEN `e92d633`은 pure selection/finalization과 rollback-only SQLite 결합을 구현했다.
+후속 gate `f06acb7`는 compile fixture, task 전용 명령, strictly ordered 승인 index,
 independent entity/alias normalization과 conservative `class=secret` 경계를 추가했다.
 
 전용 검증은 다음과 같다.
@@ -151,9 +151,10 @@ pnpm verify:rec-005
 
 현재 local gate는 architecture, strict typecheck, REC-005 compile contract, build와
 PRJ-003/005/006·REC-003/004·REC-005 target **116/116**을 통과한다. REC-005 focused target은
-unit 11개와 file-backed SQLite 3개, 합계 **14/14**다. 전체 fast suite 48 files·387/387,
-PRJ-010 39/39, 독립 behavior spike 25/25, roadmap audit 67/67과 production dependency audit
-취약점 0개도 통과했다. 독립 review만 handoff 뒤 별도 agent가 수행한다.
+unit 11개와 file-backed SQLite 3개, 합계 **14/14**다. 최신 `origin/main`의 RCL-004를
+semantic rebase한 뒤 전체 fast suite 50 files·402/402, PRJ-010 39/39와 RCL-004 교차 gate
+15/15를 다시 확인했다. 독립 behavior spike 25/25, roadmap audit 67/67과 production
+dependency audit 취약점 0개도 통과했다. 독립 review만 handoff 뒤 별도 agent가 수행한다.
 
 ## 남은 경계
 

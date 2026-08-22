@@ -247,12 +247,13 @@
 - [REC-005 구현 결정](../implementation/rec-005-record-draft-plan.md)은 REC-003 승인/rejection과
   REC-004 canonical resolution을 request-local identity로 조합하고, first survivor만 stored
   draft가 되는 두 단계 selection/finalization seam을 고정한다.
-- tests-only RED `c6285e3`은 application export 부재로 0/1 실패했다. GREEN `e11f6e8`과 gate
-  `21e65a2` 뒤 focused unit·file-backed SQLite target은 14/14, 관련 PRJ-003/005/006과
+- tests-only RED `e23fa27`은 application export 부재로 0/1 실패했다. GREEN `e92d633`과 gate
+  `f06acb7` 뒤 focused unit·file-backed SQLite target은 14/14, 관련 PRJ-003/005/006과
   REC-003/004를 포함한 `pnpm verify:rec-005`는 architecture/type/build와 116/116을 통과했다.
-- 전체 fast suite 48 files·387/387, PRJ-010 39/39, 독립 behavior spike 25/25, roadmap
-  audit 67/67과 production dependency audit 취약점 0개를 통과했다. 독립 review finding과
-  PR/main 증거가 아직 없으므로 완료 체크와 진행률은 올리지 않는다.
+- 최신 `origin/main`의 RCL-004를 semantic rebase한 뒤 전체 fast suite 50 files·402/402,
+  PRJ-010 39/39, RCL-004 교차 gate 15/15, 독립 behavior spike 25/25, roadmap audit 67/67과
+  production dependency audit 취약점 0개를 통과했다. 독립 review finding과 PR/main 증거가
+  아직 없으므로 완료 체크와 진행률은 올리지 않는다.
 - exact survivor body와 DB-global seq는 REC-004 finalizer가 확인하고, 그 뒤에만 compact
   `c{seq}.{storedIndex}`와 subject/object occurrence candidate를 만든다. duplicate는 첫 survivor의
   stored index/candidate를 공유하고 survivor/occurrence cursor를 늘리지 않는다.
