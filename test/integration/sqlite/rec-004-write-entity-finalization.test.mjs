@@ -142,6 +142,21 @@ function payloadBearingError(label, ErrorType = Error) {
   return error;
 }
 
+function promiseWithControlledSpecies(settle, speciesResult) {
+  class ControlledSpeciesPromise extends Promise {
+    static get [Symbol.species]() {
+      return function ControlledSpecies(executor) {
+        executor(
+          () => undefined,
+          () => undefined,
+        );
+        return speciesResult;
+      };
+    }
+  }
+  return new ControlledSpeciesPromise(settle);
+}
+
 async function captureRejection(operation) {
   try {
     await operation();
@@ -917,6 +932,146 @@ test("replaces session and result inspection failures with fresh payload-redacte
       original,
       "finalization-rejection",
     );
+  });
+});
+
+test("keeps Promise species objects behind a native public settlement boundary", async (context) => {
+  await context.test("resolve success returns a native Promise and frozen validated result", async () => {
+    const speciesResult = Object.freeze({ label: "resolve-species-result" });
+    const operation = resolveSqliteWriteEntityDrafts(
+      {
+        resolveEntities: () =>
+          promiseWithControlledSpecies((resolve) => resolve([]), speciesResult),
+      },
+      { dispatchId: 1, drafts: [] },
+    );
+
+    assert.ok(operation instanceof Promise);
+    assert.equal(Object.getPrototypeOf(operation), Promise.prototype);
+    assert.notStrictEqual(operation, speciesResult);
+    const result = await operation;
+    assert.deepEqual(result, []);
+    assert.ok(Object.isFrozen(result));
+  });
+
+  await context.test("finalization success returns a native Promise and frozen validated result", async () => {
+    const speciesResult = Object.freeze({ label: "finalize-species-result" });
+    const operation = finalizeSqliteWriteEntityDrafts(
+      {
+        finalizeEntities: () =>
+          promiseWithControlledSpecies(
+            (resolve) => resolve({ expectedJournalSeq: 1, drafts: [] }),
+            speciesResult,
+          ),
+      },
+      {
+        dispatchId: 1,
+        survivorDraftIndexes: [],
+        statementBodyJson: "{}",
+      },
+    );
+
+    assert.ok(operation instanceof Promise);
+    assert.equal(Object.getPrototypeOf(operation), Promise.prototype);
+    assert.notStrictEqual(operation, speciesResult);
+    const result = await operation;
+    assert.deepEqual(result, { expectedJournalSeq: 1, drafts: [] });
+    assert.ok(Object.isFrozen(result));
+    assert.ok(Object.isFrozen(result.drafts));
+  });
+
+  await context.test("a species return object's then getter is never exposed or evaluated", async () => {
+    const original = payloadBearingError("species-return-then");
+    let thenReads = 0;
+    const speciesResult = {};
+    Object.defineProperty(speciesResult, "then", {
+      configurable: true,
+      get() {
+        thenReads += 1;
+        throw original;
+      },
+    });
+    const operation = resolveSqliteWriteEntityDrafts(
+      {
+        resolveEntities: () =>
+          promiseWithControlledSpecies((resolve) => resolve([]), speciesResult),
+      },
+      { dispatchId: 1, drafts: [] },
+    );
+
+    assert.equal(Object.getPrototypeOf(operation), Promise.prototype);
+    assert.deepEqual(await operation, []);
+    assert.equal(thenReads, 0);
+  });
+
+  await context.test("a species getter failure becomes a fresh fixed result error", async () => {
+    const original = payloadBearingError("species-getter");
+    class ThrowingSpeciesPromise extends Promise {
+      static get [Symbol.species]() {
+        throw original;
+      }
+    }
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: () =>
+              new ThrowingSpeciesPromise((resolve) => resolve([])),
+          },
+          { dispatchId: 1, drafts: [] },
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "species-getter",
+    );
+  });
+
+  await context.test("a species-controlled rejection becomes a fresh fixed result error", async () => {
+    const original = payloadBearingError(
+      "species-settlement",
+      WriteEntityResolutionError,
+    );
+    const speciesResult = Object.freeze({ label: "rejected-species-result" });
+    await assertFreshResolutionError(
+      () =>
+        resolveSqliteWriteEntityDrafts(
+          {
+            resolveEntities: () =>
+              promiseWithControlledSpecies(
+                (_resolve, reject) => reject(original),
+                speciesResult,
+              ),
+          },
+          { dispatchId: 1, drafts: [] },
+        ),
+      "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+      original,
+      "species-settlement",
+    );
+  });
+
+  await context.test("a species-controlled SQLite rejection keeps only fresh retry semantics", async () => {
+    const original = new SqliteBusyError();
+    const speciesResult = Object.freeze({ label: "busy-species-result" });
+    const error = await captureRejection(() =>
+      resolveSqliteWriteEntityDrafts(
+        {
+          resolveEntities: () =>
+            promiseWithControlledSpecies(
+              (_resolve, reject) => reject(original),
+              speciesResult,
+            ),
+        },
+        { dispatchId: 1, drafts: [] },
+      ),
+    );
+
+    assert.ok(error instanceof SqliteBusyError);
+    assert.notStrictEqual(error, original);
+    assert.equal(error.code, "SQLITE_BUSY");
+    assert.equal(error.retryable, true);
+    assert.equal(error.timeoutMs, 5000);
+    assert.equal(Object.hasOwn(error, "cause"), false);
   });
 });
 
