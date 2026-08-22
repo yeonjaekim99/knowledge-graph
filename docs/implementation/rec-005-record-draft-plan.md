@@ -1,6 +1,6 @@
 # REC-005: record draft survivor와 index mapping
 
-- 상태: 구현·로컬 검증 완료, 독립 review와 PR 게시 전
+- 상태: 구현·독립 review·로컬 검증 완료, PR 게시 전
 - 작업 ID: `REC-005`
 - 구현 branch: `rec-005-draft-planning`
 - 근거: ADR-002, ADR-009, ADR-013
@@ -130,7 +130,7 @@ REC-004 finalizer가 transaction 전체를 닫으며 candidate plan을 만들지
 
 ## TDD와 검증
 
-tests-only RED `e23fa27`은 production build 뒤 application export가 없어 module load에서
+tests-only RED `a2e58eb`은 production build 뒤 application export가 없어 module load에서
 실패했다.
 
 ```text
@@ -138,8 +138,8 @@ SyntaxError: application/index.js does not provide RecordDraftPlanningError
 tests 1, pass 0, fail 1
 ```
 
-GREEN `e92d633`은 pure selection/finalization과 rollback-only SQLite 결합을 구현했다.
-후속 gate `f06acb7`는 compile fixture, task 전용 명령, strictly ordered 승인 index,
+GREEN `9cdfa39`은 pure selection/finalization과 rollback-only SQLite 결합을 구현했다.
+후속 gate `1780b33`는 compile fixture, task 전용 명령, strictly ordered 승인 index,
 independent entity/alias normalization과 conservative `class=secret` 경계를 추가했다.
 
 전용 검증은 다음과 같다.
@@ -151,10 +151,16 @@ pnpm verify:rec-005
 
 현재 local gate는 architecture, strict typecheck, REC-005 compile contract, build와
 PRJ-003/005/006·REC-003/004·REC-005 target **116/116**을 통과한다. REC-005 focused target은
-unit 11개와 file-backed SQLite 3개, 합계 **14/14**다. 최신 `origin/main`의 RCL-004를
-semantic rebase한 뒤 전체 fast suite 50 files·402/402, PRJ-010 39/39와 RCL-004 교차 gate
-15/15를 다시 확인했다. 독립 behavior spike 25/25, roadmap audit 67/67과 production
-dependency audit 취약점 0개도 통과했다. 독립 review만 handoff 뒤 별도 agent가 수행한다.
+unit 11개와 file-backed SQLite 3개, 합계 **14/14**다. 최신 `origin/main` `491f3a3`에
+semantic rebase해 RCL-005 완료와 RCL-006 `IN_PROGRESS` planning 증거를 보존했다. 공유
+application/SQLite export, package script와 test README에는 RCL-005 reader facet,
+REC-004 writer/finalization seam과 REC-005 plan이 함께 남는다. RCL-006 planning-only delta는
+source·test를 바꾸지 않았고, 전체 fast suite 53 files·423/423, PRJ-010 39/39,
+RCL-005 21/21, RCL-004 15/15와 REC-004 70/70을 확인했다. 독립 behavior spike 25/25,
+roadmap active 73·historical 74·evidence 67/67·ADR 17/17·scenario 24/24·link 425와 production
+dependency audit 취약점 0개도 통과했다. 동등한 REC-005 내용의 rebase 전 HEAD `7cb7871`
+독립 review는 HIGH/MEDIUM/LOW 0건이었다. 최신 main 통합 뒤 PR/main 증거가 아직 없으므로
+작업 상태는 `IN_PROGRESS`로 유지한다.
 
 ## 남은 경계
 
