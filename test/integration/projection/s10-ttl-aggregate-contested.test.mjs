@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { rankRecallClaims } from "../../../dist/application/recall-ranking.js";
+import {
+  RecallRankingError,
+  rankRecallClaims,
+} from "../../../dist/application/recall-ranking.js";
+import { RecallReadError } from "../../../dist/application/ports/recall-read-port.js";
 import { RECALL_RANKING_SQL_SOURCE } from "../../../dist/adapters/sqlite/index.js";
 import {
   RCL_006_NOW,
@@ -19,6 +23,56 @@ import {
 } from "../../support/rcl-006-sqlite-fixture.mjs";
 
 const RECENT_SECONDS = 2_592_000;
+
+function rawRankingRow(overrides = {}) {
+  return {
+    recall_ranking_claim_id: "c1.0",
+    recall_ranking_claim_scope_key: RCL_006_SCOPE,
+    recall_ranking_claim_state: "active",
+    recall_ranking_contested: 0,
+    recall_ranking_depth: 0,
+    recall_ranking_last_seen_at: RCL_006_NOW,
+    recall_ranking_object_id: null,
+    recall_ranking_object_merged_into: null,
+    recall_ranking_object_name: null,
+    recall_ranking_object_scope_key: null,
+    recall_ranking_object_value: "safe-value",
+    recall_ranking_origin_seq: 1,
+    recall_ranking_recent: 1,
+    recall_ranking_relation: "contains",
+    recall_ranking_relation_label: null,
+    recall_ranking_score: 7,
+    recall_ranking_strongest_rank: 2,
+    recall_ranking_subject_id: "e1.0",
+    recall_ranking_subject_merged_into: null,
+    recall_ranking_subject_name: "safe-subject",
+    recall_ranking_subject_scope_key: RCL_006_SCOPE,
+    recall_ranking_support_count: 1,
+    recall_ranking_total_count: 1,
+    ...overrides,
+  };
+}
+
+async function rankInjectedRaw(factory, rawResult) {
+  const reader = await factory.openReader();
+  Object.defineProperty(reader, "withRecallSnapshot", {
+    configurable: true,
+    value: async (_scopeKey, _evaluationNow, operation) =>
+      operation(Object.freeze({
+        assertActive() {},
+        async readRawRankingRows() {
+          return rawResult;
+        },
+      })),
+  });
+  const injectedFactory = Object.freeze({
+    async openReader() {
+      return reader;
+    },
+  });
+  return createRecallServiceAt(injectedFactory).withSnapshot((source) =>
+    rankRecallClaims(source, { limit: 1, reached: [reached("c1.0")] }));
+}
 
 test("S10 ranking shares fixed aggregate label fallback and entity/literal contested identity without writes", async (t) => {
   const { databasePath, factory } = await createRcl006Fixture(t);
@@ -41,6 +95,7 @@ test("S10 ranking shares fixed aggregate label fallback and entity/literal conte
     ...supportCommands({ sequence: 5, claimId: "c5.0", provenance: "observed", createdAt: RCL_006_NOW - 40 }),
     ...supportCommands({ sequence: 6, claimId: "c6.0", provenance: "observed", createdAt: RCL_006_NOW - 30 }),
     ...supportCommands({ sequence: 7, claimId: "c7.0", provenance: "observed", createdAt: RCL_006_NOW - 20 }),
+    ...supportCommands({ sequence: 8, claimId: "c1.0", relationLabel: "철회된 최신 표현", provenance: "user_stated", createdAt: RCL_006_NOW - 5, live: 0, statementState: "retracted" }),
     ...supportCommands({ sequence: 90, claimId: "c90.0", provenance: "user_stated", createdAt: RCL_006_NOW - 10, scopeKey: RCL_006_OTHER_SCOPE }),
   ]);
 
@@ -158,4 +213,153 @@ test("SQL computes every score term and applies the complete deterministic tie-b
   assert.ok(byId.get("c21.0").index < byId.get("c22.0").index, "support score caps at four before tie-break");
   assert.equal(ranked.some((candidate) => "answers" in candidate), false);
   assert.equal(ranked.some((candidate) => "moreAvailable" in candidate), false);
+});
+
+test("ranking remains on one fixed WAL snapshot and limit+1 returns only the sentinel candidate", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  await factory.enqueueWriteTransaction([
+    entityCommand("e1.0", "A"),
+    claimCommand({ claimId: "c1.0", subjectId: "e1.0", objectValue: "one" }),
+    claimCommand({ claimId: "c2.0", subjectId: "e1.0", objectValue: "two" }),
+    claimCommand({ claimId: "c3.0", subjectId: "e1.0", objectValue: "three" }),
+    ...supportCommands({ sequence: 201, claimId: "c1.0", createdAt: RCL_006_NOW - 30 }),
+    ...supportCommands({ sequence: 202, claimId: "c2.0", createdAt: RCL_006_NOW - 20 }),
+    ...supportCommands({ sequence: 203, claimId: "c3.0", createdAt: RCL_006_NOW - 10 }),
+  ]);
+  const service = createRecallServiceAt(factory);
+  const allReached = [reached("c1.0"), reached("c2.0"), reached("c3.0")];
+  const observations = await service.withSnapshot(async (source) => {
+    const before = await rankRecallClaims(source, { limit: 1, reached: allReached });
+    await factory.enqueueWriteTransaction([
+      ...supportCommands({
+        sequence: 204,
+        claimId: "c1.0",
+        relationLabel: "new snapshot label",
+        provenance: "user_stated",
+        createdAt: RCL_006_NOW,
+      }),
+    ]);
+    const after = await rankRecallClaims(source, { limit: 1, reached: allReached });
+    return { before, after };
+  });
+  assert.equal(observations.before.length, 2);
+  assert.equal(JSON.stringify(observations.after), JSON.stringify(observations.before));
+  const next = await service.withSnapshot((source) =>
+    rankRecallClaims(source, { limit: 1, reached: allReached }));
+  assert.equal(next.length, 2);
+  assert.equal(next[0].claimId, "c1.0");
+  assert.equal(next[0].text, "A new snapshot label one");
+});
+
+test("adapter rejects ranking request accessors without evaluation or payload retention", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  await factory.enqueueWriteTransaction([
+    entityCommand("e1.0", "safe"),
+    claimCommand({ claimId: "c1.0", subjectId: "e1.0", objectValue: "safe" }),
+    ...supportCommands({ sequence: 301, claimId: "c1.0" }),
+  ]);
+  const marker = "adapter-ranking-request-secret";
+  const injected = new RecallReadError("INVALID_RECALL_RANKING_STATE");
+  injected.message = marker;
+  injected.cause = { marker };
+  let accessorCalled = false;
+  const candidates = [{ claimId: "c1.0", depth: 0 }];
+  Object.defineProperty(candidates, "0", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      accessorCalled = true;
+      throw injected;
+    },
+  });
+  await createRecallServiceAt(factory).withSnapshot(async (source) => {
+    await assert.rejects(
+      source.selectRankedClaims(candidates, 2),
+      (error) => {
+        const expected = new RecallReadError("INVALID_RECALL_RANKING_REQUEST");
+        assert.ok(error instanceof RecallReadError);
+        assert.notStrictEqual(error, injected);
+        assert.equal(error.code, expected.code);
+        assert.equal(error.name, expected.name);
+        assert.equal(error.message, expected.message);
+        assert.equal("cause" in error, false);
+        assert.equal(JSON.stringify(error).includes(marker), false);
+        return true;
+      },
+    );
+  });
+  assert.equal(accessorCalled, false);
+});
+
+test("raw ranking envelopes, arrays, rows, corrupt scope/time, and typed rejection fail closed without payloads", async (t) => {
+  const { factory } = await createRcl006Fixture(t);
+  const marker = "raw-ranking-secret";
+  const cases = [];
+
+  let envelopeAccessorCalled = false;
+  const accessorEnvelope = {};
+  Object.defineProperty(accessorEnvelope, "rows", {
+    enumerable: true,
+    get() {
+      envelopeAccessorCalled = true;
+      return [rawRankingRow()];
+    },
+  });
+  cases.push(accessorEnvelope);
+
+  let arrayAccessorCalled = false;
+  const accessorArray = [rawRankingRow()];
+  Object.defineProperty(accessorArray, "0", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      arrayAccessorCalled = true;
+      return rawRankingRow({ recall_ranking_subject_name: marker });
+    },
+  });
+  cases.push({ rows: accessorArray });
+
+  let rowAccessorCalled = false;
+  const accessorRow = rawRankingRow();
+  Object.defineProperty(accessorRow, "recall_ranking_subject_name", {
+    enumerable: true,
+    get() {
+      rowAccessorCalled = true;
+      return marker;
+    },
+  });
+  cases.push({ rows: [accessorRow] });
+  cases.push({ rows: [rawRankingRow({ recall_ranking_subject_scope_key: RCL_006_OTHER_SCOPE })] });
+  cases.push({ rows: [rawRankingRow({ recall_ranking_last_seen_at: RCL_006_NOW + 1 })] });
+  cases.push({ rows: [rawRankingRow({ recall_ranking_score: 999, secret: marker })] });
+
+  const injected = new RecallReadError("INVALID_RECALL_RANKING_STATE");
+  injected.name = `Smuggled${marker}`;
+  injected.message = marker;
+  injected.cause = { marker };
+  cases.push({
+    then(_resolve, reject) {
+      reject(injected);
+    },
+  });
+
+  for (const rawResult of cases) {
+    await assert.rejects(
+      rankInjectedRaw(factory, rawResult),
+      (error) => {
+        const expected = new RecallRankingError("INVALID_RANKING_STATE");
+        assert.ok(error instanceof RecallRankingError);
+        assert.notStrictEqual(error, injected);
+        assert.equal(error.code, expected.code);
+        assert.equal(error.name, expected.name);
+        assert.equal(error.message, expected.message);
+        assert.equal("cause" in error, false);
+        assert.equal(JSON.stringify(error).includes(marker), false);
+        return true;
+      },
+    );
+  }
+  assert.equal(envelopeAccessorCalled, false);
+  assert.equal(arrayAccessorCalled, false);
+  assert.equal(rowAccessorCalled, false);
 });

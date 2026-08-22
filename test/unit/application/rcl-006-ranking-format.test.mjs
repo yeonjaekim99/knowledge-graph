@@ -39,6 +39,30 @@ function rankedState(overrides = {}) {
   });
 }
 
+function smuggledRankingError(marker) {
+  const error = new RecallRankingError("INVALID_RANKING_STATE");
+  error.name = `Smuggled${marker}`;
+  error.message = `smuggled-message-${marker}`;
+  error.cause = { token: marker };
+  error.secret = marker;
+  return error;
+}
+
+function assertFreshRankingStateError(error, injected, marker) {
+  const expected = new RecallRankingError("INVALID_RANKING_STATE");
+  assert.ok(error instanceof RecallRankingError);
+  assert.notStrictEqual(error, injected);
+  assert.equal(error.code, "INVALID_RANKING_STATE");
+  assert.equal(error.name, expected.name);
+  assert.equal(error.message, expected.message);
+  assert.deepEqual(Reflect.ownKeys(error).sort(), Reflect.ownKeys(expected).sort());
+  assert.equal("cause" in error, false);
+  assert.equal("secret" in error, false);
+  assert.doesNotMatch(error.message, new RegExp(marker, "u"));
+  assert.equal(JSON.stringify(error), JSON.stringify(expected));
+  return true;
+}
+
 test("brief formatter uses the aggregate label or every ADR-004 default without particle correction", () => {
   const defaults = new Map([
     ["uses", "사용"],
@@ -148,4 +172,128 @@ test("ranking rejects malformed input and inconsistent source score with fixed p
       return true;
     },
   );
+});
+
+test("ranking source lookup, invocation, Promise rejection, and hostile thenable settlement use fresh errors", async () => {
+  const cases = [
+    (injected) => Object.defineProperty({}, "selectRankedClaims", {
+      get() {
+        throw injected;
+      },
+    }),
+    (injected) => new Proxy({}, {
+      get() {
+        throw injected;
+      },
+    }),
+    (injected) => ({
+      selectRankedClaims() {
+        throw injected;
+      },
+    }),
+    (injected) => ({
+      selectRankedClaims() {
+        return Promise.reject(injected);
+      },
+    }),
+    (injected) => ({
+      selectRankedClaims() {
+        return {
+          then(_resolve, reject) {
+            reject(injected);
+          },
+        };
+      },
+    }),
+  ];
+  for (const [index, createSource] of cases.entries()) {
+    const marker = `ranking-boundary-${index}`;
+    const injected = smuggledRankingError(marker);
+    await assert.rejects(
+      rankRecallClaims(createSource(injected), {
+        limit: 1,
+        reached: [reached],
+      }),
+      (error) => assertFreshRankingStateError(error, injected, marker),
+    );
+  }
+});
+
+test("ranking snapshots output arrays without invoking accessors or accepting extra array state", async () => {
+  const marker = "ranking-array-accessor-secret";
+  const injected = smuggledRankingError(marker);
+  let accessorCalled = false;
+  const accessorRows = [rankedState()];
+  Object.defineProperty(accessorRows, "0", {
+    configurable: true,
+    enumerable: true,
+    get() {
+      accessorCalled = true;
+      throw injected;
+    },
+  });
+  await assert.rejects(
+    rankRecallClaims(
+      { selectRankedClaims: () => accessorRows },
+      { limit: 1, reached: [reached] },
+    ),
+    (error) => assertFreshRankingStateError(error, injected, marker),
+  );
+  assert.equal(accessorCalled, false);
+
+  const extraRows = [rankedState()];
+  extraRows.secret = "array-smuggled-payload";
+  await assert.rejects(
+    rankRecallClaims(
+      { selectRankedClaims: () => extraRows },
+      { limit: 1, reached: [reached] },
+    ),
+    (error) => {
+      assert.ok(error instanceof RecallRankingError);
+      assert.equal(error.code, "INVALID_RANKING_STATE");
+      assert.equal(JSON.stringify(error).includes(extraRows.secret), false);
+      return true;
+    },
+  );
+});
+
+test("brief and ranking input descriptor snapshots reject accessors without evaluating them", async () => {
+  let briefAccessorCalled = false;
+  const brief = {
+    subjectName: "A",
+    relation: "uses",
+    relationLabel: null,
+    objectName: "B",
+    objectValue: null,
+  };
+  Object.defineProperty(brief, "subjectName", {
+    enumerable: true,
+    get() {
+      briefAccessorCalled = true;
+      return "secret-subject";
+    },
+  });
+  assert.throws(
+    () => formatRecallClaimBrief(brief),
+    (error) => error instanceof RecallRankingError && error.code === "INVALID_RANKING_STATE",
+  );
+  assert.equal(briefAccessorCalled, false);
+
+  let inputAccessorCalled = false;
+  const hostileReached = { ...reached };
+  Object.defineProperty(hostileReached, "path", {
+    enumerable: true,
+    get() {
+      inputAccessorCalled = true;
+      return "secret-path";
+    },
+  });
+  await assert.rejects(
+    rankRecallClaims(
+      { selectRankedClaims() {} },
+      { limit: 1, reached: [hostileReached] },
+    ),
+    (error) => error instanceof RecallRankingError && error.code === "INVALID_RANKING_INPUT",
+  );
+  assert.equal(inputAccessorCalled, false);
 });
