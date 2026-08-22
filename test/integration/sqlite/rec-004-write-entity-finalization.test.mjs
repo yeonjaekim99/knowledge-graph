@@ -5,6 +5,7 @@ import { join } from "node:path";
 import { afterEach, test } from "node:test";
 
 import {
+  SqliteBusyError,
   SqliteConnectionError,
   WriteEntityResolutionError,
   createSqliteConnectionFactory,
@@ -689,8 +690,102 @@ test("preserves factory-redacted SQLite connection errors across the adapter bou
       { dispatchId: 1, drafts: [] },
     ),
   );
-  assert.strictEqual(error, original);
+  assert.ok(error instanceof SqliteConnectionError);
+  assert.notStrictEqual(error, original);
+  assert.equal(error.code, "SQLITE_TRANSACTION_FAILED");
+  assert.equal(error.retryable, false);
   assert.equal(error.message, "SQLite write transaction failed and was rolled back");
+  assert.equal(Object.hasOwn(error, "cause"), false);
+});
+
+test("reconstructs a fresh connection error without inheriting a poisoned prototype", async () => {
+  const original = new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+  const poisonedPrototype = Object.create(SqliteConnectionError.prototype, {
+    cause: {
+      configurable: true,
+      get: () => Object.freeze({ token: "prototype:cause-payload" }),
+    },
+    path: {
+      configurable: true,
+      get: () => "prototype:path-payload",
+    },
+    prefix: {
+      configurable: true,
+      get: () => "prototype:prefix-payload",
+    },
+  });
+  Object.setPrototypeOf(original, poisonedPrototype);
+
+  const error = await captureRejection(() =>
+    resolveSqliteWriteEntityDrafts(
+      { resolveEntities: async () => Promise.reject(original) },
+      { dispatchId: 1, drafts: [] },
+    ),
+  );
+  assert.ok(error instanceof SqliteConnectionError);
+  assert.notStrictEqual(error, original);
+  assert.equal(Object.getPrototypeOf(error), SqliteConnectionError.prototype);
+  assert.equal("cause" in error, false);
+  assert.equal("path" in error, false);
+  assert.equal("prefix" in error, false);
+});
+
+test("reconstructs a fresh connection error without invoking transparent Proxy getters", async () => {
+  const target = new SqliteConnectionError("SQLITE_TRANSACTION_FAILED");
+  let getterCalls = 0;
+  const original = new Proxy(target, {
+    get(value, property, receiver) {
+      getterCalls += 1;
+      if (property === "cause" || property === "path" || property === "prefix") {
+        return `proxy:${String(property)}-payload`;
+      }
+      return Reflect.get(value, property, receiver);
+    },
+  });
+
+  const error = await captureRejection(() =>
+    resolveSqliteWriteEntityDrafts(
+      { resolveEntities: async () => Promise.reject(original) },
+      { dispatchId: 1, drafts: [] },
+    ),
+  );
+  assert.ok(error instanceof SqliteConnectionError);
+  assert.notStrictEqual(error, original);
+  assert.equal(error.code, "SQLITE_TRANSACTION_FAILED");
+  assert.equal(getterCalls, 0);
+  assert.equal("cause" in error, false);
+  assert.equal("path" in error, false);
+  assert.equal("prefix" in error, false);
+});
+
+test("rejects a runtime-invalid connection error code", async () => {
+  const original = new SqliteConnectionError("NOT_A_CONNECTION_CODE");
+  await assertFreshResolutionError(
+    () =>
+      resolveSqliteWriteEntityDrafts(
+        { resolveEntities: async () => Promise.reject(original) },
+        { dispatchId: 1, drafts: [] },
+      ),
+    "INVALID_WRITE_ENTITY_RESOLUTION_RESULT",
+    original,
+    "NOT_A_CONNECTION_CODE",
+  );
+});
+
+test("reconstructs canonical SQLITE_BUSY retry semantics in a fresh error", async () => {
+  const original = new SqliteBusyError();
+  const error = await captureRejection(() =>
+    resolveSqliteWriteEntityDrafts(
+      { resolveEntities: async () => Promise.reject(original) },
+      { dispatchId: 1, drafts: [] },
+    ),
+  );
+  assert.ok(error instanceof SqliteBusyError);
+  assert.notStrictEqual(error, original);
+  assert.equal(error.code, "SQLITE_BUSY");
+  assert.equal(error.retryable, true);
+  assert.equal(error.timeoutMs, 5000);
+  assert.equal(error.message, "SQLite writer lock was not available within five seconds");
   assert.equal(Object.hasOwn(error, "cause"), false);
 });
 
