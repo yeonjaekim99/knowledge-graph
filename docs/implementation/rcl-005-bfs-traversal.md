@@ -114,14 +114,14 @@ parent를 seed까지 역추적하고 anchor의 claim이 entity-object이며 반�
 
 ## TDD와 검증
 
-tests-only RED commit `62e358a`는 기존 production build 성공 뒤 새 application module이 없어
-RCL-005의 세 test module이 import 단계에서 0/3 실패했다. 최소 GREEN commit `47d7836`은
+tests-only RED commit `e05743f`는 기존 production build 성공 뒤 새 application module이 없어
+RCL-005의 세 test module이 import 단계에서 0/3 실패했다. 최소 GREEN commit `01b221b`은
 TEMP source, snapshot protocol/adapter, domain validation과 BFS를 연결했고
 `pnpm verify:rcl-005`가 9/9로 통과했다.
 
 로컬 diff 재검토에서 parent 간선이 아닌 cycle edge의 반대 endpoint가 이미 ancestor라는
-이유로 path에서 사라지는 결함을 찾았다. tests-only RED `ce974e8`은 depth 3의 `D→B`를
-`A→B→C→D→B`, 4 hops로 요구해 8/9와 실제 `A→B→C→D`를 포착했다. fix `97fb191`은
+이유로 path에서 사라지는 결함을 찾았다. tests-only RED `3cb2835`는 depth 3의 `D→B`를
+`A→B→C→D→B`, 4 hops로 요구해 8/9와 실제 `A→B→C→D`를 포착했다. fix `0303829`는
 self-loop 또는 anchor의 정확한 parent claim만 append에서 제외해 다시 9/9로 만들었다.
 
 fixture는 다음을 고정한다.
@@ -155,10 +155,12 @@ python3 docs/roadmap/validate.py
 pnpm audit --prod
 ```
 
-현재 branch의 로컬 통합 검증은 RCL-005 9/9, RCL-001 10/10, RCL-002 15/15,
+최신 `main` `3e2eedb` 위 semantic rebase에서 RCL-003의 FTS protocol/factory/worker/read-port
+facet과 RCL-004의 `IN_PROGRESS` 계획을 보존했다. 현재 branch의 로컬 통합 검증은 RCL-005
+9/9, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21,
 PRJ-002 7/7, PRJ-003 9/9, PRJ-005 11/11, PRJ-007 19/19, PRJ-008 8/8,
-REC-001 13/13, REC-002 13/13과 REC-003 17/17이다. 빠른 전체 suite는 45개 파일
-311/311, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
+REC-001 13/13, REC-002 13/13과 REC-003 17/17이다. 빠른 전체 suite는 47개 파일
+332/332, PRJ-010 reference parity는 39/39, 독립 behavior spike는 25/25다. roadmap
 validator는 evidence 67/67·ADR 17/17·scenario 24/24와 기존 Phase/master 집계를 통과했고
 production dependency 알려진 취약점은 0개다.
 
