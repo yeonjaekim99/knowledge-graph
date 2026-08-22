@@ -7,6 +7,7 @@
 - 규범 근거: ADR-006, ADR-008
 - 선행 구현: PRJ-002, PRJ-003, PRJ-004
 - 구현 branch: `prj-005-entity-surface-kind`
+- PR: [#25](https://github.com/yeonjaekim99/knowledge-graph/pull/25)
 
 ## 목적과 범위
 
@@ -154,6 +155,9 @@ python3 docs/roadmap/validate.py
 S08/S21은 이번 unit fixture가 소유한 entity/surface primitive만 고정한다. 실제 alias event의
 append·철회, 후속 record와 SQLite prefix/full replay parity가 남았으므로 production scenario
 manifest를 `implemented`로 올리지 않는다.
+
+완료 시점 기준 PRJ-005 target은 11/11, PRJ-004 회귀는 14/14, 빠른 전체 suite는
+142/142이며 독립 behavior spike는 25/25다.
 
 ## 후속 작업 경계
 

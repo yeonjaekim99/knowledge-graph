@@ -1,7 +1,7 @@
 # Phase 03 — 투영, 상태 전이와 재생
 
 - 상태: `IN_PROGRESS`
-- 진행률: 4/10
+- 진행률: 5/10
 - 선행 phase: Phase 02 `DONE`
 - 주요 근거: ADR-001, ADR-002, ADR-004, ADR-006~010, ADR-017
 - 선행 증거 감사: [Phase 03 baseline과 production gap](evidence-audit.md#phase-03-projection)
@@ -19,7 +19,7 @@
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
 | PRJ-003 | occurrence ID와 redirect registry | `DONE` | `log0629` | PRJ-001, PRJ-002 | [PR #23](https://github.com/yeonjaekim99/knowledge-graph/pull/23) |
 | PRJ-004 | 사건 pre-scan과 effective statement 계산 | `DONE` | `log0629` | PRJ-001, PRJ-003 | [PR #24](https://github.com/yeonjaekim99/knowledge-graph/pull/24) |
-| PRJ-005 | entity·surface·kind 투영 | `IN_PROGRESS` | `log0629` | PRJ-002~004 | — |
+| PRJ-005 | entity·surface·kind 투영 | `DONE` | `log0629` | PRJ-002~004 | [PR #25](https://github.com/yeonjaekim99/knowledge-graph/pull/25) |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
 | PRJ-007 | merge·alias와 claim rewrite | `TODO` | `unassigned` | PRJ-005, PRJ-006 | — |
 | PRJ-008 | TTL·aggregate와 조회용 유효성 source | `TODO` | `unassigned` | PRJ-004, PRJ-006 | — |
@@ -160,20 +160,38 @@
 
 ### PRJ-005 — entity·surface·kind 투영
 
-- 상태: `IN_PROGRESS`
+- 상태: `DONE`
 - Owner: `log0629`
 - Branch: `prj-005-entity-surface-kind`
+- PR: [#25](https://github.com/yeonjaekim99/knowledge-graph/pull/25)
 - 근거: ADR-006, ADR-008
 - 선행 작업: PRJ-002~004
 - 결과물: entity resolver와 surface/kind reducer
 
 완료 체크:
 
-- [ ] surface 후보 전체를 canonicalize하고 exact normal name으로도 하나가 안 되면 모호하게 거부한다.
-- [ ] 새 entity와 name surface, 기존 entity occurrence redirect를 결정적으로 만든다.
-- [ ] subject/object alias 방향과 `confirmed > name > agent_supplied` 우선순위를 보존한다.
-- [ ] kind는 identity에 쓰지 않고 가장 이른 live occurrence를 택하며 불일치를 정비 신호로 남긴다.
-- [ ] claim 철회와 statement 철회가 surface/kind 근거에 미치는 차이를 검증한다.
+- [x] surface 후보 전체를 canonicalize하고 exact normal name으로도 하나가 안 되면 모호하게 거부한다.
+- [x] 새 entity와 name surface, 기존 entity occurrence redirect를 결정적으로 만든다.
+- [x] subject/object alias 방향과 `confirmed > name > agent_supplied` 우선순위를 보존한다.
+- [x] kind는 identity에 쓰지 않고 가장 이른 live occurrence를 택하며 불일치를 정비 신호로 남긴다.
+- [x] claim 철회와 statement 철회가 surface/kind 근거에 미치는 차이를 검증한다.
+
+완료 증거:
+
+- [구현 결정](../implementation/prj-005-entity-surface-kind.md)에 inactive occurrence anchor와
+  live structural evidence의 두 단계 reduce, surface ambiguity, origin과 kind 규칙 및 후속
+  owner 경계를 고정했다.
+- 첫 TDD RED는 아직 없는 `EntityProjectionError` export에서 실패했다. GREEN은
+  `pnpm verify:prj-005` 11/11이며 PRJ-004 seam 회귀 14/14와 전체 `pnpm verify:local`
+  142/142를 통과했다.
+- name·agent-supplied·confirmed resolver, redirect terminal, exact-name tie-break와 stable
+  ambiguity, alias 방향·중복, inactive anchor, claim/statement 철회 차이, root-order kind와
+  64/65 code-point 경계를 정상·경계·실패 fixture로 검증했다.
+- 오류는 이름·scope·alias·payload·cause를 노출하지 않고 출력과 pre-scan의 inactive parsed
+  anchor는 재귀적으로 frozen이다. domain은 clock·DB·network·process와 spike import를 쓰지 않는다.
+- 독립 behavior spike 25/25, roadmap audit, dependency audit 취약점 0개와 clean source gate를
+  통과했다. 실제 merge/alias event와 claim rewrite·SQLite publish가 남아 S08/S21은
+  `planned`를 유지하며 PRJ-006/007/009/010과 REC-004가 이어받는다.
 
 ### PRJ-006 — claim·support·카디널리티 상태 전이
 
