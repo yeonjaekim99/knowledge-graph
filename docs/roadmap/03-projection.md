@@ -18,7 +18,7 @@
 | PRJ-001 | replay 입력·출력과 rules version 기반 | `DONE` | `log0629` | STO-003, STO-004, FND-003 | [PR #21](https://github.com/yeonjaekim99/knowledge-graph/pull/21) |
 | PRJ-002 | 정규화·관계·리터럴 동일성 규칙 | `DONE` | `log0629` | PRJ-001 | [PR #22](https://github.com/yeonjaekim99/knowledge-graph/pull/22) |
 | PRJ-003 | occurrence ID와 redirect registry | `DONE` | `log0629` | PRJ-001, PRJ-002 | [PR #23](https://github.com/yeonjaekim99/knowledge-graph/pull/23) |
-| PRJ-004 | 사건 pre-scan과 effective statement 계산 | `TODO` | `unassigned` | PRJ-001, PRJ-003 | — |
+| PRJ-004 | 사건 pre-scan과 effective statement 계산 | `IN_PROGRESS` | `log0629` | PRJ-001, PRJ-003 | `prj-004-effective-event-stream` |
 | PRJ-005 | entity·surface·kind 투영 | `TODO` | `unassigned` | PRJ-002~004 | — |
 | PRJ-006 | claim·support·카디널리티 상태 전이 | `TODO` | `unassigned` | PRJ-002~005 | — |
 | PRJ-007 | merge·alias와 claim rewrite | `TODO` | `unassigned` | PRJ-005, PRJ-006 | — |
@@ -125,8 +125,9 @@
 
 ### PRJ-004 — 사건 pre-scan과 effective statement 계산
 
-- 상태: `TODO`
-- Owner: `unassigned`
+- 상태: `IN_PROGRESS`
+- Owner: `log0629`
+- Branch: `prj-004-effective-event-stream`
 - 근거: ADR-007, ADR-010, ADR-017
 - 선행 작업: PRJ-001, PRJ-003
 - 결과물: 사건 효력 pre-scan과 의미 event stream
