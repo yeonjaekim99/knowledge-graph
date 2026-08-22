@@ -231,22 +231,25 @@
 - [구현 결정](../implementation/rcl-005-bfs-traversal.md)에 RCL-001의 fixed scope/now snapshot과
   유효 aggregate에 뿌리를 둔 TEMP link/incident, typed neighborhood, canonical BFS와
   path/hops 경계를 고정했다.
-- tests-only RED `c39b5a1`은 기존 build 성공 뒤 새 traversal 제품 관찰점 부재로 0/3
-  실패했고, 최소 GREEN `7170442` 뒤 `pnpm verify:rcl-005`는 unit 5, S12 3, S13 1의
+- tests-only RED `6163876`은 기존 build 성공 뒤 새 traversal 제품 관찰점 부재로 0/3
+  실패했고, 최소 GREEN `13cec9e` 뒤 `pnpm verify:rcl-005`는 unit 5, S12 3, S13 1의
   9/9다.
-- 로컬 diff 재검토 RED `5cc5ced`는 non-parent cycle의 ancestor endpoint 손실을 8/9로
-  포착했고 fix `717c078`은 parent claim/self-loop만 중복 append에서 제외해 9/9로 닫았다.
-- 독립 review remediation RED `6e2fa6f`는 payload-bearing source/proxy 오류, SQLite raw
+- 로컬 diff 재검토 RED `2547781`은 non-parent cycle의 ancestor endpoint 손실을 8/9로
+  포착했고 fix `c389e8e`는 parent claim/self-loop만 중복 append에서 제외해 9/9로 닫았다.
+- 독립 review remediation RED `237e78e`는 payload-bearing source/proxy 오류, SQLite raw
   envelope·row·array/accessor와 canonical name과 동일한 81-code-point surface 중복 표시를
-  9/13으로 포착했다. fix `2114688`은 descriptor-only bounded snapshot과 fresh fixed error,
+  9/13으로 포착했다. fix `da1b8a0`은 descriptor-only bounded snapshot과 fresh fixed error,
   raw equality-before-truncation을 적용해 focused target 13/13으로 닫았다.
-- 최종 재review RED `1f0b75a`는 source property getter·Proxy lookup, method invocation,
+- 최종 재review RED `213b81d`는 source property getter·Proxy lookup, method invocation,
   Promise rejection·hostile thenable settlement와 adapter error의 application 경계 변환을
-  11/18로 포착했다. fix `70f3f79`는 single lookup과 receiver binding 뒤 lookup·apply·await·
+  11/18로 포착했다. fix `b84f287`은 single lookup과 receiver binding 뒤 lookup·apply·await·
   validation을 한 fail-closed 경계로 묶어 focused target 18/18로 닫았다.
-- 후속 독립 review RED `3492b4a`는 input branch의 stateful 재-snapshot, entity-object
-  incident의 link 누락과 긴 FTS marker 소실을 18/21로 포착했다. fix `c9b0b6a`는 single
+- 후속 독립 review RED `5c92341`은 input branch의 stateful 재-snapshot, entity-object
+  incident의 link 누락과 긴 FTS marker 소실을 18/21로 포착했다. fix `fae0ca0`은 single
   input snapshot, incident⊆link와 suffix-first 80-code-point 예산으로 focused 21/21을 만들었다.
+- RCL-004 통합 첫 gate는 snapshot capability assertion이 overview facet을 모르기 때문에
+  20/21이었다. integration-only `a9aeb9f`가 overview와 traversal facet의 공존을 고정해
+  RCL-005 21/21과 RCL-004 15/15를 함께 통과시켰다.
 - file SQLite에서 scope·expiry가 이동/수집에 들어오지 않고, 같은 WAL snapshot 중 concurrent
   commit은 다음 callback에서만 보이며, 성공·실패 뒤 permanent dump와 외부 `data_version`이
   변하지 않음을 확인했다. cross-scope endpoint 손상과 callback 종료 source는 payload를
@@ -254,13 +257,14 @@
 - S12/S13 target이 production traversal/fanout seam을 실행하므로 manifest를 `implemented`로
   맞췄다. 두 scenario의 ranking·public Answer/note·전체 vertical/성능 소유권은
   RCL-006~008·REL-003에 남는다.
-- 최신 `main` `25eeb72` 위 semantic rebase에서 RCL-003 FTS facet, REC-004 shared writer
-  connection seam과 REC-005·RCL-004 계획을 보존했다.
-  RCL-005 21/21, RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, PRJ-002 7/7,
+- 최신 `main` `51523f3` 위 semantic rebase에서 RCL-003 FTS와 RCL-004 overview facet,
+  REC-004 shared writer connection seam, RCL-004 `DONE`/PR #45와 REC-005
+  `IN_PROGRESS`/PR #44 상태를 보존했다. RCL-005 21/21, RCL-004 15/15,
+  RCL-001 10/10, RCL-002 15/15, RCL-003 21/21, PRJ-002 7/7,
   PRJ-003 9/9, PRJ-005 11/11,
   PRJ-007 19/19, PRJ-008 8/8과 REC-001/002/003 13/13·13/13·17/17도 회귀했고 REC-004
-  통합 gate는 70/70이다. 전체 fast는 49개 파일 394/394, PRJ-010은 39/39, spike는
-  25/25다. roadmap evidence 67/67·ADR 17/17·scenario 24/24·link 406과 dependency audit
+  통합 gate는 70/70이다. 전체 fast는 51개 파일 409/409, PRJ-010은 39/39, spike는
+  25/25다. roadmap evidence 67/67·ADR 17/17·scenario 24/24·link 415와 dependency audit
   0을 확인했다.
 - 독립 review와 PR merge 전이므로 상태는 `IN_PROGRESS`이고 Phase/master 완료 수는 바꾸지
   않는다. review finding과 PR 증거는 제출 단계에서 갱신한다.
