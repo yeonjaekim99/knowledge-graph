@@ -13,6 +13,7 @@ import {
   connectionErrorFromCode,
 } from "./connection-protocol.js";
 import type {
+  SqliteConnectionErrorCode,
   SqliteWriteEntityDraftInput,
   SqliteWriteEntityDraftResolution,
   SqliteWriteEntityFinalizationResult,
@@ -49,14 +50,46 @@ function rejected<T>(code: WriteEntityResolutionErrorCode): Promise<T> {
   return Promise.reject(new WriteEntityResolutionError(code));
 }
 
-function isSafeConnectionError(error: unknown): error is SqliteConnectionError {
+const CONNECTION_ERROR_CODES: ReadonlySet<string> = new Set<
+  SqliteConnectionErrorCode
+>([
+  "WAL_MODE_REQUIRED",
+  "WAL_MODE_UNAVAILABLE",
+  "CONNECTION_POLICY_UNAVAILABLE",
+  "SQLITE_CONNECTION_FAILED",
+  "SQLITE_TRANSACTION_FAILED",
+  "SQLITE_QUERY_FAILED",
+  "SQLITE_SIDECAR_UNSAFE",
+  "SQLITE_WORKER_FAILED",
+  "INVALID_TRANSACTION_PROGRAM",
+  "WRITER_ALREADY_ACTIVE",
+  "CONNECTION_FACTORY_CLOSED",
+  "CONNECTION_CLOSED",
+  "RECALL_SNAPSHOT_FAILED",
+  "SQLITE_BUSY",
+]);
+
+function reconstructedConnectionError(
+  error: unknown,
+): SqliteConnectionError | null {
   try {
-    if (!(error instanceof SqliteConnectionError)) {
-      return false;
+    if (error === null || typeof error !== "object") {
+      return null;
     }
-    const canonical = connectionErrorFromCode(error.code);
+    const codeDescriptor = Object.getOwnPropertyDescriptor(error, "code");
+    if (
+      codeDescriptor === undefined ||
+      !("value" in codeDescriptor) ||
+      typeof codeDescriptor.value !== "string" ||
+      !CONNECTION_ERROR_CODES.has(codeDescriptor.value)
+    ) {
+      return null;
+    }
+    const canonical = connectionErrorFromCode(
+      codeDescriptor.value as SqliteConnectionErrorCode,
+    );
     if (!(canonical instanceof SqliteConnectionError)) {
-      return false;
+      return null;
     }
     const actualKeys = Reflect.ownKeys(error);
     const canonicalKeys = Reflect.ownKeys(canonical);
@@ -64,7 +97,7 @@ function isSafeConnectionError(error: unknown): error is SqliteConnectionError {
       actualKeys.length !== canonicalKeys.length ||
       actualKeys.some((key) => !canonicalKeys.includes(key))
     ) {
-      return false;
+      return null;
     }
     for (const key of canonicalKeys) {
       const actual = Object.getOwnPropertyDescriptor(error, key);
@@ -76,26 +109,26 @@ function isSafeConnectionError(error: unknown): error is SqliteConnectionError {
         actual.enumerable !== expected.enumerable ||
         ("value" in actual) !== ("value" in expected)
       ) {
-        return false;
+        return null;
       }
       if ("value" in actual && "value" in expected) {
         if (
           actual.value !== expected.value ||
           actual.writable !== expected.writable
         ) {
-          return false;
+          return null;
         }
       } else if (
         !("value" in actual) &&
         !("value" in expected) &&
         (actual.get !== expected.get || actual.set !== expected.set)
       ) {
-        return false;
+        return null;
       }
     }
-    return true;
+    return canonical;
   } catch {
-    return false;
+    return null;
   }
 }
 
@@ -123,8 +156,9 @@ function invokeSessionOperation<T>(
         }
       },
       (error: unknown) => {
-        if (isSafeConnectionError(error)) {
-          throw error;
+        const connectionError = reconstructedConnectionError(error);
+        if (connectionError !== null) {
+          throw connectionError;
         }
         return reject("INVALID_WRITE_ENTITY_RESOLUTION_RESULT");
       },
