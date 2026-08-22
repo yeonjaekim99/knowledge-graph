@@ -3,9 +3,9 @@
 - 리뷰일: 2026-08-23
 - 대상: `docs/roadmap/`, evidence-gap audit, root README, contributor guide와 agent instruction 진입 파일
 - 기준: Accepted ADR-001~017, ADR 전체 리뷰, behavior spike S01~S24
-- 성격: 작성자 자체 교차 검토, PR #3~#46 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
-  REC-004 독립 review·Promise species 보완·최종 재검토·최신 main 결합 재검증
-- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~005 완료 · REC-005/RCL-006 진행**
+- 성격: 작성자 자체 교차 검토, PR #3~#49 누적 게시·로컬 검증, 2026-08-23 scope 재검토와
+  REC-004/RCL-006 독립 review·보완·최종 재검토
+- 결과: **Phase 01·02·03 종료 · REC-001~004/RCL-001~006 완료 · REC-005 진행**
 
 ## 검토 결과
 
@@ -19,7 +19,7 @@
 | 에이전트 진입 계약 | 통과 | root `AGENTS.md` 단일 원본, `CLAUDE.md` import, roadmap 선확인 규칙 |
 | evidence-gap | 통과 | historical 제품 ID 67개 각각 baseline, production gate 또는 범위 제외를 1회 대조 |
 | 범위 통제 | 통과 | snapshot/cache/어휘/정규화 등 측정 전 결정은 Deferred로 격리 |
-| 현재 상태 정확성 | 통과 | active 제품 구현 33/66, Phase 01·02·03과 REC-001~004/RCL-001~005 `DONE`, REC-005/RCL-006 병렬 진행, FND-006은 registry에 retired |
+| 현재 상태 정확성 | 통과 | active 제품 구현 34/66, Phase 01·02·03과 REC-001~004/RCL-001~006 `DONE`, REC-005 진행, FND-006은 registry에 retired |
 
 ## 중점 검토와 반영 사항
 
@@ -254,6 +254,13 @@
     21/21, 전체 409/409와 독립 review HIGH/MEDIUM/LOW 0건을 재현했다.
     [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)이 구현·검증·상태 증거를
     `main`에 고정해 제품 roll-up을 33/66으로 올렸다.
+38. RCL-006은 RCL-005 reached와 같은 TEMP aggregate를 bound parameter로 읽어 정확한 SQL
+    score·전체 tie-break·limit+1을 계산하고, 유효 반대 관계에만 contested를 붙이며 유효
+    support의 label fallback과 canonical brief를 만든다. 독립 review의 non-canonical literal,
+    relation-contested, lifecycle error, source accessor MEDIUM 4건을 11/20 RED에서 20/20 GREEN으로
+    닫았고, remediation HEAD 독립 재리뷰는 HIGH/MEDIUM/LOW 0건과 전체 429/429를 재현했다.
+    [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)가 구현·검증·상태 증거를
+    `main`에 고정해 제품 roll-up을 34/66으로 올린다.
 
 ## 의도적으로 남은 상태
 
@@ -275,8 +282,9 @@
   [PR #41](https://github.com/yeonjaekim99/knowledge-graph/pull/41)로 완료했고, REC-004는
   [PR #43](https://github.com/yeonjaekim99/knowledge-graph/pull/43)으로 완료했다.
   RCL-004는 [PR #45](https://github.com/yeonjaekim99/knowledge-graph/pull/45), RCL-005는
-  [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46)으로 완료했고,
-  dependency-ready REC-005와 RCL-006은 격리 branch에서 병렬 진행한다.
+  [PR #46](https://github.com/yeonjaekim99/knowledge-graph/pull/46), RCL-006은
+  [PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)로 완료했고 REC-005는
+  격리 branch에서 진행한다. RCL-007은 다음 dependency-ready planning 대상이다.
 - 후속 peer review에서 새 문제가 발견되면 기존 ID 의미를 바꾸지 않고 roadmap 수정 PR로
   반영한다.
 
@@ -299,7 +307,8 @@
 | RCL-003 branch gate | PASS — architecture/type/build, RCL-003 21/21·RCL-002 15/15·RCL-001 10/10·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 44개 파일 323/323, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 2,100 support·21 candidate probe 및 독립 review 미해결 HIGH/MEDIUM/LOW 0 |
 | RCL-004 branch gate | PASS — 최신 main `25eeb72` 위 semantic rebase, RCL-004 15/15·REC-004 focused 50/50을 포함한 verify 70/70·RCL-001 10/10·RCL-002 15/15·RCL-003 21/21·STO-002 7/7·STO-004 4/4·PRJ-008 8/8, 전체 fast 48개 파일 388/388, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; REC-004 writer resolver·REC-005 planning 보존, 독립 최종 review HIGH/MEDIUM/LOW 0건 |
 | RCL-005 branch gate | PASS — 최신 main `51523f3` 위 semantic rebase, RCL-005 21/21·RCL-004 15/15·REC-004 70/70·RCL-001/002/003 10/10·15/15·21/21, 전체 fast 51개 파일 409/409, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 최종 review HIGH/MEDIUM/LOW 0건 |
-| 변경 범위 | PASS — 기존 REC-004 writer와 RCL-001~004 snapshot/surface/FTS/overview seam에 bounded BFS/path를 병존시키고, record dedupe·journal service·ranking/Answer·MCP handler·자동 CI 변경은 포함하지 않음 |
+| RCL-006 branch gate | PASS — RCL-006 20/20·RCL-001~005 10/10·15/15·21/21·15/15·21/21·REC-004 70/70, 전체 fast 53개 파일 429/429, PRJ-010 39/39, spike 25/25, roadmap audit와 dependency audit 0; 독립 재리뷰 HIGH/MEDIUM/LOW 0건 |
+| 변경 범위 | PASS — 기존 REC-004 writer와 RCL-001~005 snapshot/surface/FTS/overview/traversal seam에 aggregate-backed ranking·brief를 병존시키고, record write·public Answer/detail/payload budget·MCP handler·자동 CI 변경은 포함하지 않음 |
 
 ## 게시 전 재현 검사
 

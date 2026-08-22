@@ -201,5 +201,8 @@ production dependency audit도 통과한다.
 - RCL-009/REL-003은 representative fixture query plan과 p95를 측정한다. 성능 증거 없이
   aggregate cache나 별도 ranking cache를 추가하지 않는다.
 
-독립 review MEDIUM 4건을 로컬 remediation했어도 PR #49는 draft이고 재확인·`main` 병합 전이므로
-roadmap 상태는 `IN_PROGRESS`를 유지한다.
+remediation HEAD `276a3c4`를 대상으로 한 독립 재리뷰는 이전 MEDIUM 4건이 모두 닫혔음을
+확인하고 HIGH/MEDIUM/LOW 0건으로 판정했다. focused 20/20, 전체 fast 429/429,
+PRJ-010 39/39, spike 25/25, roadmap·dependency audit와 clean diff를 독립적으로 재현했다.
+[PR #49](https://github.com/yeonjaekim99/knowledge-graph/pull/49)가 구현·remediation·검증과
+완료 상태를 `main`에 함께 고정한다.
