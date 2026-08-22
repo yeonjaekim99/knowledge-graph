@@ -21,6 +21,7 @@ import {
   type SqliteReadQuery,
   type SqliteReadResult,
   type SqliteRecallAggregateRowsResult,
+  type SqliteRecallFtsRowsResult,
   type SqliteRecallSnapshotBeginResult,
   type SqliteRecallSurfaceStateRowsResult,
   type SqliteTransactionCommand,
@@ -223,6 +224,19 @@ class SqliteWorkerClient {
     }) as Promise<SqliteRecallSurfaceStateRowsResult>;
   }
 
+  public searchRecallSnapshotFts(
+    snapshotId: number,
+    matchExpression: string,
+    phraseLiterals: readonly string[],
+  ): Promise<SqliteRecallFtsRowsResult> {
+    return this.#request({
+      type: "recall-snapshot-fts",
+      snapshotId,
+      matchExpression,
+      phraseLiterals,
+    }) as Promise<SqliteRecallFtsRowsResult>;
+  }
+
   public endRecallSnapshot(
     snapshotId: number,
     commit: boolean,
@@ -368,6 +382,12 @@ class SqliteWorkerClient {
           readonly surfaceNorms: readonly string[];
         }
       | {
+          readonly type: "recall-snapshot-fts";
+          readonly snapshotId: number;
+          readonly matchExpression: string;
+          readonly phraseLiterals: readonly string[];
+        }
+      | {
           readonly type: "recall-snapshot-end";
           readonly snapshotId: number;
           readonly commit: boolean;
@@ -505,6 +525,11 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
     );
     let active = true;
     const source: SqliteRecallSnapshotSource = Object.freeze({
+      assertActive: () => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+      },
       listRawAggregateRows: async () => {
         if (!active) {
           throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
@@ -521,6 +546,19 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
         return this.#client.readRecallSurfaceState(
           started.snapshotId,
           surfaceNorms,
+        );
+      },
+      searchRawFtsRows: async (
+        matchExpression: string,
+        phraseLiterals: readonly string[],
+      ) => {
+        if (!active) {
+          throw new SqliteConnectionError("RECALL_SNAPSHOT_FAILED");
+        }
+        return this.#client.searchRecallSnapshotFts(
+          started.snapshotId,
+          matchExpression,
+          phraseLiterals,
         );
       },
     });
@@ -545,12 +583,17 @@ class SqliteReaderConnectionImplementation implements SqliteReaderConnection {
 }
 
 export interface SqliteRecallSnapshotSource {
+  assertActive(): void;
   listRawAggregateRows(): Promise<
     readonly Readonly<Record<string, unknown>>[]
   >;
   readRawSurfaceState(
     surfaceNorms: readonly string[],
   ): Promise<SqliteRecallSurfaceStateRowsResult>;
+  searchRawFtsRows(
+    matchExpression: string,
+    phraseLiterals: readonly string[],
+  ): Promise<SqliteRecallFtsRowsResult>;
 }
 
 export type SqliteRecallSnapshotOperation<Result> = (

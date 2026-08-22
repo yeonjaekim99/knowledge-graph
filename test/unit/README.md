@@ -57,3 +57,13 @@ surface·50+1·손상 fail-closed를 검증한다.
 [`application/rcl-002-query-surface.test.mjs`](application/rcl-002-query-surface.test.mjs)와
 compile fixture는 같은 정책이 RCL-001 snapshot callback의 typed `resolveSurfaceSeeds`만 쓰고
 raw SQL/connection capability를 얻지 못하는지 검증한다.
+
+RCL-003의 [`application/rcl-003-fts-query.test.mjs`](application/rcl-003-fts-query.test.mjs)는
+제어 문자 제거, quote doubling, 최대 10개 OR phrase, 실제 bound phrase 기반 Unicode 3 code
+point gate와 compatibility-equivalent display phrase 순서 보존, sparse/accessor/Proxy array의
+값 미실행 및 Proxy가 던진 typed error 객체를 재사용하지 않는 fresh payload-redacted 거부를 IO 없이
+검증한다. RCL-002 selection의 ordered `term.text`를 FTS에 넘기고 같은 `surfaceNorm`을 가진
+서로 다른 표시 phrase를 보존하는 semantic handoff도 고정한다.
+`rcl-003-fts-candidates.type-test.ts`는 후속 recall 단계가 raw SQL 대신
+surface selection과 seed/reached/raw/truncation의 좁은 snapshot capability만 소비하도록 compile
+경계를 고정한다.

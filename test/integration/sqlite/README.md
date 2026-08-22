@@ -25,3 +25,16 @@ transaction에서 parameterized scope/surface exact lookup과 필요한 entity/r
 같은 normalized lookup을 가진 distinct display term의 first-pair dedupe, 51→50 절단,
 concurrent WAL commit 전후 snapshot, persistent dump/`data_version` 불변과 cycle 오류 cleanup을
 포함한다.
+
+RCL-003의 [`rcl-003-fts-fallback.test.mjs`](rcl-003-fts-fallback.test.mjs)는 같은 snapshot에서
+bound quoted phrase로 STO-004 contentless FTS를 검색하고 current-scope live/unexpired statement
+중 graph/raw eligible 21개를 읽어 20개만 변환하는지 검증한다. operator·quote·control·한국어·emoji,
+combining/compatibility code-point 경계, entity/literal
+endpoint seed와 reached pin, raw TTL/state와 죽은 parsed claim 비부활, 동일 raw graph duplicate,
+NFKC-equivalent 별도 phrase와 정확한 matched term, suppressed raw/dead parsed cap 비소비, 저장
+원문의 앞뒤 공백 보존, 반복 order, WAL snapshot, 영구 dump/data_version 및 Proxy/accessor를
+포함한 payload-redacted corruption을 포함한다. same-scope live·unexpired aggregate support의
+invalid draft index는 fail closed하고 dead·expired·cross-scope 대조군은 정상적으로 제외하며,
+typed Proxy error identity와 임의 payload도 adapter 밖으로 전달하지 않는다. bounded 21개 모두의
+support를 검증하므로 used parsed candidate의 support 누락과 malformed 21번째 sentinel은 실패하고,
+정상 sentinel은 truncation 확인에만 쓰이며 앞 20개 결과에는 들어가지 않는다.

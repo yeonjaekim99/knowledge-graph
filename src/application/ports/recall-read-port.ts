@@ -10,7 +10,9 @@ const SCOPE_KEY_PATTERN =
 export type RecallReadErrorCode =
   | "INVALID_RECALL_CONTEXT"
   | "INVALID_RECALL_AGGREGATE"
-  | "INVALID_RECALL_SURFACE_STATE";
+  | "INVALID_RECALL_SURFACE_STATE"
+  | "INVALID_RECALL_FTS_REQUEST"
+  | "INVALID_RECALL_FTS_CANDIDATE";
 
 const RECALL_READ_ERROR_MESSAGES: Readonly<
   Record<RecallReadErrorCode, string>
@@ -21,6 +23,10 @@ const RECALL_READ_ERROR_MESSAGES: Readonly<
     "recall aggregate state does not satisfy the read contract",
   INVALID_RECALL_SURFACE_STATE:
     "recall surface state does not satisfy the read contract",
+  INVALID_RECALL_FTS_REQUEST:
+    "recall FTS requires one validated collection of at most ten text candidates",
+  INVALID_RECALL_FTS_CANDIDATE:
+    "recall FTS candidate state does not satisfy the read contract",
 });
 
 export class RecallReadError extends Error {
@@ -47,6 +53,73 @@ export interface RecallClaimAggregate {
   readonly effectiveExpiresAt: UnixEpochSeconds | null;
 }
 
+export type RecallFtsNoteCode =
+  | "fts_terms_too_short"
+  | "fts_candidate_limit"
+  | "fts_query_unavailable";
+
+export interface RecallFtsNote {
+  readonly code: RecallFtsNoteCode;
+  readonly text: string;
+}
+
+export interface RecallFtsTerm {
+  readonly display: string;
+  readonly phraseLiteral: string;
+}
+
+export interface RecallFtsSeedCandidate {
+  readonly entityId: string;
+  readonly endpoint: "subject" | "object";
+  readonly matchedTerm: string;
+  readonly pathLabel: string;
+  readonly eventId: string;
+  readonly statementSeq: number;
+  readonly ftsRank: number;
+}
+
+export interface RecallFtsReachedClaimCandidate {
+  readonly claimId: string;
+  readonly depth: 0;
+  readonly anchorEntityId: string;
+  readonly seedEntityId: string;
+  readonly seedOrder: number;
+  readonly matchedTerm: string;
+  readonly eventId: string;
+  readonly statementSeq: number;
+  readonly ftsRank: number;
+}
+
+export interface RecallRawCandidate {
+  readonly eventId: string;
+  readonly text: string;
+  readonly createdAt: UnixEpochSeconds;
+  readonly recordedAt: UnixEpochSeconds;
+  readonly provenance: "user_stated" | "observed" | "inferred";
+  readonly statementSeq: number;
+}
+
+export interface RecallFtsRawCandidate extends RecallRawCandidate {
+  readonly matchedTerm: string;
+  readonly ftsRank: number;
+}
+
+export type RecallTruncationReason = "fts_candidates";
+
+export interface RecallTruncationLedger {
+  readonly reasons: readonly RecallTruncationReason[];
+}
+
+export interface RecallFtsCandidateResult {
+  readonly kind: "skipped" | "searched" | "unavailable";
+  readonly terms: readonly RecallFtsTerm[];
+  readonly seeds: readonly RecallFtsSeedCandidate[];
+  readonly reachedClaims: readonly RecallFtsReachedClaimCandidate[];
+  readonly rawCandidates: readonly RecallFtsRawCandidate[];
+  readonly truncation: RecallTruncationLedger;
+  readonly notes: readonly RecallFtsNote[];
+}
+
 /**
  * This is the only capability application recall stages receive. Concrete
  * adapters keep every typed lookup in the request-local snapshot; claim reads
@@ -59,8 +132,18 @@ export interface RecallValidClaimSource {
   ): Promise<RecallQuerySurfaceSelection>;
 }
 
+export interface RecallFtsCandidateSource {
+  searchFtsCandidates(
+    candidates: readonly string[],
+  ): Promise<RecallFtsCandidateResult>;
+}
+
+export interface RecallSnapshotSource
+  extends RecallValidClaimSource,
+    RecallFtsCandidateSource {}
+
 export type RecallSnapshotOperation<Result> = (
-  source: RecallValidClaimSource,
+  source: RecallSnapshotSource,
 ) => Promise<Result>;
 
 export interface RecallReadPort {
